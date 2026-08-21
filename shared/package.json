@@ -1,0 +1,21 @@
+{
+  "name": "@dojo/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Types-only shared workspace for Kayla's Hollow Knight Dojo. No runtime code — every export is a type.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

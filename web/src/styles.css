@@ -1,0 +1,302 @@
+/*
+ * Minimal HK-ish dark palette. A real art pass comes later (frontend-design +
+ * game-feel skills); for now: deep blue-black ground, bone-white text, pale
+ * blue accent — tasteful, readable, and simple.
+ */
+
+:root {
+  /* palette */
+  --bg: #0b0e1a; /* deep blue-black, the caverns */
+  --bg-raised: #121728; /* panels / cards */
+  --bg-canvas: #070912; /* the game canvas well */
+  --text: #e9e4d5; /* bone white */
+  --text-dim: #9a97a8; /* faded inscription */
+  --accent: #a9c7e8; /* pale lumafly blue */
+  --accent-strong: #cfe4fa;
+  --rule: #232a40; /* hairline borders */
+
+  /* type */
+  --font-body:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* header */
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.75rem 1.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.site-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.site-nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  padding-bottom: 2px;
+  border-bottom: 1px solid transparent;
+}
+
+.site-nav a:hover {
+  color: var(--text);
+}
+
+.site-nav a.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* main column */
+.site-main {
+  flex: 1;
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+h1 {
+  font-size: 1.9rem;
+  line-height: 1.25;
+  margin: 0 0 0.75rem;
+  color: var(--accent-strong);
+  letter-spacing: 0.01em;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 2rem 0 0.5rem;
+  color: var(--accent);
+}
+
+p {
+  margin: 0 0 1rem;
+  max-width: 62ch;
+}
+
+a {
+  color: var(--accent);
+}
+
+.lede {
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.muted {
+  color: var(--text-dim);
+}
+
+/* card grid used on Home / Lessons */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: block;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 120ms ease;
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+.card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+
+.card p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-dim);
+}
+
+/* arena controls */
+.arena-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
+  margin: 1rem 0 0;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.chip-active {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-raised));
+}
+
+.chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.observe-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.observe-toggle input {
+  accent-color: var(--accent);
+}
+
+/* practice canvas */
+.practice-canvas-frame {
+  background: var(--bg-canvas);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.practice-canvas-frame canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+.canvas-note {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-top: 0.5rem;
+}
+
+/* lesson demos */
+.lesson-demo-frame {
+  background: var(--bg-canvas);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin: 1rem 0 1.5rem;
+  max-width: 42rem;
+}
+
+.lesson-demo-frame canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.demo-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: 0.75rem 0 1.25rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.demo-legend li::before {
+  content: '';
+  display: inline-block;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 2px;
+  margin-right: 0.45em;
+}
+
+.demo-legend .legend-red::before {
+  background: #e2695f;
+}
+
+.demo-legend .legend-green::before {
+  background: #9fd8a8;
+}
+
+.demo-legend .legend-gold::before {
+  background: #e8c76a;
+}
+
+/* footer */
+.site-footer {
+  border-top: 1px solid var(--rule);
+  padding: 1rem 1.5rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.site-footer p {
+  margin: 0;
+}

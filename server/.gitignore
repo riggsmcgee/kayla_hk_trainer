@@ -1,0 +1,10 @@
+# The SQLite database lives here. Never commit it — localStorage in the web app
+# is the only source of truth, and this whole server is a disposable practice
+# artifact. (Also covers WAL/SHM sidecar files better-sqlite3 creates.)
+data/
+
+# Build output
+dist/
+
+# Belt and braces if root .gitignore ever changes
+node_modules/
