@@ -1,21 +1,24 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
 import type { EnemyId } from '@dojo/shared';
+import { ChapterNav } from '../components/ChapterNav';
 import { ComfortToggles } from '../components/ComfortToggles';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
+import { useMarkVisited } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 
-/** Roster order matches the teaching progression. M4 unlocks the last three. */
-const ROSTER: { id: EnemyId; name: string; ready: boolean }[] = [
-  { id: 'walker', name: 'Walker', ready: true },
-  { id: 'flier', name: 'Flier', ready: true },
-  { id: 'duelist', name: 'Duelist', ready: true },
-  { id: 'spitter', name: 'Spitter', ready: true },
-  { id: 'warden', name: 'Warden', ready: true },
+/** Roster order matches the teaching progression. */
+const ROSTER: { id: EnemyId; name: string }[] = [
+  { id: 'walker', name: 'Walker' },
+  { id: 'flier', name: 'Flier' },
+  { id: 'duelist', name: 'Duelist' },
+  { id: 'spitter', name: 'Spitter' },
+  { id: 'warden', name: 'Warden' },
 ];
 
-export function PracticeDodge() {
+export function PlayDodge() {
+  useMarkVisited('dodge-arena');
   const [enemyId, setEnemyId] = useState<EnemyId>('walker');
   const [observe, setObserve] = useState(false);
   const [comfort, setComfort] = useComfortSettings();
@@ -27,12 +30,12 @@ export function PracticeDodge() {
 
   return (
     <>
+      <p className="eyebrow">Mini-game · Kbug’s Colosseum</p>
       <h1>Dodge Arena</h1>
       <p className="lede">
-        One enemy at a time, Kayla. The run ends the first time you get hit, and your score
-        is how many clean nail hits you land — or flip on observe mode, where your nail
-        does no damage and the only goal is to survive and watch. It&apos;s the{' '}
-        <Link to="/lessons/reading-enemies">Reading Enemies</Link> lesson, made playable.
+        One enemy. The run ends the first time it touches you; your score is clean hits. Observe
+        mode makes your nail a feather — just watch and dodge, like the{' '}
+        <Link to="/lessons/reading-enemies">Reading Enemies chapter</Link> says.
       </p>
       <div className="arena-controls" role="group" aria-label="Arena setup">
         <div className="btn-row" role="radiogroup" aria-label="Choose an enemy">
@@ -42,8 +45,6 @@ export function PracticeDodge() {
               role="radio"
               aria-checked={enemyId === e.id}
               className={enemyId === e.id ? 'chip chip-active' : 'chip'}
-              disabled={!e.ready}
-              title={e.ready ? undefined : 'This one is still training. Coming soon.'}
               onClick={() => setEnemyId(e.id)}
             >
               {e.name}
@@ -51,16 +52,13 @@ export function PracticeDodge() {
           ))}
         </div>
         <label className="observe-toggle">
-          <input
-            type="checkbox"
-            checked={observe}
-            onChange={(e) => setObserve(e.target.checked)}
-          />
+          <input type="checkbox" checked={observe} onChange={(e) => setObserve(e.target.checked)} />
           Observe mode — feather nail, just watch and dodge
         </label>
       </div>
       <PracticeCanvas label="Dodge Arena" createSession={createSession} />
       <ComfortToggles value={comfort} onChange={setComfort} />
+      <ChapterNav current="dodge-arena" />
     </>
   );
 }

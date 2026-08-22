@@ -19,8 +19,10 @@ export type PracticeMode = 'pogo' | 'dodge';
  *               rising anti-air swipe if you jump in; punishable in recovery.
  * - `spitter` — Aspid-like ranged: wind-up then 3-shot fan; projectiles can be
  *               nail-poked to destroy them; punish by closing during recovery.
- * - `warden`  — shield/counter: blocks frontal and aerial hits, telegraphed
- *               riposte after blocking; only vulnerable in post-counter recovery.
+ * - `warden`  — shield/counter: the shield covers one side at a time (front,
+ *               or overhead when the Knight is above) and re-aims with a lag;
+ *               a blocked hit draws a telegraphed riposte, lingering in front
+ *               draws a bash; recovery after either is open from every side.
  */
 export type EnemyId = 'walker' | 'flier' | 'duelist' | 'spitter' | 'warden';
 

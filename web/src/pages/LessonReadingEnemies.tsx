@@ -1,11 +1,14 @@
 import { Link } from 'react-router';
+import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
 import {
   duelistAntiAirDemo,
   duelistLungeDemo,
   spitterVolleyDemo,
   wardenRiposteDemo,
+  wardenShieldDemo,
 } from '../engine/demo';
+import { useMarkVisited } from '../storage/useChapterProgress';
 
 function DemoLegend() {
   return (
@@ -18,91 +21,87 @@ function DemoLegend() {
 }
 
 export function LessonReadingEnemies() {
+  useMarkVisited('reading-enemies');
   return (
     <>
-      <h1>Lesson: Reading Enemies</h1>
+      <p className="eyebrow">Chapter 3 · Greenpath</p>
+      <h1>Reading Enemies</h1>
       <p className="lede">
-        Here&apos;s a secret, Kayla: when you meet a new enemy, your job is not to kill it.
-        First, check yourself — do I know where I am? Is there a bench nearby? Then spend a
-        whole life doing nothing but dodging, until you can avoid every single attack it
-        has. Only then do you look for the one safe moment to strike back. Every attack in
-        this game has a safe answer — some projectiles can even be knocked out of the air —
-        and hitting them more than they hit you is the entire game.
+        Here’s the secret, Kayla: when you meet a new enemy, your job is <em>not</em> to kill it.
+        Spend a whole life just dodging. When you can avoid everything it has, find the one safe
+        moment to hit back.
       </p>
 
-      <h2>The bench checklist</h2>
-      <p>
-        Before any fight that scares you, ask two questions. <em>Do I know where I am?</em>{' '}
-        If you&apos;re lost, dying costs knowledge, not just progress. <em>Is there a bench
-        nearby?</em> If yes, this is the perfect place to spend a life learning — the walk
-        back is short, so a death is cheap tuition. If no, maybe now isn&apos;t the moment.
-        Losing on purpose near a bench is how the game wants you to study.
-      </p>
+      <h2>Before the fight: two questions</h2>
+      <ul className="plain-list">
+        <li>
+          <strong>Do I know where I am?</strong> If you’re lost, dying costs knowledge.
+        </li>
+        <li>
+          <strong>Is there a bench nearby?</strong> If yes, this is the place to spend a life
+          learning — the walk back is cheap.
+        </li>
+      </ul>
 
-      <h2>Watching a fight, in slow motion</h2>
+      <h2>Every attack has three beats</h2>
       <p>
-        Every attack below runs on the real engine at half speed, with the real hitboxes
-        drawn in. Each attack has three beats: the <strong>tell</strong>, the{' '}
-        <strong>attack</strong>, and the <strong>opening</strong> — watch the bar at the
-        bottom of each demo tick through them.
+        The <strong>tell</strong>, the <strong>attack</strong>, the <strong>opening</strong>. The
+        demos below run on the real engine at half speed with the real hitboxes drawn in; the bar at
+        the bottom ticks through the beats.
       </p>
       <DemoLegend />
 
-      <h2>The duelist — it answers whatever you do</h2>
-      <p>
-        Walk in on the ground and it lunges. The crouch is the tell; the lunge covers a
-        shocking amount of ground — standing and trading will always cost you. Wait it
-        out, and the gold window after the lunge is yours.
-      </p>
+      <h2>The duelist answers whatever you do</h2>
       <LessonDemo
         script={duelistLungeDemo}
         label="Slow-motion demo: approaching the duelist on the ground provokes its lunge; the attack hitbox shows in red, the recovery window in gold"
       />
-      <p>
-        Now the same enemy, approached from the air — it answers upward instead. The
-        lesson isn&apos;t &quot;never jump&quot;; it&apos;s that <em>your approach picks
-        its attack</em>. Once you know which question you&apos;re asking, you know which
-        answer is coming.
-      </p>
+      <p>Walk in on the ground: the crouch is the tell, the lunge covers a lot of ground.</p>
       <LessonDemo
         script={duelistAntiAirDemo}
-        label="Slow-motion demo: jumping at the duelist provokes its rising swipe instead"
+        label="Slow-motion demo: jumping at the duelist provokes its rising swipe, which clips the jumper"
       />
-
-      <h2>The spitter — its attack is your stepping stone</h2>
       <p>
-        It keeps its distance and spits a fan of three. Two answers, both good: weave
-        between the shots, or <strong>slash them out of the air</strong> — they&apos;re
-        green, and green means your nail wins. Then, while it&apos;s spent, close the
-        distance and collect.
+        Jump in: it leaps to meet you. <em>Your approach picks its attack</em> — so you already know
+        which answer is coming. Either way, the gold after is yours.
       </p>
+
+      <h2>The spitter’s attack is your stepping stone</h2>
       <LessonDemo
         script={spitterVolleyDemo}
         label="Slow-motion demo: the spitter winds up and fires a three-shot fan of destroyable projectiles, then recovers"
       />
-
-      <h2>The warden — patience beats armor</h2>
       <p>
-        The shield blocks everything — swinging at it just rings your nail off metal and
-        provokes the counter. That&apos;s not a failure; that&apos;s the plan.{' '}
-        <em>Deliberately</em> poke, step back out of the riposte, and then take the gold
-        window it leaves behind. This one enemy is the whole doctrine in miniature:
-        attacking at the wrong time is punished, and observation reveals the one safe
-        window.
+        A fan of three. Weave between them, or <strong>slash them out of the air</strong> — green
+        means your nail wins. Then close in while it’s spent.
+      </p>
+
+      <h2>The warden: hit where the shield isn’t</h2>
+      <LessonDemo
+        script={wardenShieldDemo}
+        label="Slow-motion demo: hanging above the warden makes it raise its shield overhead, leaving the front open; standing in front too long draws a shield bash"
+      />
+      <p>
+        The shield covers one side at a time and follows you with a little lag. Go over it and the
+        front opens; stand in front too long and it comes for you.
       </p>
       <LessonDemo
         script={wardenRiposteDemo}
-        label="Slow-motion demo: a blocked hit provokes the warden's riposte; only its post-riposte recovery is vulnerable"
+        label="Slow-motion demo: a blocked hit provokes the warden's riposte; its post-riposte recovery is wide open"
       />
-
-      <h2>Now go watch one for real</h2>
       <p>
-        The <Link to="/practice/dodge">Dodge Arena</Link> has an <strong>observe mode</strong>{' '}
-        made exactly for this lesson: your nail does no damage, so there&apos;s nothing to
-        do but watch, dodge, and survive — the &quot;spend a whole life just dodging&quot;
-        rule, made into a game. When an enemy&apos;s attacks feel readable, switch observe
-        off and start collecting your hits.
+        Swing into the shield and it answers. That can be the plan: poke, step out of the riposte,
+        take the gold. This one enemy is the whole doctrine — attacking at the wrong time is
+        punished, and watching reveals the safe window.
       </p>
+
+      <p className="thesis">
+        Now go watch one for real: the <Link to="/play/dodge">Dodge Arena</Link> has an observe mode
+        where your nail does no damage. When the attacks feel readable, switch it off and start
+        collecting.
+      </p>
+
+      <ChapterNav current="reading-enemies" />
     </>
   );
 }

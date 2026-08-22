@@ -135,7 +135,7 @@ describe('Course 1 completability', () => {
       let jumpPressed = false;
       if (player.grounded && !groundAhead(player.position.x + 34, player.position.y)) {
         jumpPressed = true;
-        jumpHoldSteps = 11; // full-height jump
+        jumpHoldSteps = 11; // released as the pin ends: a ≈122 px jump, a deliberately conservative bound (a full held jump is ≈236 px)
       }
       const input: InputFrame = {
         left: false,

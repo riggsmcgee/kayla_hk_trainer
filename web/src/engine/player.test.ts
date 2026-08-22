@@ -167,6 +167,86 @@ describe('jump', () => {
     expect(peak).toBeLessThan(63);
   });
 
+  // Decompiled HeroController.JumpReleased() zeroes vy whenever the button is
+  // up, vy is upward, and JUMP_STEPS_MIN has passed — it runs every frame from
+  // LookForInput(), not only during the 9-step pin. Heights are therefore
+  // continuous from the tap minimum to the full ascent (playtest 1, note 6).
+  it('zeroes vy on release even after the pin has ended (ballistic ascent)', () => {
+    const world = flatWorld();
+    const player = spawnGrounded(world);
+    stepPlayer(player, frame({ jumpPressed: true, jumpHeld: true }), world, FIXED_DT);
+    steps(player, world, 13, frame({ jumpHeld: true })); // past 0.18 s: pin over
+    expect(player.velocity.y).toBeGreaterThan(-PHYSICS.jumpVelocity); // ballistic
+    expect(player.velocity.y).toBeLessThan(0); // but still rising
+    stepPlayer(player, frame(), world, FIXED_DT); // release
+    expect(player.velocity.y).toBe(0);
+  });
+
+  it('gives a continuous range of heights between a late release and a full hold', () => {
+    const world = flatWorld();
+    const peakFor = (heldSteps: number) => {
+      const player = spawnGrounded(world);
+      const startY = player.position.y;
+      let peak = 0;
+      for (let i = 0; i < 240; i++) {
+        const held = i < heldSteps;
+        stepPlayer(player, frame({ jumpPressed: i === 0, jumpHeld: held }), world, FIXED_DT);
+        peak = Math.max(peak, startY - player.position.y);
+        if (player.velocity.y >= 0 && i > 2) break;
+      }
+      return peak;
+    };
+    const pinEnd = peakFor(11); // released the step the pin ends (≈ 120 px before)
+    const mid = peakFor(20); // released ≈ 0.33 s in, mid-ascent
+    const full = peakFor(60); // held through the apex
+    expect(mid).toBeGreaterThan(pinEnd + 30);
+    expect(mid).toBeLessThan(full - 30);
+    // No cliff: the biggest gap between neighbouring release times stays small.
+    let maxGap = 0;
+    let prev = peakFor(5);
+    for (let h = 6; h <= 40; h++) {
+      const next = peakFor(h);
+      maxGap = Math.max(maxGap, next - prev);
+      prev = next;
+    }
+    expect(maxGap).toBeLessThan(16); // one step's worth of rise at most
+  });
+
+  it('landing clears the post-pin cut so the next tap jump keeps its full minimum', () => {
+    const world = flatWorld();
+    const player = spawnGrounded(world);
+    // Full held jump, ride it all the way down.
+    stepPlayer(player, frame({ jumpPressed: true, jumpHeld: true }), world, FIXED_DT);
+    for (let i = 0; i < 240 && !player.grounded; i++) {
+      stepPlayer(player, frame({ jumpHeld: true }), world, FIXED_DT);
+    }
+    expect(player.grounded).toBe(true);
+    expect(player.jumpCutArmed).toBe(false);
+    // A tap jump right after must still get its 4 pinned steps (≈ 53 px).
+    const startY = player.position.y;
+    stepPlayer(player, frame({ jumpPressed: true }), world, FIXED_DT);
+    let peak = 0;
+    for (let i = 0; i < 60; i++) {
+      stepPlayer(player, frame(), world, FIXED_DT);
+      peak = Math.max(peak, startY - player.position.y);
+      if (player.velocity.y >= 0 && i > 2) break;
+    }
+    expect(peak).toBeGreaterThan(43);
+  });
+
+  it('a release does not cut a pogo bounce (the bounce is not a jump)', () => {
+    const world = flatWorld();
+    world.pogoables = [{ x: -20, y: FLOOR_Y - 120, width: 40, height: 20 }];
+    const player = createPlayer(0, FLOOR_Y - 200);
+    // Fall onto the orb with a downslash, jump button never touched.
+    for (let i = 0; i < 60 && player.totalPogos === 0; i++) {
+      stepPlayer(player, frame({ down: true, attackPressed: i % 3 === 0 }), world, FIXED_DT);
+    }
+    expect(player.totalPogos).toBe(1);
+    steps(player, world, 5, frame());
+    expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity); // still pinned, not cut
+  });
+
   it('does not jump midair (no double jump in Kayla’s kit)', () => {
     const world = flatWorld();
     const player = spawnGrounded(world);

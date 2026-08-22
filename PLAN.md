@@ -41,6 +41,11 @@ Every ratified decision with its rationale. These are settled.
 | **Vitest** | Native Vite integration, fast, one test runner across all workspaces. |
 | **GitHub Pages, public repo** (`kayla-hk-trainer`) | Free static hosting Kayla can reach from any browser; public because there's nothing secret and Pages is simplest that way. Deployed by GitHub Actions. *(Refinement, Session 4: the actual repo is `riggsmcgee/kayla_hk_trainer` — underscores — so the workflow derives `VITE_BASE` from the repo name instead of hardcoding it.)* |
 | **Site name: "Kayla's Hollow Knight Dojo"** | It's *her* dojo — the name keeps the site personal and frames practice (not walkthroughs) as the point. |
+| **Visual-first site; the home page is a map** *(Session 5, from playtest 1)* | The user's verdict on the text-and-cards site: "boring… more visuals and fewer words." Home becomes a Hallownest-style map whose stops are the chapters in teaching order; copy everywhere is cut to a name and a line. Full notes: `docs/feedback/2026-08-21-playtest-1.md`. |
+| **"Mini-games", not "practice"** *(Session 5)* | The user's word; it frames the modes as fun rather than homework. Routes move to `/play/*` with redirects from `/practice/*`. |
+| **Lesson order: Setup → Pogo → Reading Enemies** *(Session 5)* | Setup goes first because it decides how Kayla practices everything after it. The `/lessons` index is deleted (redundant with Home). |
+| **Warden: positional shield + proactive bash** *(Session 5)* | The old warden blocked every direction and never attacked unprovoked — "no threat unless you make a threat, which is not how the game works." Now the shield covers one direction at a time (front or overhead, tracking the Knight with a re-aim delay), so the open side is a real weak spot; and lingering in front draws a telegraphed bash. Precedent: the Colosseum's Shielded Fool. |
+| **Jump release honoured through the whole ascent** *(Session 5)* | Fidelity bug, not a taste call: decompiled `JumpReleased()` zeroes vy whenever the button is up during a rise (after the 4-step minimum), not only during the 9-step pin. Our pin-only reading produced a 116 px cliff between the tallest short hop and a full jump. |
 
 ## 4. Architecture
 
@@ -125,15 +130,15 @@ Each enemy exists to teach one thing. The three attackers get full **telegraph �
 | `flier` | Vengefly | Drifting/bobbing dummy, contact damage only. | Aerial spacing, up-slash and pogo on an airborne target. |
 | `duelist` | Mantis | Reactive melee: **lunge slash** if you approach on the ground; **rising anti-air swipe** if you jump in. Punishable in recovery. | Reading which attack *you* provoked; patience; punishing recovery instead of trading. |
 | `spitter` | Aspid | Ranged: wind-up, then a 3-shot fan. **Projectiles can be nail-poked to destroy them.** Punish by closing distance during recovery. | Projectile nullification (attacks are pokeable); using the enemy's commitment window to close. |
-| `warden` | shield/counter | Blocks frontal and aerial hits; blocking triggers a telegraphed riposte; **only vulnerable in post-counter recovery**. | The full doctrine: attacking at the wrong time is punished; observation reveals the one safe window. |
+| `warden` | shield/counter (Shielded Fool-ish) | Shield covers **one direction at a time** — front, or overhead when the Knight is above — re-aiming after a short delay. A hit into the shield is blocked and triggers a telegraphed riposte; a hit into the open side lands. Lingering in front draws a telegraphed **shield bash**. Recovery after either attack is open from every side. *(Session 5 redesign; previously blocked everything and never attacked first.)* | The full doctrine: attacking into the shield is punished; watching reveals where it isn't — and standing still is never safe. |
 
 ## 6. Lessons spec
 
-Three lessons at `/lessons/*`, each mapping to a pillar:
+Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Session 5): Setup first, then Pogo, then Reading Enemies** — the numbering below is by pillar, not by order.
 
 1. **Pogo** — mechanics of the downslash bounce (pinned 0.25 s rise, generous 108 px-wide down-hitbox, ~2 bounces/sec rhythm), then drills feeding into the Pogo Course.
 2. **Reading Enemies** — the dodge-first philosophy and the bench checklist, then per-enemy attack anatomy.
-3. **Your Setup** — controller consistency: why alternating controllers erases muscle memory, pick one and stick with it.
+3. **Your Setup** — controller consistency: why alternating controllers erases muscle memory, pick one and stick with it. *(Session 5: taught first; gains inline-SVG diagrams of the Joy-Con and leverless layouts with strengths/weaknesses — the point is that either is fine, switching is not.)*
 
 **Engine-powered demo canvases:** lesson pages embed small inline canvases running the *same engine and hitbox data as the game*, playing slow-motion scripted replays of enemy attacks with overlays — **red = hurtbox, green = poke window (safe strike / destroyable projectile), gold = punish window**. Because demos are driven by the real hitbox data, they can never drift out of sync with the game they teach. Routes/pages stubbed in M0; demos land in M5.
 
@@ -145,7 +150,8 @@ Three lessons at `/lessons/*`, each mapping to a pillar:
 - **M3 — Dodge Arena + walker/flier (Session 3, DONE):** arena flow (end on first hit), scoring, PracticeRun records into localStorage.
 - **M4 — duelist/spitter/warden state machines + observe mode (Session 3, DONE):** telegraph→active→recovery→punish-window machines; pokeable projectiles; counter logic; observe mode toggle.
 - **M5 — Lessons + demos (Session 3, DONE):** three lesson pages written in the warm tone; engine-powered slow-mo demo canvases with red/green/gold overlays and a tell→attack→punish phase bar.
-- **M6 — Art & juice pass + accessibility (Session 3, juice+accessibility DONE; art direction OPEN):** hit-stop/shake/squash-stretch via the `game-feel` skill's models; reduce-shake and reduce-flashing toggles wired to SettingsV1 on both practice pages. The `frontend-design` art-direction pass is deliberately left for a session with the user — visual taste calls deserve their input.
+- **M6 — Art & juice pass + accessibility (Session 3, juice+accessibility DONE; art direction OPEN):** hit-stop/shake/squash-stretch via the `game-feel` skill's models; reduce-shake and reduce-flashing toggles wired to SettingsV1 on both practice pages. The `frontend-design` art-direction pass was deliberately left for a session with the user — visual taste calls deserve their input. **Session 5 received that input (playtest 1)** — see M6.5.
+- **M6.5 — Playtest 1 response (Session 5, DONE — awaiting playtest 2):** the user's six annotated notes (`docs/feedback/2026-08-21-playtest-1.md`). Engine: continuous jump release; warden positional shield + bash; duelist anti-air that reads as a counter. Site: map-based Home, "mini-games" naming with `/play/*` routes, Setup lesson first, Lessons index removed, controller diagrams, copy trimmed. A 37-agent adversarial review confirmed 27 findings (two real warden holes — hopping in place was never bashed; the re-aim clock hard-reset — plus demo drift and a11y/responsive polish), all fixed; 130 tests.
 - **M7 — Gamepad support + binding UI:** Gamepad API, rebindable inputs stored in SettingsV1; test with Switch Pro and the leverless controller. (Needs the user's physical controllers.)
 - **M8 — Backend practice + ship:** sync adapter live against the Express server; GitHub repo + Pages deploy; audits (`vercel-react-best-practices`, `web-design-guidelines`, browser E2E); then the backend shutdown checklist (confirm site fully functional with server gone, stop server, keep code). (Repo creation/push is outward-facing — waits for the user.)
 
@@ -156,4 +162,5 @@ Three lessons at `/lessons/*`, each mapping to a pillar:
 ## 9. Pointers
 
 - `docs/research/hk-frame-data.md` — decompiled physics/combat constants, canvas-scale conversion (48 px Knight, 1 u = 40 px), and the recommended `PHYS`/`ENEMIES` starting values. **Read before touching engine constants.** Gravity is the only estimated value; everything else is exact — tune gravity, not the rest.
+- `docs/feedback/` — dated playtest notes from the user with diagnosis and decisions; PLAN.md carries the ratified outcomes, the notes carry the why.
 - `docs/skills-log.md` — the skills experiment: every skill invocation on this project gets logged there with a verdict. Keep logging.

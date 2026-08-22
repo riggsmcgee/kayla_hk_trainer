@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMIES, FIXED_DT } from './constants';
 import {
+  ATTACKS,
   createEnemy,
   enemyAttackHitbox,
   resolveNailHit,
@@ -209,6 +210,163 @@ describe('warden', () => {
     expect(warden.phase).toBe('telegraph');
     expect(warden.phaseTimer).toBe(timerBefore); // no restart — it stays on schedule
     expect(warden.hp).toBe(ENEMIES.warden.hp);
+  });
+
+  // Playtest 1, note 5: the shield covers ONE direction at a time and the
+  // warden attacks first if you linger — "no threat unless you make a threat"
+  // is not how the game works. Precedent: the Colosseum's Shielded Fool.
+  describe('positional shield', () => {
+    it('holds the shield in front by default: a frontal slash is blocked, a downslash from above lands', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      run(warden, w, 5, targetAt(540, FLOOR_Y));
+      expect(warden.shieldDir).toBe('front');
+      const front = createPlayer(540, FLOOR_Y);
+      front.swingId = 1;
+      front.nailDir = 'side';
+      front.nailFacing = 1;
+      expect(resolveNailHit(front, warden, true)).toBe('blocked');
+
+      const above = createPlayer(600, FLOOR_Y - 90);
+      above.swingId = 2;
+      above.nailDir = 'down';
+      // Resolve immediately — the shield hasn't had time to re-aim upward.
+      expect(resolveNailHit(above, warden, true)).toBe('hit');
+      expect(warden.hp).toBe(ENEMIES.warden.hp - 1);
+    });
+
+    it('re-aims overhead once the Knight hangs above it — then the front is open', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      run(warden, w, 3, targetAt(600, FLOOR_Y - 90, false));
+      expect(warden.shieldDir).toBe('front'); // not instantly
+      run(
+        warden,
+        w,
+        Math.ceil(ATTACKS.warden.reaimDelay / FIXED_DT) + 1,
+        targetAt(600, FLOOR_Y - 90, false),
+      );
+      expect(warden.shieldDir).toBe('up');
+
+      const above = createPlayer(600, FLOOR_Y - 90);
+      above.swingId = 1;
+      above.nailDir = 'down';
+      expect(resolveNailHit(above, warden, true)).toBe('blocked');
+      expect(warden.attackKind).toBe('riposte'); // a block still provokes
+
+      // Drop in front and slash before it re-aims: the open side.
+      warden.phase = 'idle';
+      warden.attackKind = null;
+      const front = createPlayer(540, FLOOR_Y);
+      front.swingId = 2;
+      front.nailDir = 'side';
+      front.nailFacing = 1;
+      expect(resolveNailHit(front, warden, true)).toBe('hit');
+    });
+
+    it('a slash from behind lands regardless of the shield', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      run(warden, w, 5, targetAt(540, FLOOR_Y)); // faces left toward the player
+      expect(warden.facing).toBe(-1);
+      const behind = createPlayer(660, FLOOR_Y);
+      behind.swingId = 1;
+      behind.nailDir = 'side';
+      behind.nailFacing = -1;
+      expect(resolveNailHit(behind, warden, true)).toBe('hit');
+    });
+
+    it('re-aims back to the front across brief dips overhead — the front cannot be kept bare forever', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      // Hang overhead until the shield goes up.
+      run(
+        warden,
+        w,
+        Math.ceil(ATTACKS.warden.reaimDelay / FIXED_DT) + 2,
+        targetAt(600, FLOOR_Y - 90, false),
+      );
+      expect(warden.shieldDir).toBe('up');
+      // Then hop: mostly grounded in front, with short dips back overhead that
+      // must not reset the re-aim clock to zero each time.
+      for (let i = 0; i < 60; i++) {
+        const overheadFrame = i % 6 === 5;
+        const t = overheadFrame ? targetAt(600, FLOOR_Y - 90, false) : targetAt(540, FLOOR_Y);
+        stepEnemy(warden, w, FIXED_DT, t);
+      }
+      expect(warden.shieldDir).toBe('front');
+    });
+
+    it('commits the shield forward when a riposte starts, even one provoked from above', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      run(
+        warden,
+        w,
+        Math.ceil(ATTACKS.warden.reaimDelay / FIXED_DT) + 2,
+        targetAt(600, FLOOR_Y - 90, false),
+      );
+      expect(warden.shieldDir).toBe('up');
+      const above = createPlayer(600, FLOOR_Y - 90);
+      above.swingId = 1;
+      above.nailDir = 'down';
+      expect(resolveNailHit(above, warden, true)).toBe('blocked');
+      expect(warden.attackKind).toBe('riposte');
+      expect(warden.shieldDir).toBe('front');
+      // A downslash during the telegraph now lands: the shield is busy.
+      above.swingId = 2;
+      expect(resolveNailHit(above, warden, true)).toBe('hit');
+    });
+  });
+
+  describe('proactive bash', () => {
+    it('bashes a Knight who lingers in front: telegraph, a live hitbox, then an open recovery', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      const t = targetAt(540, FLOOR_Y);
+      const A = ATTACKS.warden;
+      run(warden, w, Math.ceil(A.bashLinger / FIXED_DT) + 2, t);
+      expect(warden.phase).toBe('telegraph');
+      expect(warden.attackKind).toBe('bash');
+      expect(enemyAttackHitbox(warden)).toBeNull(); // the tell is safe
+      run(warden, w, Math.ceil((ENEMIES.warden.telegraph ?? 0.4) / FIXED_DT) + 1, t);
+      expect(warden.phase).toBe('active');
+      const box = enemyAttackHitbox(warden);
+      expect(box).not.toBeNull();
+      expect(box!.x + box!.width / 2).toBeLessThan(warden.position.x); // toward the Knight
+      run(warden, w, Math.ceil(A.bashActive / FIXED_DT) + 1, t);
+      expect(warden.phase).toBe('recovery');
+      // Recovery is open from any side, shield or no shield.
+      const front = createPlayer(540, FLOOR_Y);
+      front.swingId = 1;
+      front.nailDir = 'side';
+      front.nailFacing = 1;
+      expect(resolveNailHit(front, warden, true)).toBe('hit');
+    });
+
+    it('bashes a Knight who keeps hopping in place in front of it (airborne time counts)', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      const A = ATTACKS.warden;
+      // A hop every 0.6 s: 0.45 s airborne up to 150 px, 0.15 s on the ground.
+      const n = Math.ceil((A.bashLinger + 0.6) / FIXED_DT);
+      for (let i = 0; i < n; i++) {
+        const t = (i * FIXED_DT) % 0.6;
+        const air = t < 0.45;
+        const y = air ? FLOOR_Y - 150 * Math.sin((Math.PI * t) / 0.45) : FLOOR_Y;
+        stepEnemy(warden, w, FIXED_DT, targetAt(540, y, !air));
+        if (warden.attackKind === 'bash') break;
+      }
+      expect(warden.attackKind).toBe('bash');
+    });
+
+    it('does not bash a Knight who keeps their distance', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      run(warden, w, Math.ceil(3 / FIXED_DT), targetAt(100, FLOOR_Y));
+      expect(warden.phase).toBe('idle');
+      expect(warden.attackKind).toBeNull();
+    });
   });
 
   it('a feather hit (observe mode) still provokes but never damages', () => {

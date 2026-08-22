@@ -106,3 +106,22 @@ describe('local store round-trip', () => {
     expect(noopStore.listRuns()).toEqual([]);
   });
 });
+
+describe('visited chapters', () => {
+  it('records which chapters Kayla has opened, once each, in a versioned envelope', () => {
+    const backend = createMemoryStorage();
+    const store = createLocalStore(backend);
+    expect(store.listVisited()).toEqual([]);
+    store.markVisited('setup');
+    store.markVisited('pogo');
+    store.markVisited('setup'); // idempotent
+    expect(store.listVisited()).toEqual(['setup', 'pogo']);
+    const raw = backend.dump().get('kayla-hk-dojo:visited');
+    expect(raw).toBeDefined();
+    expect((JSON.parse(raw as string) as { v: number }).v).toBe(1);
+    // A null backend no-ops like everything else.
+    const noop = createLocalStore(null);
+    expect(() => noop.markVisited('setup')).not.toThrow();
+    expect(noop.listVisited()).toEqual([]);
+  });
+});

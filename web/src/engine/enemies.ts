@@ -25,7 +25,10 @@ export interface Projectile {
   dead: boolean;
 }
 
-export type AttackKind = 'lunge' | 'antiair' | 'volley' | 'riposte';
+export type AttackKind = 'lunge' | 'antiair' | 'volley' | 'riposte' | 'bash';
+
+/** Where the warden's shield is held: across its front, or overhead. */
+export type ShieldDir = 'front' | 'up';
 
 /**
  * Attack tuning beyond the research-sourced ENEMIES table. Everything here
@@ -66,6 +69,29 @@ export const ATTACKS = {
     riposteActive: 0.35,
     riposteSpeed: 220,
     riposteRecovery: 0.9,
+    /**
+     * Seconds the Knight must be on the other side of the shield before it
+     * re-aims — the window "hit where it isn't" lives in (playtest 1).
+     */
+    reaimDelay: 0.3,
+    /**
+     * Coming back down is quicker than going up: the open-front window is
+     * for the drop-and-strike, not for standing there. The clock decays
+     * rather than resetting, so brief hops can't keep the front bare.
+     */
+    reaimDownDelay: 0.18,
+    /** The Knight counts as "above" inside this horizontal half-width. */
+    overheadHalfWidth: 80,
+    /** Lingering counts anywhere in front up to a full jump high — hopping in place is still lingering. */
+    bashHeight: 240,
+    /** Seconds of lingering in front (within bashRange) before it bashes. */
+    bashLinger: 1.2,
+    bashRange: 130,
+    bashActive: 0.25,
+    bashSpeed: 240,
+    bashRecovery: 0.8,
+    /** Pause after any attack before lingering counts again. */
+    bashCooldown: 0.9,
   },
 } as const;
 
@@ -92,6 +118,12 @@ export interface Enemy extends EnemyState {
   cooldownTimer: number;
   /** Direction an attack committed to at its start. */
   lockedDir: 1 | -1;
+  /** Warden: which side the shield covers right now. */
+  shieldDir: ShieldDir;
+  /** Warden: seconds the Knight has been on the uncovered side (re-aim clock). */
+  shieldReaimTimer: number;
+  /** Warden: seconds the Knight has lingered in bash range. */
+  lingerTimer: number;
 }
 
 /** Visual/collision sizes per enemy (width × height, feet-anchored). */
@@ -122,6 +154,9 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     // The spitter waits a beat before its first volley; others start ready.
     cooldownTimer: id === 'spitter' ? 1.0 : 0,
     lockedDir: -1,
+    shieldDir: 'front',
+    shieldReaimTimer: 0,
+    lingerTimer: 0,
   };
 }
 
@@ -251,7 +286,12 @@ function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined):
  * Ranged spitter: holds distance, winds up, spits a 3-shot fan, and is wide
  * open in recovery — the window to close in and punish.
  */
-function stepSpitter(e: Enemy, world: World, dt: number, t: Target | undefined): Projectile[] | null {
+function stepSpitter(
+  e: Enemy,
+  world: World,
+  dt: number,
+  t: Target | undefined,
+): Projectile[] | null {
   const A = ATTACKS.spitter;
   const telegraph = ENEMIES.spitter.telegraph ?? 0.5;
   e.bobPhase += dt;
@@ -318,36 +358,89 @@ function stepSpitter(e: Enemy, world: World, dt: number, t: Target | undefined):
   return null;
 }
 
+/** Is the target overhead (feet above the warden's head, roughly centred)? */
+function overhead(e: Enemy, t: Target): boolean {
+  const size = ENEMY_SIZES.warden;
+  return (
+    t.position.y < e.position.y - size.height * 0.8 &&
+    Math.abs(t.position.x - e.position.x) < ATTACKS.warden.overheadHalfWidth
+  );
+}
+
 /**
- * Shield warden: advances slowly, blocks every hit outside recovery, and
- * answers a blocked hit with a telegraphed riposte. Post-riposte recovery
- * is its ONLY vulnerable window — the full doctrine in one enemy.
+ * Shield warden (playtest 1 redesign): the shield covers ONE side — its
+ * front, or overhead once the Knight hangs above it — and re-aims only after
+ * a short delay, so the uncovered side is a real weak spot. A hit into the
+ * shield is blocked and provokes a riposte; a Knight who lingers in front is
+ * bashed unprovoked. Recovery after either attack is open from every side.
  */
 function stepWarden(e: Enemy, world: World, dt: number, t: Target | undefined): void {
   const A = ATTACKS.warden;
   const telegraph = ENEMIES.warden.telegraph ?? 0.4;
-  void telegraph; // riposte telegraph is set where the block happens
   e.phaseTimer -= dt;
+  e.cooldownTimer = Math.max(0, e.cooldownTimer - dt);
+
+  // Shield aim: track the Knight's side with a re-aim delay. While attacking
+  // the shield is committed forward (a swung shield can't also cover the head).
+  if (t && (e.phase === 'idle' || e.phase === 'recovery')) {
+    const wanted: ShieldDir = overhead(e, t) ? 'up' : 'front';
+    if (wanted !== e.shieldDir) {
+      e.shieldReaimTimer += dt;
+      const delay = wanted === 'up' ? A.reaimDelay : A.reaimDownDelay;
+      if (e.shieldReaimTimer >= delay - 1e-9) {
+        e.shieldDir = wanted;
+        e.shieldReaimTimer = 0;
+      }
+    } else {
+      // Decay, don't reset: a frame of agreement must not erase the clock.
+      e.shieldReaimTimer = Math.max(0, e.shieldReaimTimer - dt);
+    }
+  }
+
   switch (e.phase) {
     case 'idle': {
       if (!t) return;
       faceTarget(e, t);
       const dx = t.position.x - e.position.x;
-      if (Math.abs(dx) > 60 && Math.abs(dx) < 520) {
+      const adx = Math.abs(dx);
+      if (adx > 60 && adx < 520) {
         drift(e, world, dx >= 0 ? 1 : -1, A.approachSpeed, dt);
+      }
+      // Lingering in front — on the ground or hopping — draws the bash.
+      const dy = e.position.y - t.position.y;
+      const inFront = adx < A.bashRange && dy > -60 && dy < A.bashHeight;
+      if (inFront && e.cooldownTimer <= 0) {
+        e.lingerTimer += dt;
+        if (e.lingerTimer >= A.bashLinger - 1e-9) {
+          e.lingerTimer = 0;
+          e.attackKind = 'bash';
+          e.lockedDir = dx >= 0 ? 1 : -1;
+          e.facing = e.lockedDir;
+          e.shieldDir = 'front';
+          e.shieldReaimTimer = 0;
+          setPhase(e, 'telegraph', telegraph);
+        }
+      } else {
+        e.lingerTimer = Math.max(0, e.lingerTimer - dt * 2); // forgets fast
       }
       break;
     }
     case 'telegraph':
-      if (e.phaseTimer <= 0) setPhase(e, 'active', A.riposteActive);
+      if (e.phaseTimer <= 0) {
+        setPhase(e, 'active', e.attackKind === 'bash' ? A.bashActive : A.riposteActive);
+      }
       break;
     case 'active':
-      drift(e, world, e.lockedDir, A.riposteSpeed, dt);
-      if (e.phaseTimer <= 0) setPhase(e, 'recovery', A.riposteRecovery);
+      drift(e, world, e.lockedDir, e.attackKind === 'bash' ? A.bashSpeed : A.riposteSpeed, dt);
+      if (e.phaseTimer <= 0) {
+        setPhase(e, 'recovery', e.attackKind === 'bash' ? A.bashRecovery : A.riposteRecovery);
+      }
       break;
     case 'recovery':
       if (e.phaseTimer <= 0) {
         e.attackKind = null;
+        e.cooldownTimer = A.bashCooldown;
+        e.lingerTimer = 0;
         setPhase(e, 'idle', 0);
       }
       break;
@@ -412,6 +505,13 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
         width: 64,
         height: 50,
       };
+    case 'bash':
+      return {
+        x: e.lockedDir === 1 ? front : front - 56,
+        y: e.position.y - 50,
+        width: 56,
+        height: 48,
+      };
     case 'volley':
       return null; // the projectiles carry the threat
   }
@@ -434,19 +534,25 @@ export type NailHitResult = 'hit' | 'blocked' | 'none';
  * observe mode: everything reacts — flashes, blocks, provocations — but
  * hp never moves.
  *
- * The warden blocks every hit outside its post-riposte recovery, and a
- * blocked hit while idle provokes the riposte.
+ * The warden blocks a hit that comes into the side its shield covers (front
+ * or overhead) outside recovery; a blocked hit while idle provokes the
+ * riposte. Hits into the open side — the other direction, or from behind —
+ * land like on anyone else.
  */
 export function resolveNailHit(player: Player, e: Enemy, lethal: boolean): NailHitResult {
   if (e.dead || e.lastHitSwingId === player.swingId) return 'none';
   e.lastHitSwingId = player.swingId;
 
-  if (e.id === 'warden' && e.phase !== 'recovery') {
+  if (e.id === 'warden' && e.phase !== 'recovery' && shieldCovers(player, e)) {
     e.blockFlashTimer = 0.18;
     if (e.phase === 'idle') {
       e.attackKind = 'riposte';
       e.lockedDir = player.position.x >= e.position.x ? 1 : -1;
       e.facing = e.lockedDir;
+      // A swung shield can't also cover the head (same commitment as the bash).
+      e.shieldDir = 'front';
+      e.shieldReaimTimer = 0;
+      e.lingerTimer = 0;
       setPhase(e, 'telegraph', ENEMIES.warden.telegraph ?? 0.4);
     }
     return 'blocked';
@@ -461,6 +567,17 @@ export function resolveNailHit(player: Player, e: Enemy, lethal: boolean): NailH
     }
   }
   return 'hit';
+}
+
+/** Does the warden's shield stand between this swing and its body? */
+function shieldCovers(player: Player, e: Enemy): boolean {
+  const hitFrom: ShieldDir = player.nailDir === 'down' ? 'up' : 'front';
+  if (hitFrom !== e.shieldDir) return false;
+  if (hitFrom === 'front') {
+    const side = Math.sign(player.position.x - e.position.x);
+    if (side !== 0 && side !== e.facing) return false; // from behind: open
+  }
+  return true;
 }
 
 /**

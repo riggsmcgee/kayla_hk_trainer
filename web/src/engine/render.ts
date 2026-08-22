@@ -6,7 +6,7 @@
 
 import { KNIGHT, PHYSICS } from './constants';
 import type { Enemy, Projectile } from './enemies';
-import { ENEMY_SIZES } from './enemies';
+import { ATTACKS, ENEMY_SIZES } from './enemies';
 import type { Player } from './player';
 import type { AABB, Vec2, World } from './types';
 
@@ -264,64 +264,119 @@ export function drawEnemy(
   ctx.restore();
 }
 
-/** Mantis-ish duelist: slim body, scythe arms; crouches, lunges, slumps. */
-function drawDuelist(
-  ctx: CanvasRenderingContext2D,
-  feet: Vec2,
-  enemy: Enemy,
-  body: string,
-): void {
+/** 0→1 progress through the enemy's current phase (0 at its start). */
+function phaseProgress(enemy: Enemy, total: number): number {
+  if (total <= 0) return 1;
+  return Math.min(1, Math.max(0, 1 - enemy.phaseTimer / total));
+}
+
+/**
+ * Mantis-ish duelist: slim body, scythe arms. The lunge crouches and leans
+ * forward; the anti-air COILS, then visibly leaps with both arms thrown
+ * overhead — the counter has to read as "it answered your jump" (playtest 1).
+ * Pure visual: the simulated position and hitboxes never move.
+ */
+function drawDuelist(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, body: string): void {
   const size = ENEMY_SIZES.duelist;
-  const crouch = enemy.phase === 'telegraph' ? 0.78 : enemy.phase === 'recovery' ? 0.9 : 1;
-  const h = size.height * crouch;
+  const A = ATTACKS.duelist;
+  const antiAir = enemy.attackKind === 'antiair';
   const w = size.width;
-  const lean = enemy.phase === 'active' ? enemy.lockedDir * 10 : 0;
+
+  // Vertical lift for the anti-air leap: up fast during active, back down
+  // over the first part of recovery.
+  let lift = 0;
+  if (antiAir && enemy.phase === 'active') {
+    const k = phaseProgress(enemy, A.antiAirActive);
+    lift = 34 * Math.sin(Math.min(1, k * 1.4) * (Math.PI / 2));
+  } else if (antiAir && enemy.phase === 'recovery') {
+    const k = phaseProgress(enemy, A.antiAirRecovery);
+    lift = 34 * Math.max(0, 1 - k * 3.5);
+  }
+  const base = { x: feet.x, y: feet.y - lift };
+
+  const crouch =
+    enemy.phase === 'telegraph' ? (antiAir ? 0.66 : 0.78) : enemy.phase === 'recovery' ? 0.9 : 1;
+  const h = size.height * crouch;
+  const lean = enemy.phase === 'active' && !antiAir ? enemy.lockedDir * 10 : 0;
 
   ctx.fillStyle = body;
-  // Torso: a slim tapered stalk.
+  // Torso: a slim tapered stalk (stretched taller mid-leap).
+  const stretch = antiAir && enemy.phase === 'active' ? 1.12 : 1;
   ctx.beginPath();
-  ctx.moveTo(feet.x - w * 0.22 + lean * 0.4, feet.y);
-  ctx.quadraticCurveTo(feet.x - w * 0.3 + lean, feet.y - h * 0.65, feet.x + lean, feet.y - h);
-  ctx.quadraticCurveTo(feet.x + w * 0.3 + lean, feet.y - h * 0.65, feet.x + w * 0.22 + lean * 0.4, feet.y);
+  ctx.moveTo(base.x - w * 0.22 + lean * 0.4, base.y);
+  ctx.quadraticCurveTo(
+    base.x - w * 0.3 + lean,
+    base.y - h * 0.65 * stretch,
+    base.x + lean,
+    base.y - h * stretch,
+  );
+  ctx.quadraticCurveTo(
+    base.x + w * 0.3 + lean,
+    base.y - h * 0.65 * stretch,
+    base.x + w * 0.22 + lean * 0.4,
+    base.y,
+  );
   ctx.closePath();
   ctx.fill();
-  // Scythe arms: two curved strokes, raised in telegraph, thrown in active.
+
+  // Scythe arms.
   ctx.strokeStyle = body;
   ctx.lineWidth = 3.5;
   ctx.lineCap = 'round';
-  const armY = feet.y - h * 0.7;
-  const reach =
-    enemy.phase === 'active' ? 30 : enemy.phase === 'telegraph' ? 10 : 18;
-  const rise = enemy.phase === 'telegraph' ? -14 : enemy.attackKind === 'antiair' && enemy.phase === 'active' ? -26 : -4;
-  for (const off of [0, 6]) {
-    ctx.beginPath();
-    ctx.moveTo(feet.x + lean, armY + off);
-    ctx.quadraticCurveTo(
-      feet.x + enemy.facing * (reach * 0.6) + lean,
-      armY + rise + off,
-      feet.x + enemy.facing * reach + lean,
-      armY + rise * 0.4 + off,
-    );
-    ctx.stroke();
+  const armY = base.y - h * 0.7;
+  if (antiAir && (enemy.phase === 'telegraph' || enemy.phase === 'active')) {
+    // Telegraph: arms pulled down and back (coiled). Active: both thrown
+    // overhead in a sweeping crescent, plus a slash arc above the head.
+    const k = enemy.phase === 'telegraph' ? 0 : phaseProgress(enemy, A.antiAirActive);
+    const swing = enemy.phase === 'telegraph' ? -0.35 : Math.min(1, k * 1.6);
+    for (const side of [-1, 1] as const) {
+      const ang = -Math.PI / 2 + side * (0.95 - swing * 0.8);
+      const reach = 26 + swing * 10;
+      const ex = base.x + Math.cos(ang + (swing < 0 ? side * 0.9 : 0)) * reach;
+      const ey = armY + (swing < 0 ? 16 : 0) + Math.sin(ang) * reach;
+      ctx.beginPath();
+      ctx.moveTo(base.x, armY);
+      ctx.quadraticCurveTo(base.x + side * reach * 0.8, armY + (swing < 0 ? 12 : -6), ex, ey);
+      ctx.stroke();
+    }
+    if (enemy.phase === 'active') {
+      // Upward slash crescent: the swipe, drawn where the real hitbox sits.
+      ctx.save();
+      ctx.globalAlpha = 0.85 * (1 - k * 0.6);
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(feet.x, feet.y - size.height - 4, 34 + k * 8, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.stroke();
+      ctx.restore();
+    }
+  } else {
+    const reach = enemy.phase === 'active' ? 30 : enemy.phase === 'telegraph' ? 10 : 18;
+    const rise = enemy.phase === 'telegraph' ? -14 : enemy.phase === 'recovery' ? 6 : -4;
+    for (const off of [0, 6]) {
+      ctx.beginPath();
+      ctx.moveTo(base.x + lean, armY + off);
+      ctx.quadraticCurveTo(
+        base.x + enemy.facing * (reach * 0.6) + lean,
+        armY + rise + off,
+        base.x + enemy.facing * reach + lean,
+        armY + rise * 0.4 + off,
+      );
+      ctx.stroke();
+    }
   }
-  // Eyes.
+  // Eyes: look up at the jumper while coiled or leaping.
   ctx.fillStyle = COLORS.enemyDetail;
+  const eyeUp = antiAir && enemy.phase !== 'recovery' ? -3 : 0;
   ctx.beginPath();
-  ctx.arc(feet.x + enemy.facing * 5 + lean, feet.y - h + 8, 2.6, 0, Math.PI * 2);
+  ctx.arc(base.x + enemy.facing * 5 + lean, base.y - h * stretch + 8 + eyeUp, 2.6, 0, Math.PI * 2);
   ctx.fill();
 }
 
 /** Aspid-ish spitter: round floater that inflates to spit. */
-function drawSpitter(
-  ctx: CanvasRenderingContext2D,
-  feet: Vec2,
-  enemy: Enemy,
-  body: string,
-): void {
+function drawSpitter(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, body: string): void {
   const size = ENEMY_SIZES.spitter;
   const cy = feet.y - size.height / 2;
-  const inflate =
-    enemy.phase === 'telegraph' ? 1.18 : enemy.phase === 'recovery' ? 0.88 : 1;
+  const inflate = enemy.phase === 'telegraph' ? 1.18 : enemy.phase === 'recovery' ? 0.88 : 1;
   const r = (size.width / 2) * inflate;
 
   ctx.fillStyle = body;
@@ -352,45 +407,72 @@ function drawSpitter(
   ctx.fill();
 }
 
-/** Shield warden: broad figure behind a slab of shield. */
-function drawWarden(
-  ctx: CanvasRenderingContext2D,
-  feet: Vec2,
-  enemy: Enemy,
-  body: string,
-): void {
+/**
+ * Shield warden: broad figure behind a slab of shield. The shield is drawn
+ * where it actually blocks — across the front, or flat over the head when
+ * it has re-aimed upward — so the open side is visible. Telegraph raises
+ * it, active (riposte/bash) throws it forward, recovery drops it low.
+ */
+function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, body: string): void {
   const size = ENEMY_SIZES.warden;
   const w = size.width;
   const h = size.height;
+  const A = ATTACKS.warden;
+  const bash = enemy.attackKind === 'bash';
 
-  // Body: a stout rounded slab.
+  // Body: a stout rounded slab; hunches for the bash telegraph.
+  const hunch = enemy.phase === 'telegraph' && bash ? 0.9 : 1;
+  const lean = enemy.phase === 'active' ? enemy.lockedDir * (bash ? 8 : 5) : 0;
   ctx.fillStyle = body;
   ctx.beginPath();
   ctx.moveTo(feet.x - w * 0.32, feet.y);
-  ctx.quadraticCurveTo(feet.x - w * 0.38, feet.y - h, feet.x, feet.y - h);
-  ctx.quadraticCurveTo(feet.x + w * 0.38, feet.y - h, feet.x + w * 0.32, feet.y);
+  ctx.quadraticCurveTo(
+    feet.x - w * 0.38 + lean,
+    feet.y - h * hunch,
+    feet.x + lean,
+    feet.y - h * hunch,
+  );
+  ctx.quadraticCurveTo(feet.x + w * 0.38 + lean, feet.y - h * hunch, feet.x + w * 0.32, feet.y);
   ctx.closePath();
   ctx.fill();
   // Eye.
   ctx.fillStyle = COLORS.enemyDetail;
   ctx.beginPath();
-  ctx.arc(feet.x + enemy.facing * 6, feet.y - h + 12, 3, 0, Math.PI * 2);
+  ctx.arc(feet.x + enemy.facing * 6 + lean, feet.y - h * hunch + 12, 3, 0, Math.PI * 2);
   ctx.fill();
 
-  // Shield: front slab. Raised in telegraph, thrown forward in active,
-  // LOWERED in recovery — the visual grammar of its vulnerability.
-  const blocking = enemy.phase !== 'recovery';
   const flash = enemy.blockFlashTimer > 0;
-  const shieldX =
-    feet.x +
-    enemy.facing *
-      (w / 2 + 4 + (enemy.phase === 'active' ? 10 : 0));
-  ctx.fillStyle = flash ? COLORS.blockFlash : blocking ? '#a8b4d8' : '#525d85';
-  const shieldH = blocking ? h * 0.85 : h * 0.4;
-  const shieldTop = enemy.phase === 'telegraph' ? feet.y - h - 6 : feet.y - shieldH;
-  ctx.beginPath();
   const sw = 9;
-  ctx.roundRect(shieldX - sw / 2, shieldTop, sw, blocking ? shieldH : h * 0.4, 4);
+  ctx.fillStyle = flash ? COLORS.blockFlash : enemy.phase === 'recovery' ? '#525d85' : '#a8b4d8';
+  ctx.beginPath();
+  if (enemy.phase === 'recovery') {
+    // Dropped low at the side: wide open, the gold window.
+    const k = phaseProgress(enemy, bash ? A.bashRecovery : A.riposteRecovery);
+    const sag = 6 + k * 4;
+    ctx.roundRect(
+      feet.x + enemy.facing * (w / 2 + 2) - sw / 2,
+      feet.y - h * 0.4 + sag,
+      sw,
+      h * 0.4,
+      4,
+    );
+  } else if (enemy.phase === 'telegraph' || enemy.phase === 'active') {
+    // Raised high (telegraph) then thrown forward (active).
+    const k =
+      enemy.phase === 'active' ? phaseProgress(enemy, bash ? A.bashActive : A.riposteActive) : 0;
+    const thrust = enemy.phase === 'active' ? 10 + k * 8 : 0;
+    const top = enemy.phase === 'telegraph' ? feet.y - h - 8 : feet.y - h * 0.9;
+    const shieldX = feet.x + enemy.lockedDir * (w / 2 + 4 + thrust);
+    ctx.roundRect(shieldX - sw / 2, top, sw, h * 0.85, 4);
+  } else if (enemy.shieldDir === 'up') {
+    // Held flat overhead: the front is bare.
+    const slabW = w + 14;
+    ctx.roundRect(feet.x - slabW / 2, feet.y - h - 12, slabW, sw, 4);
+  } else {
+    // Across the front.
+    const shieldX = feet.x + enemy.facing * (w / 2 + 4);
+    ctx.roundRect(shieldX - sw / 2, feet.y - h * 0.85, sw, h * 0.85, 4);
+  }
   ctx.fill();
 }
 

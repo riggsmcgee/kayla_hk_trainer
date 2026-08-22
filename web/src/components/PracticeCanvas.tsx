@@ -44,11 +44,11 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
   return (
     <figure className="practice-canvas-frame">
       <canvas ref={canvasRef} width={CANVAS.width} height={CANVAS.height} aria-label={label}>
-        {label} — this practice area needs a browser with canvas support.
+        {label} — this mini-game needs a browser with canvas support.
       </canvas>
       <figcaption className="canvas-note">
-        Move with ← → or A/D · jump with Z or Space (hold for height, tap for a hop) · slash
-        with X or J (hold ↓ in the air to pogo) · dash with C, K, or Shift.
+        Move with ← → or A/D · jump with Z or Space (hold for height, tap for a hop) · slash with X
+        or J (hold ↓ in the air to pogo) · dash with C, K, or Shift.
       </figcaption>
     </figure>
   );

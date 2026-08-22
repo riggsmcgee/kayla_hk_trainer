@@ -28,10 +28,12 @@ const KEY_PREFIX = 'kayla-hk-dojo:';
 const KEYS = {
   settings: `${KEY_PREFIX}settings`,
   runs: `${KEY_PREFIX}runs`,
+  visited: `${KEY_PREFIX}visited`,
 } as const;
 
 const SETTINGS_VERSION = 1;
 const RUNS_VERSION = 1;
+const VISITED_VERSION = 1;
 
 /**
  * Practice runs are append-only, so cap the history to keep localStorage
@@ -66,6 +68,9 @@ export interface LocalStore {
   listRuns(): PracticeRun[];
   addRun(run: PracticeRun): void;
   clearRuns(): void;
+  /** Chapter ids Kayla has opened, in first-visit order (lights the map). */
+  listVisited(): string[];
+  markVisited(chapterId: string): void;
 }
 
 /**
@@ -73,9 +78,7 @@ export interface LocalStore {
  * window.localStorage. A null backend yields a store whose writes no-op and
  * whose reads return defaults — the app keeps working either way.
  */
-export function createLocalStore(
-  backend: StorageLike | null = detectBrowserStorage(),
-): LocalStore {
+export function createLocalStore(backend: StorageLike | null = detectBrowserStorage()): LocalStore {
   function read<T>(key: string, expectedVersion: number, fallback: T): T {
     if (!backend) return fallback;
     try {
@@ -116,6 +119,12 @@ export function createLocalStore(
       const runs = read<PracticeRun[]>(KEYS.runs, RUNS_VERSION, []);
       runs.push(run);
       write(KEYS.runs, RUNS_VERSION, runs.slice(-MAX_STORED_RUNS));
+    },
+    listVisited: () => read<string[]>(KEYS.visited, VISITED_VERSION, []),
+    markVisited: (chapterId) => {
+      const visited = read<string[]>(KEYS.visited, VISITED_VERSION, []);
+      if (visited.includes(chapterId)) return;
+      write(KEYS.visited, VISITED_VERSION, [...visited, chapterId]);
     },
     clearRuns: () => {
       if (!backend) return;

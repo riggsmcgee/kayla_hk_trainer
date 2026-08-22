@@ -1,51 +1,77 @@
 import { Link } from 'react-router';
+import { ChapterNav } from '../components/ChapterNav';
+import { JoyConDiagram, LeverlessDiagram } from '../components/ControllerDiagrams';
+import { useMarkVisited } from '../storage/useChapterProgress';
 
 export function LessonSetup() {
+  useMarkVisited('setup');
   return (
     <>
-      <h1>Lesson: Your Setup</h1>
+      <p className="eyebrow">Chapter 1 · Dirtmouth</p>
+      <h1>Your Setup</h1>
       <p className="lede">
-        Kayla, this one&apos;s short but it matters: pick one controller and stay with it.
-        Switching between the Joy-Con and the leverless means your hands have to learn the
-        game twice — every hour on one setup is an hour your muscle memory keeps, and
-        splitting time splits the progress. Whichever one feels better is the right answer;
-        committing is what makes it right.
+        Kayla, this one decides everything after it:{' '}
+        <strong>pick one controller and stay with it.</strong> Everything the dojo teaches ends up
+        stored in your hands — and your hands can only save one layout.
       </p>
 
-      <h2>Why this works</h2>
-      <p>
-        Everything the other two lessons teach — the pogo beat, the dodge timings, the
-        punish windows — ends up stored in your hands, not your head. That storage is
-        specific: <em>this thumb, this button, this distance</em>. Swap controllers and
-        the timings your hands saved stop lining up with the buttons under them, so the
-        game feels harder than you actually are. It isn&apos;t you. It&apos;s the moving
-        target.
-      </p>
+      <div className="controller-compare">
+        <section className="controller-card" aria-labelledby="joycon-h">
+          <h2 id="joycon-h">Joy-Con</h2>
+          <JoyConDiagram />
+          <ul className="pro-con">
+            <li className="pro">Always in your hands — works handheld, docked, anywhere.</li>
+            <li className="pro">
+              Jump and attack under one thumb, dash under one finger: the game was built around
+              this.
+            </li>
+            <li className="con">Tiny buttons; cramps on long sessions.</li>
+            <li className="con">
+              A stick tilted slightly off “down” turns a pogo into a side slash — pogo from the ↓
+              button, not the stick.
+            </li>
+          </ul>
+        </section>
+        <section className="controller-card" aria-labelledby="leverless-h">
+          <h2 id="leverless-h">Leverless</h2>
+          <LeverlessDiagram />
+          <ul className="pro-con">
+            <li className="pro">
+              Down is exactly down, every time — the cleanest pogo input there is.
+            </li>
+            <li className="pro">
+              One finger per button: jump, attack, dash and ↓ can all be held at once.
+            </li>
+            <li className="con">
+              Dock and cable only, plus a settings toggle — every extra step is a reason to grab the
+              Joy-Con “just this once”.
+            </li>
+            <li className="con">
+              Out of the box, jump (B) and attack (Y) sit under the same finger. Remap once.
+            </li>
+          </ul>
+        </section>
+      </div>
 
       <h2>How to choose</h2>
       <p>
-        Play twenty minutes on each, once, and notice two things: which one disappears
-        from your attention faster, and which one your hands reach for when a fight gets
-        scary. That one wins. There is no wrong answer — pros play on everything — there
-        is only <em>switching</em>, which is always wrong.
+        Twenty minutes on each, once. Notice which one disappears from your attention faster, and
+        which one your hands reach for when a fight gets scary. That one wins.
       </p>
 
-      <h2>Small habits that add up</h2>
-      <p>
-        Short sessions beat marathons — twenty focused minutes of the{' '}
-        <Link to="/practice/pogo">Pogo Course</Link> or the{' '}
-        <Link to="/practice/dodge">Dodge Arena</Link> does more for your hands than two
-        tired hours. Stop while it still feels good; your hands keep practicing overnight
-        (really — that&apos;s when muscle memory consolidates). And keep the same buttons
-        here as in the real game, so everything you build on this site walks straight over
-        to the Switch.
+      <p className="thesis">
+        Both can beat the whole game. Neither is faster. The only thing that matters is muscle
+        memory, and it only builds on one layout — so choose tonight, and don’t touch the other
+        until the credits roll.
       </p>
 
       <p className="muted">
-        Coming soon: this site will read your controller directly (in the browser!), so
-        you can practice jumps, dashes, and nail timing on the exact buttons you&apos;ll
-        use in game.
+        Keep the same buttons here as on the Switch, so what you build in the{' '}
+        <Link to="/play/pogo">mini-games</Link> walks straight over. Soon this site will read your
+        controller directly.
       </p>
+
+      <ChapterNav current="setup" />
     </>
   );
 }
