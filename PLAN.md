@@ -46,6 +46,11 @@ Every ratified decision with its rationale. These are settled.
 | **Lesson order: Setup → Pogo → Reading Enemies** *(Session 5)* | Setup goes first because it decides how Kayla practices everything after it. The `/lessons` index is deleted (redundant with Home). |
 | **Warden: positional shield + proactive bash** *(Session 5)* | The old warden blocked every direction and never attacked unprovoked — "no threat unless you make a threat, which is not how the game works." Now the shield covers one direction at a time (front or overhead, tracking the Knight with a re-aim delay), so the open side is a real weak spot; and lingering in front draws a telegraphed bash. Precedent: the Colosseum's Shielded Fool. |
 | **Jump release honoured through the whole ascent** *(Session 5)* | Fidelity bug, not a taste call: decompiled `JumpReleased()` zeroes vy whenever the button is up during a rise (after the 4-step minimum), not only during the 9-step pin. Our pin-only reading produced a 116 px cliff between the tallest short hop and a full jump. |
+| **A mindset plus a few skills — not a model of the whole game** *(Session 6, from playtest 2)* | The site teaches a mindset plus the few technical skills for the problems Kayla has right now. **No double jump** (she is about to earn it in the real game), no focus/spells/healing — and the Setup page says so out loud. Nothing is built "for the whole game". Full notes: `docs/feedback/2026-08-22-playtest-2.md`. |
+| **60 s everywhere + required clean hits to pass an arena stage** *(Session 6)* | One number to understand and to brag about. Surviving alone was too easy ("just don't go near them"), so a stage is passed by surviving 60 s **and** landing 5 clean hits on a dummy / 3 on an attacker — "hit them more than they hit you", literally. |
+| **Death = checkpoint** *(Session 6)* | Getting hit restarts the current enemy / level / wave — never the whole roster. The trainer exists to skip the real game's punishment loop. |
+| **Gates are clear-to-unlock and always skippable** *(Session 6)* | A stop opens when its predecessor is cleared. A locked stop shows the rule, the obvious button back to the challenge, and "Skip this challenge" in small text. Skipped counts for unlocking but is drawn as unfinished. Nothing ever traps her. |
+| **Dev tools stay until the final build, then go** *(Session 6)* | The arena enemy picker and the observe toggle are useful while building, so they stay — collapsed and clearly labelled — and are removed in the final build. Observe mode is outside the progression. |
 
 ## 4. Architecture
 
@@ -100,6 +105,8 @@ interface SettingsV1 {
 }
 ```
 
+- **Refinement (Session 6, 2026-08-22):** `PracticeRun` gained optional `level` (pogo 1–4), `wave` (finale 1–3) and `cleared`; `ControllerChoice` and `ProgressV1` (controller, cleared levels / enemies / finale waves, `skipped` keys) were added for the six-stop road. The server's `runs` table was not extended — the mirror silently drops the three new fields, which is acceptable for a disposable backend. `shared/src/types.ts` is the source of truth.
+
 ### Server spec (practice project)
 
 Express on port 4000, CORS for local dev. Routes: `GET /health`, `GET /api/runs`, `POST /api/runs` (PracticeRun records). Migrations: `server/db/migrations/001_init.sql`, applied at startup by a tiny runner tracked via a `schema_migrations` table. SQLite file at `server/data/dojo.db` (gitignored). One Vitest smoke test on a `":memory:"` database proving migrate + insert + select. After the user's backend practice ends: server shut down permanently, code kept.
@@ -114,31 +121,67 @@ Jump + basic dash + minimum nail (side/up/down slashes, pogo on downslash). **No
 
 Cross a spike/bounce-target obstacle course by chaining downslash pogos. Checkpointed so a miss costs seconds, not the run. Teaches pillar 1.
 
+**Levels** *(Session 6, from playtest 2)* — clear-to-unlock: level N must be cleared to open N+1, with the same skippable lock as everywhere else; the picker shows cleared levels plus the next one. Replaying a cleared level is practice.
+
+| Level | What's new | Teaches |
+|---|---|---|
+| 1 | Unchanged from M2 — the user's "perfect level 1". | The bounce rhythm. |
+| 2 | **Red hazard orbs.** Body contact counts like spikes (back to the last lantern); nail contact bounces exactly as strongly as a blue orb. The only difference is how low you're allowed to get. | Bouncing early. |
+| 3 | **Drifting orbs.** Blue orbs on fixed paths — horizontal, vertical, circles — deterministic, no RNG. | Timing on a moving target. |
+| 4 | "Put it all together" — red + drifting + longer gaps. **Lives in the finale (Mode 3), not the Bounce Bog.** | Everything at once. |
+
 ### Mode 2: Dodge Arena
 
-One enemy at a time in a small arena. The run ends on the **first hit taken** — the mode mechanically enforces "don't get hit" as the objective. Score = nail hits landed. Teaches "hit them more than they hit you" with the emphasis on *than they hit you*.
+A **staged game** *(Session 6; previously a single-enemy test bench)*. The roster in teaching order — walker → flier → duelist → spitter → warden — one enemy at a time in a small arena. Every enemy **hunts the Knight**: closes in steadily, so there is no safe corner. A stage is passed by **surviving 60 s AND landing clean hits** (5 on a dummy, 3 on an attacker); passing auto-advances to the next enemy. Getting hit restarts the current enemy (checkpoint per enemy, never back to the walker). Reopening the page resumes at the first enemy not yet cleared. Teaches "hit them more than they hit you" — both halves of it.
 
-**Observe mode** (toggle): the nail does no damage; score = survival time. This is the "spend a whole life just dodging" doctrine made into a mode — kill the incentive to attack, learn the patterns first.
+**Observe mode** — the nail does no damage; score = survival time — is the "spend a whole life just dodging" doctrine made into a mode. *(Session 6: demoted to a dev toggle next to the enemy picker, outside the progression; both go in the final build.)*
+
+### Mode 3: The Bottom of the Well
+
+The finale at the end of the road *(Session 6)*. Named by the map's own metaphor — it pays off "Kayla, it starts at the well" — not a real place, so spoiler-free. In order:
+
+1. **Pogo level 4** — "put it all together".
+2. **Waves** on a flat, platform-less arena: walker + flier → duelist + spitter → spitter + warden. Each wave is survive 60 s + the hits, checkpointed per wave. The only place several enemies share the arena.
+3. **The boss** — planned, not designed; see §8.
 
 ### Enemy roster (canonical ids in @dojo/shared)
 
-Each enemy exists to teach one thing. The three attackers get full **telegraph → active → recovery → punish-window** state machines (M4).
+Each enemy exists to teach one thing. The three attackers get full **telegraph → active → recovery → punish-window** state machines (M4). **Every enemy hunts the Knight** *(Session 6)* — closes the distance steadily, so waiting it out in a corner is never an option.
 
 | Id | Model | Behavior | Teaches |
 |---|---|---|---|
-| `walker` | Crawlid | Ground pacer, turns at edges, contact damage only. No attacks. | Spacing, first pogo target, safe nail timing on a moving target. |
-| `flier` | Vengefly | Drifting/bobbing dummy, contact damage only. | Aerial spacing, up-slash and pogo on an airborne target. |
-| `duelist` | Mantis | Reactive melee: **lunge slash** if you approach on the ground; **rising anti-air swipe** if you jump in. Punishable in recovery. | Reading which attack *you* provoked; patience; punishing recovery instead of trading. |
-| `spitter` | Aspid | Ranged: wind-up, then a 3-shot fan. **Projectiles can be nail-poked to destroy them.** Punish by closing distance during recovery. | Projectile nullification (attacks are pokeable); using the enemy's commitment window to close. |
-| `warden` | shield/counter (Shielded Fool-ish) | Shield covers **one direction at a time** — front, or overhead when the Knight is above — re-aiming after a short delay. A hit into the shield is blocked and triggers a telegraphed riposte; a hit into the open side lands. Lingering in front draws a telegraphed **shield bash**. Recovery after either attack is open from every side. *(Session 5 redesign; previously blocked everything and never attacked first.)* | The full doctrine: attacking into the shield is punished; watching reveals where it isn't — and standing still is never safe. |
+| `walker` | Crawlid | Ground pacer, turns at edges, contact damage only. No attacks. *Hunts the Knight (Session 6): walks toward her instead of pacing blind.* | Spacing, first pogo target, safe nail timing on a moving target. |
+| `flier` | Vengefly | Drifting/bobbing dummy, contact damage only. *Hunts the Knight (Session 6): drifts toward her.* | Aerial spacing, up-slash and pogo on an airborne target. |
+| `duelist` | Mantis | Reactive melee: **lunge slash** if you approach on the ground; **rising anti-air swipe** if you jump in. Punishable in recovery. *Hunts the Knight (Session 6): closes in between attacks.* | Reading which attack *you* provoked; patience; punishing recovery instead of trading. |
+| `spitter` | Aspid | Ranged: wind-up, then a 3-shot fan. **Projectiles can be nail-poked to destroy them.** Punish by closing distance during recovery. *Hunts the Knight (Session 6): keeps closing range rather than camping.* | Projectile nullification (attacks are pokeable); using the enemy's commitment window to close. |
+| `warden` | shield/counter (Shielded Fool-ish) | Shield covers **one direction at a time** — front, or overhead when the Knight is above — re-aiming after a short delay. A hit into the shield is blocked and triggers a telegraphed riposte; a hit into the open side lands. Lingering in front draws a telegraphed **shield bash**. Recovery after either attack is open from every side. *(Session 5 redesign; previously blocked everything and never attacked first.)* *Hunts the Knight (Session 6): advances behind the shield.* | The full doctrine: attacking into the shield is punished; watching reveals where it isn't — and standing still is never safe. |
 
 ## 6. Lessons spec
+
+### The road *(Session 6, from playtest 2)*
+
+The course is **learn → prove → practice → next**, made visible as one road of six stops on the map. A lesson ends in one big **"Prove it →"** button into its gauntlet, and the lesson is done when the gauntlet is cleared. Gates are clear-to-unlock and always skippable (§3). The map draws **done** (lit, full), **skipped/visited** (unfinished) and **locked** differently; the Knight stands at the first stop that is not done.
+
+| # | Stop | What it is | Done when |
+|---|---|---|---|
+| 1 | **Dirtmouth** | Your Setup (lesson) | She answers **"Which controller will you use?"** The answer is recorded and shown; it changes nothing else — it proves she's committed to one. |
+| 2 | **The Crossroads** | Pogo (lesson) | "Prove it →" into the Bounce Bog; done when the Pogo Course is cleared. |
+| 3 | **The Bounce Bog** | Pogo Course (mini-game, Mode 1) | Levels 1–3 cleared. |
+| 4 | **Greenpath** | Reading Enemies (lesson) | "Prove it →" into the Colosseum; done when the roster is cleared. |
+| 5 | **Kbug's Colosseum** | Dodge Arena (mini-game, Mode 2) | All five enemies cleared. |
+| 6 | **The Bottom of the Well** | The finale (Mode 3) | Level 4, then the three waves. (The boss, once it exists — §8.) |
+
+**Personal bests** — display only, the runs were already being recorded: one line per cleared level / enemy on the map's next-stop sign and on the mini-game pages — fastest clear per level, most hits / longest survival per enemy.
+
+**Settings** *(Session 6; not a stop — reached from the Setup chapter and the header)*: keyboard remapping (stored in `SettingsV1.inputBindings`), the two comfort toggles (moved here from the mini-game pages), and "reset my progress". No "wings" toggle. Real-controller verify-and-remap is M7.
+
+### The lessons
 
 Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Session 5): Setup first, then Pogo, then Reading Enemies** — the numbering below is by pillar, not by order.
 
 1. **Pogo** — mechanics of the downslash bounce (pinned 0.25 s rise, generous 108 px-wide down-hitbox, ~2 bounces/sec rhythm), then drills feeding into the Pogo Course.
 2. **Reading Enemies** — the dodge-first philosophy and the bench checklist, then per-enemy attack anatomy.
-3. **Your Setup** — controller consistency: why alternating controllers erases muscle memory, pick one and stick with it. *(Session 5: taught first; gains inline-SVG diagrams of the Joy-Con and leverless layouts with strengths/weaknesses — the point is that either is fine, switching is not.)*
+3. **Your Setup** — controller consistency: why alternating controllers erases muscle memory, pick one and stick with it. *(Session 5: taught first; gains inline-SVG diagrams of the Joy-Con and leverless layouts with strengths/weaknesses — the point is that either is fine, switching is not.)* *(Session 6: asks the controller question that finishes the stop; the Joy-Con diagram highlights the **stick** as hers, with the ↓ button kept as a tip for pogos that come out as side-slashes; and one short paragraph says the real game has more in it — focus, spells, healing — and the dojo skips it on purpose. Links to Settings.)*
 
 **Engine-powered demo canvases:** lesson pages embed small inline canvases running the *same engine and hitbox data as the game*, playing slow-motion scripted replays of enemy attacks with overlays — **red = hurtbox, green = poke window (safe strike / destroyable projectile), gold = punish window**. Because demos are driven by the real hitbox data, they can never drift out of sync with the game they teach. Routes/pages stubbed in M0; demos land in M5.
 
@@ -151,13 +194,22 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 - **M4 — duelist/spitter/warden state machines + observe mode (Session 3, DONE):** telegraph→active→recovery→punish-window machines; pokeable projectiles; counter logic; observe mode toggle.
 - **M5 — Lessons + demos (Session 3, DONE):** three lesson pages written in the warm tone; engine-powered slow-mo demo canvases with red/green/gold overlays and a tell→attack→punish phase bar.
 - **M6 — Art & juice pass + accessibility (Session 3, juice+accessibility DONE; art direction OPEN):** hit-stop/shake/squash-stretch via the `game-feel` skill's models; reduce-shake and reduce-flashing toggles wired to SettingsV1 on both practice pages. The `frontend-design` art-direction pass was deliberately left for a session with the user — visual taste calls deserve their input. **Session 5 received that input (playtest 1)** — see M6.5.
-- **M6.5 — Playtest 1 response (Session 5, DONE — awaiting playtest 2):** the user's six annotated notes (`docs/feedback/2026-08-21-playtest-1.md`). Engine: continuous jump release; warden positional shield + bash; duelist anti-air that reads as a counter. Site: map-based Home, "mini-games" naming with `/play/*` routes, Setup lesson first, Lessons index removed, controller diagrams, copy trimmed. A 37-agent adversarial review confirmed 27 findings (two real warden holes — hopping in place was never bashed; the re-aim clock hard-reset — plus demo drift and a11y/responsive polish), all fixed; 130 tests.
-- **M7 — Gamepad support + binding UI:** Gamepad API, rebindable inputs stored in SettingsV1; test with Switch Pro and the leverless controller. (Needs the user's physical controllers.)
+- **M6.5 — Playtest 1 response (Session 5, DONE):** the user's six annotated notes (`docs/feedback/2026-08-21-playtest-1.md`). Engine: continuous jump release; warden positional shield + bash; duelist anti-air that reads as a counter. Site: map-based Home, "mini-games" naming with `/play/*` routes, Setup lesson first, Lessons index removed, controller diagrams, copy trimmed. A 37-agent adversarial review confirmed 27 findings (two real warden holes — hopping in place was never bashed; the re-aim clock hard-reset — plus demo drift and a11y/responsive polish), all fixed; 130 tests.
+- **M6.6 — Playtest 2 response (Session 6, DONE — awaiting playtest 3):** the user's eight annotated notes plus a three-round interview (`docs/feedback/2026-08-22-playtest-2.md`). **Fixes:** pogo bounce on a killing blow (one nail contact deals the damage and the bounce); Joy-Con diagram highlights the stick; 18 px type scale with a fine-print floor; "Next stop" is a real button. **Road + gates:** the six-stop road with done/skipped/locked states, clear-to-unlock skippable gates, "Prove it →", the controller question in Setup, personal bests on the sign and the mini-game pages. **Arena game:** the Dodge Arena as a staged game — hunting enemies, 60 s + required hits, checkpoint per enemy. **Levels:** Pogo Course levels 2–3 (red hazard orbs, drifting orbs) with clear-to-unlock. **Settings page:** keyboard remap, the comfort toggles, reset progress. **The finale page:** The Bottom of the Well — level 4 + the three waves. *Standing note: the arena enemy picker and the observe toggle are dev tools — remove them in the final build.* A 6-lens adversarial review (32 agents) confirmed 23 of 25 findings, all fixed before the commit; 385 tests. Hunting speeds, levels 2–4 and the waves are tuned by simulation only — playtest 3 starts there. Bests are shown one line per stop rather than per cleared level/enemy (display only).
+- **M7 — Gamepad source + verify-and-remap flow on top of the Settings page:** Gamepad API as an input source, a verify-and-remap flow for real controllers, bindings stored in SettingsV1; test with Switch Pro and the leverless. (Needs the controllers in hand.)
 - **M8 — Backend practice + ship:** sync adapter live against the Express server; GitHub repo + Pages deploy; audits (`vercel-react-best-practices`, `web-design-guidelines`, browser E2E); then the backend shutdown checklist (confirm site fully functional with server gone, stop server, keep code). (Repo creation/push is outward-facing — waits for the user.)
 
-## 8. Later / on the radar — explicitly NOT planned
+## 8. Later / on the radar
 
-- **Boss finale.** A capstone boss that combines the roster's mechanics is on the user's mind, but it is deliberately unplanned. Do not design or stub it without a new conversation with the user.
+### Planned, needs its own design conversation
+
+- **The boss** at the end of The Bottom of the Well *(Session 6 — moved here from "not planned")*. A capstone that combines the roster's mechanics. The waves must exist first; then the boss is designed in its own conversation with the user. **Nobody designs or stubs it without that conversation.**
+
+### Explicitly NOT planned
+
+- **Double jump, focus, spells, healing, a "wings" toggle** — the governing principle (§3): a mindset plus a few skills, not a model of the whole game.
+- **Several enemies at once outside the finale's waves; a shrinking arena** — rejected in the playtest 2 interview.
+- **Enemies inside the Pogo Course** — a later idea, not this.
 
 ## 9. Pointers
 

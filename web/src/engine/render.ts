@@ -5,6 +5,8 @@
  */
 
 import { KNIGHT, PHYSICS } from './constants';
+import type { Mover } from './course';
+import { moverBox } from './course';
 import type { Enemy, Projectile } from './enemies';
 import { ATTACKS, ENEMY_SIZES } from './enemies';
 import type { Player } from './player';
@@ -21,6 +23,11 @@ export const COLORS = {
   spikeTip: '#525d85',
   orb: '#a9c7e8',
   orbGlow: 'rgba(169, 199, 232, 0.22)',
+  /** Red = hazard orb: bounce on it, never touch it (playtest 2). */
+  hazard: '#e86a6a',
+  hazardGlow: 'rgba(232, 106, 106, 0.24)',
+  /** Faint dotted path hint under a drifting orb. */
+  moverPath: 'rgba(169, 199, 232, 0.28)',
   checkpoint: '#5a6484',
   checkpointArmed: '#cfe4fa',
   goal: '#cfe4fa',
@@ -79,25 +86,84 @@ export function drawSpikes(ctx: CanvasRenderingContext2D, spikes: AABB[]): void 
   }
 }
 
+/** One glowing sphere: the shared body of blue, red, and drifting orbs. */
+function drawOrb(
+  ctx: CanvasRenderingContext2D,
+  o: AABB,
+  timeS: number,
+  fill: string,
+  glow: string,
+): void {
+  const cx = o.x + o.width / 2;
+  const cy = o.y + o.height / 2;
+  const pulse = 1 + 0.08 * Math.sin(timeS * 3 + cx * 0.05);
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy, (o.width / 2 + 8) * pulse, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  ctx.arc(cx, cy, o.width / 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = COLORS.canvasBg;
+  ctx.beginPath();
+  ctx.arc(cx - 4, cy - 4, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 /** Bounce orbs: soft-glowing lumafly-ish spheres. */
 export function drawOrbs(ctx: CanvasRenderingContext2D, orbs: AABB[], timeS: number): void {
+  for (const o of orbs) drawOrb(ctx, o, timeS, COLORS.orb, COLORS.orbGlow);
+}
+
+/**
+ * Hazard orbs: the same sphere in an unmistakable red, with a thin dark
+ * ring so the color reads even through the glow. Bounce, never touch.
+ */
+export function drawHazardOrbs(ctx: CanvasRenderingContext2D, orbs: AABB[], timeS: number): void {
   for (const o of orbs) {
-    const cx = o.x + o.width / 2;
-    const cy = o.y + o.height / 2;
-    const pulse = 1 + 0.08 * Math.sin(timeS * 3 + cx * 0.05);
-    ctx.fillStyle = COLORS.orbGlow;
+    drawOrb(ctx, o, timeS, COLORS.hazard, COLORS.hazardGlow);
+    ctx.strokeStyle = COLORS.canvasBg;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(cx, cy, (o.width / 2 + 8) * pulse, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = COLORS.orb;
-    ctx.beginPath();
-    ctx.arc(cx, cy, o.width / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = COLORS.canvasBg;
-    ctx.beginPath();
-    ctx.arc(cx - 4, cy - 4, 3, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(o.x + o.width / 2, o.y + o.height / 2, o.width / 2 - 3, 0, Math.PI * 2);
+    ctx.stroke();
   }
+}
+
+/**
+ * Drifting orbs at course time t — the SAME t the simulation used, so the
+ * drawn orb is exactly what the nail can hit. A faint dotted path under
+ * each one shows where it is going. `pulseS` is the ambient clock for the
+ * glow pulse (course time stands still before her first input).
+ */
+export function drawMovers(
+  ctx: CanvasRenderingContext2D,
+  movers: readonly Mover[],
+  t: number,
+  pulseS: number = t,
+): void {
+  ctx.save();
+  ctx.strokeStyle = COLORS.moverPath;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([3, 7]);
+  for (const m of movers) {
+    const { x, y } = m.center;
+    const a = m.path.amplitude;
+    ctx.beginPath();
+    if (m.path.kind === 'circle') {
+      ctx.arc(x, y, a, 0, Math.PI * 2);
+    } else if (m.path.kind === 'horizontal') {
+      ctx.moveTo(x - a, y);
+      ctx.lineTo(x + a, y);
+    } else {
+      ctx.moveTo(x, y - a);
+      ctx.lineTo(x, y + a);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+  for (const m of movers) drawOrb(ctx, moverBox(m, t), pulseS, COLORS.orb, COLORS.orbGlow);
 }
 
 /** Checkpoint lantern: a pole with a diamond head that lights when armed. */

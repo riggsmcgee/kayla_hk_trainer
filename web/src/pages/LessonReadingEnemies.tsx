@@ -1,6 +1,8 @@
-import { Link } from 'react-router';
+import { chapterById, chapterIndex } from '../chapters';
+import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
+import { ProveIt } from '../components/ProveIt';
 import {
   duelistAntiAirDemo,
   duelistLungeDemo,
@@ -8,7 +10,6 @@ import {
   wardenRiposteDemo,
   wardenShieldDemo,
 } from '../engine/demo';
-import { useMarkVisited } from '../storage/useChapterProgress';
 
 function DemoLegend() {
   return (
@@ -21,11 +22,13 @@ function DemoLegend() {
 }
 
 export function LessonReadingEnemies() {
-  useMarkVisited('reading-enemies');
+  const chapter = chapterById('reading-enemies');
   return (
-    <>
-      <p className="eyebrow">Chapter 3 · Greenpath</p>
-      <h1>Reading Enemies</h1>
+    <ChapterGate current="reading-enemies">
+      <p className="eyebrow">
+        Chapter {chapterIndex('reading-enemies')} · {chapter.place}
+      </p>
+      <h1>{chapter.title}</h1>
       <p className="lede">
         Here’s the secret, Kayla: when you meet a new enemy, your job is <em>not</em> to kill it.
         Spend a whole life just dodging. When you can avoid everything it has, find the one safe
@@ -96,12 +99,13 @@ export function LessonReadingEnemies() {
       </p>
 
       <p className="thesis">
-        Now go watch one for real: the <Link to="/play/dodge">Dodge Arena</Link> has an observe mode
-        where your nail does no damage. When the attacks feel readable, switch it off and start
-        collecting.
+        Now prove it in the arena, Kayla: survive a minute against each one and land your hits.
+        Watch, dodge, then take it apart.
       </p>
 
+      <ProveIt current="reading-enemies" />
+
       <ChapterNav current="reading-enemies" />
-    </>
+    </ChapterGate>
   );
 }

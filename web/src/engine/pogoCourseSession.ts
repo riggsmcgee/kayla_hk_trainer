@@ -1,20 +1,22 @@
 /**
- * Pogo Course session (M2): wires the player sim, Course 1 geometry, the
- * course state machine, a scrolling camera, and the HUD into one playable
- * mode. On completion the run is recorded to localStorage (and mirrored to
- * the practice server when it happens to exist).
+ * Pogo Course session (M2, levels from playtest 2): wires the player sim,
+ * one level's geometry, the course state machine, a scrolling camera, and
+ * the HUD into one playable mode. On completion the run is recorded to
+ * localStorage (and mirrored to the practice server when it happens to
+ * exist) and `onClear` fires once so the page can unlock the next level.
  */
 
 import { CANVAS } from './constants';
-import { COURSE_FLOOR_Y, POGO_COURSE_1, createCourseState, stepCourse } from './course';
-import type { CourseState } from './course';
 import {
-  FEEDBACK,
-  LAND_SQUASH_TIME,
-  computeStretch,
-  createEdgeCarry,
-  createJuice,
-} from './juice';
+  COURSE_FLOOR_Y,
+  POGO_COURSES,
+  POGO_COURSE_1,
+  createCourseState,
+  moverBox,
+  stepCourse,
+} from './course';
+import type { CourseDef, CourseState } from './course';
+import { FEEDBACK, LAND_SQUASH_TIME, computeStretch, createEdgeCarry, createJuice } from './juice';
 import type { ComfortSettings } from './juice';
 import { createPlayer, playerHurtbox, respawnPlayer, stepPlayer } from './player';
 import {
@@ -22,7 +24,9 @@ import {
   clearCanvas,
   drawCheckpoint,
   drawGoal,
+  drawHazardOrbs,
   drawKnight,
+  drawMovers,
   drawNailSlash,
   drawOrbs,
   drawSpikes,
@@ -33,18 +37,60 @@ import { recordRun } from '../storage/recordRun';
 import type { GameSession } from './session';
 import type { InputFrame, Vec2, World } from './types';
 
+export interface PogoClearInfo {
+  /** 1-based level that was just cleared. */
+  level: number;
+  durationMs: number;
+  misses: number;
+}
+
+export interface PogoCourseOptions {
+  /** 1-based index into POGO_COURSES; out-of-range values clamp to the ends. */
+  level: number;
+  comfort: ComfortSettings;
+  /** Fires once per finish, after the run is recorded. */
+  onClear?: (info: PogoClearInfo) => void;
+  /**
+   * True when the page has a next level to offer under the canvas, so the
+   * finished overlay points at it as well as at "run it again".
+   */
+  hasNextLevel?: boolean;
+  /**
+   * What the finished overlay calls the jump key ("Press Z …"). Keys are
+   * remappable in Settings; the page passes the friendly name. Default "Z".
+   */
+  jumpKey?: string;
+}
+
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds - m * 60;
   return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 }
 
-export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
-  const course = POGO_COURSE_1;
+/** Everything a downslash can bounce off at course time t. */
+function pogoablesAt(course: CourseDef, t: number) {
+  return [
+    ...course.orbs,
+    ...course.hazardOrbs,
+    // Spikes are deliberately pogoable, like the real game.
+    ...course.spikes,
+    ...course.movers.map((m) => moverBox(m, t)),
+  ];
+}
+
+export function createPogoCourseSession(options: PogoCourseOptions): GameSession;
+/** @deprecated Level 1 only; pass `{ level, comfort }` instead. */
+export function createPogoCourseSession(comfort: ComfortSettings): GameSession;
+export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings): GameSession {
+  const options: PogoCourseOptions = 'level' in arg ? arg : { level: 1, comfort: arg };
+  const level = Math.min(Math.max(1, Math.floor(options.level)), POGO_COURSES.length);
+  const course = POGO_COURSES[level - 1] ?? POGO_COURSE_1;
+  const { comfort, onClear, hasNextLevel = false, jumpKey = 'Z' } = options;
+
   const world: World = {
     solids: course.solids,
-    // Spikes are deliberately pogoable, like the real game.
-    pogoables: [...course.orbs, ...course.spikes],
+    pogoables: pogoablesAt(course, 0),
   };
   const juice = createJuice(comfort);
   const edgeCarry = createEdgeCarry();
@@ -55,6 +101,7 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
   let pogosAtRunStart = 0;
   let startedAtIso = '';
   let simTime = 0; // drives ambient animation (orb pulse, goal glow)
+  let moverTime = 0; // the course time the drifters were simulated at this step
   let respawnFlash = 0;
   let checkpointToast = 0;
   let landSquash = 0;
@@ -66,6 +113,7 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
     courseState = createCourseState(course);
     prevFeet = { ...player.position };
     pogosAtRunStart = player.totalPogos;
+    moverTime = 0;
     respawnFlash = 0;
     checkpointToast = 0;
     landSquash = 0;
@@ -88,13 +136,19 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
       landSquash = Math.max(0, landSquash - dt);
 
       if (courseState.finished) {
-        if (input.jumpPressed) resetRun();
+        // The raw press, not the carried one: a Z inside a hit-stop on the
+        // finishing step must not skip the clear screen.
+        if (rawInput.jumpPressed) resetRun();
         return;
       }
 
       if (!courseState.started) {
         const anyInput =
-          input.left || input.right || input.jumpPressed || input.dashPressed || input.attackPressed;
+          input.left ||
+          input.right ||
+          input.jumpPressed ||
+          input.dashPressed ||
+          input.attackPressed;
         if (anyInput) {
           courseState.started = true;
           startedAtIso = new Date().toISOString();
@@ -103,6 +157,10 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
 
       prevFeet.x = player.position.x;
       prevFeet.y = player.position.y;
+      // Drifters sit where the course clock says; the clock only runs once
+      // she has started, so they wait for her first input.
+      moverTime = courseState.elapsed;
+      world.pogoables = pogoablesAt(course, moverTime);
       const pogosBefore = player.totalPogos;
       stepPlayer(player, input, world, dt);
       if (player.totalPogos > pogosBefore) {
@@ -126,21 +184,22 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
       if (events.finishedNow && !recorded) {
         recorded = true;
         juice.addTrauma(FEEDBACK.courseClear.trauma);
+        const durationMs = Math.round(courseState.elapsed * 1000);
         recordRun({
           mode: 'pogo',
+          level,
+          cleared: true,
           hitsLanded: player.totalPogos - pogosAtRunStart,
-          durationMs: Math.round(courseState.elapsed * 1000),
+          durationMs,
           startedAt: startedAtIso || new Date().toISOString(),
         });
+        onClear?.({ level, durationMs, misses: courseState.misses });
       }
     },
 
     render(ctx: CanvasRenderingContext2D, alpha: number): void {
       const feet = lerpVec(prevFeet, player.position, alpha);
-      const camX = Math.min(
-        Math.max(feet.x - CANVAS.width / 2, 0),
-        course.width - CANVAS.width,
-      );
+      const camX = Math.min(Math.max(feet.x - CANVAS.width / 2, 0), course.width - CANVAS.width);
       const shake = juice.shakeOffset(simTime);
 
       clearCanvas(ctx, CANVAS.width, CANVAS.height);
@@ -151,6 +210,8 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
       drawWorld(ctx, world);
       drawSpikes(ctx, course.spikes);
       drawOrbs(ctx, course.orbs, simTime);
+      drawHazardOrbs(ctx, course.hazardOrbs, simTime);
+      drawMovers(ctx, course.movers, moverTime, simTime);
       course.checkpoints.forEach((cp, i) => {
         drawCheckpoint(ctx, cp.respawn.x, COURSE_FLOOR_Y, i <= courseState.checkpointIndex);
       });
@@ -170,15 +231,15 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
       ctx.fillText(`pogos ${player.totalPogos - pogosAtRunStart}`, 16, 36);
       ctx.fillText(`misses ${courseState.misses}`, 16, 58);
 
+      ctx.textAlign = 'right';
+      ctx.fillStyle = COLORS.hudText;
+      ctx.fillText(`Level ${level} — ${course.name}`, CANVAS.width - 16, 14);
+
       if (!courseState.started) {
         ctx.textAlign = 'center';
         ctx.fillStyle = COLORS.hudText;
         ctx.font = '18px system-ui, sans-serif';
-        ctx.fillText(
-          'Bounce across on the glowing orbs — jump, then slash DOWN in the air.',
-          CANVAS.width / 2,
-          96,
-        );
+        ctx.fillText(course.intro, CANVAS.width / 2, 96);
       }
 
       if (checkpointToast > 0) {
@@ -201,7 +262,7 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
         ctx.textAlign = 'center';
         ctx.fillStyle = COLORS.hudText;
         ctx.font = '30px system-ui, sans-serif';
-        ctx.fillText('Course clear, Kayla!', CANVAS.width / 2, CANVAS.height / 2 - 70);
+        ctx.fillText(`Level ${level} clear, Kayla!`, CANVAS.width / 2, CANVAS.height / 2 - 70);
         ctx.font = '19px system-ui, sans-serif';
         ctx.fillStyle = COLORS.hudDim;
         ctx.fillText(
@@ -210,7 +271,13 @@ export function createPogoCourseSession(comfort: ComfortSettings): GameSession {
           CANVAS.height / 2 - 24,
         );
         ctx.fillStyle = COLORS.hudText;
-        ctx.fillText('Press Z to run it again.', CANVAS.width / 2, CANVAS.height / 2 + 24);
+        ctx.fillText(
+          hasNextLevel
+            ? `Press ${jumpKey} to run it again — or take the next level, just below.`
+            : `Press ${jumpKey} to run it again.`,
+          CANVAS.width / 2,
+          CANVAS.height / 2 + 24,
+        );
       }
     },
   };

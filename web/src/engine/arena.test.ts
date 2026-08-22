@@ -6,11 +6,23 @@
  * hits landed. Observe mode: the nail does no damage and scores nothing;
  * survival time is the score; the run still ends on a hit.
  */
-import { describe, expect, it } from 'vitest';
-import { ENEMIES, FIXED_DT, PHYSICS } from './constants';
-import { createArenaState, stepArena } from './arena';
-import { createEnemy } from './enemies';
+import { describe, expect, it, vi } from 'vitest';
+import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
+import { RESPAWN_DELAY, createArenaState, stepArena } from './arena';
+import { PLAYER_SPAWN_X, arenaWorld, createDodgeArenaSession } from './dodgeArenaSession';
+import { createEnemy, enemyBox } from './enemies';
+import type { Enemy } from './enemies';
 import { createPlayer } from './player';
+import { rosterStages, waveStages } from './stages';
+import type { InputFrame } from './types';
+
+/** The session records every stage attempt; capture instead of touching storage. */
+const recorded: Record<string, unknown>[] = [];
+vi.mock('../storage/recordRun', () => ({
+  recordRun: (run: Record<string, unknown>) => {
+    recorded.push(run);
+  },
+}));
 
 const FLOOR_Y = 600;
 
@@ -37,7 +49,7 @@ describe('dodge arena', () => {
   it('ends the run the moment the player touches the enemy', () => {
     const { state, player, enemy } = makeParts();
     player.position.x = enemy.position.x; // standing inside the walker
-    const events = stepArena(state, player, enemy, FIXED_DT);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
     expect(events.playerHit).toBe(true);
     expect(state.over).toBe(true);
   });
@@ -45,7 +57,7 @@ describe('dodge arena', () => {
   it('scores a nail hit and damages the enemy', () => {
     const { state, player, enemy } = makeParts();
     armSwingOver(player, enemy.position.x, enemy.position.y);
-    const events = stepArena(state, player, enemy, FIXED_DT);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
     expect(events.nailLanded).toBe(true);
     expect(state.hitsLanded).toBe(1);
     expect(enemy.hp).toBe(ENEMIES.walker.hp - 1);
@@ -55,18 +67,18 @@ describe('dodge arena', () => {
     const { state, player, enemy } = makeParts();
     // Two swings kill the walker (hp 2).
     armSwingOver(player, enemy.position.x, enemy.position.y);
-    stepArena(state, player, enemy, FIXED_DT);
+    stepArena(state, player, [enemy], FIXED_DT);
     armSwingOver(player, enemy.position.x, enemy.position.y);
-    const killed = stepArena(state, player, enemy, FIXED_DT);
+    const killed = stepArena(state, player, [enemy], FIXED_DT);
     expect(killed.enemyDied).toBe(true);
     expect(enemy.dead).toBe(true);
     // Dead enemy can't hurt the player while we wait.
     player.position.x = enemy.position.x;
     let respawnRequested = false;
     for (let i = 0; i < 120 && !respawnRequested; i++) {
-      const ev = stepArena(state, player, enemy, FIXED_DT);
+      const ev = stepArena(state, player, [enemy], FIXED_DT);
       expect(ev.playerHit).toBe(false);
-      respawnRequested = ev.respawnEnemy;
+      respawnRequested = ev.respawn.includes(0);
     }
     expect(respawnRequested).toBe(true);
     expect(state.over).toBe(false);
@@ -75,7 +87,7 @@ describe('dodge arena', () => {
   it('observe mode: flashes but never damages or scores', () => {
     const { state, player, enemy } = makeParts(true);
     armSwingOver(player, enemy.position.x, enemy.position.y);
-    const events = stepArena(state, player, enemy, FIXED_DT);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
     expect(events.nailLanded).toBe(false);
     expect(state.hitsLanded).toBe(0);
     expect(enemy.hp).toBe(ENEMIES.walker.hp);
@@ -85,7 +97,7 @@ describe('dodge arena', () => {
   it('observe mode: the run still ends on contact', () => {
     const { state, player, enemy } = makeParts(true);
     player.position.x = enemy.position.x;
-    const events = stepArena(state, player, enemy, FIXED_DT);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
     expect(events.playerHit).toBe(true);
     expect(state.over).toBe(true);
   });
@@ -99,7 +111,7 @@ describe('dodge arena', () => {
     duelist.lockedDir = -1;
     duelist.phase = 'active';
     duelist.phaseTimer = 0.3;
-    const events = stepArena(state, player, duelist, FIXED_DT);
+    const events = stepArena(state, player, [duelist], FIXED_DT);
     expect(events.playerHit).toBe(true);
     expect(state.over).toBe(true);
   });
@@ -112,7 +124,7 @@ describe('dodge arena', () => {
       radius: 7,
       dead: false,
     };
-    const events = stepArena(state, player, enemy, FIXED_DT, [shot]);
+    const events = stepArena(state, player, [enemy], FIXED_DT, [shot]);
     expect(events.playerHit).toBe(true);
   });
 
@@ -120,7 +132,7 @@ describe('dodge arena', () => {
     const { state, player, enemy } = makeParts();
     // 60 px away: inside the 80 px nail reach, outside body-contact range.
     armSwingOver(player, enemy.position.x, enemy.position.y);
-    const events = stepArena(state, player, enemy, FIXED_DT);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
     expect(events.nailLanded).toBe(true);
     expect(events.playerHit).toBe(false);
     expect(state.over).toBe(false);
@@ -139,7 +151,7 @@ describe('dodge arena', () => {
       radius: 7,
       dead: false,
     };
-    const events = stepArena(state, player, enemy, FIXED_DT, [shot]);
+    const events = stepArena(state, player, [enemy], FIXED_DT, [shot]);
     expect(shot.dead).toBe(true);
     expect(events.playerHit).toBe(false); // the nail saved you — by design
     expect(state.over).toBe(false);
@@ -158,7 +170,7 @@ describe('dodge arena', () => {
       radius: 7,
       dead: false,
     };
-    stepArena(state, player, enemy, FIXED_DT, [shot]);
+    stepArena(state, player, [enemy], FIXED_DT, [shot]);
     expect(shot.dead).toBe(true);
     expect(state.over).toBe(false); // destroyed before it could land
   });
@@ -166,13 +178,590 @@ describe('dodge arena', () => {
   it('runs the clock only between start and run-over', () => {
     const { state, player, enemy } = makeParts();
     state.started = false;
-    stepArena(state, player, enemy, FIXED_DT);
+    stepArena(state, player, [enemy], FIXED_DT);
     expect(state.elapsed).toBe(0);
     state.started = true;
-    stepArena(state, player, enemy, FIXED_DT);
+    stepArena(state, player, [enemy], FIXED_DT);
     expect(state.elapsed).toBeCloseTo(FIXED_DT, 10);
     state.over = true;
-    stepArena(state, player, enemy, FIXED_DT);
+    stepArena(state, player, [enemy], FIXED_DT);
     expect(state.elapsed).toBeCloseTo(FIXED_DT, 10);
+  });
+});
+
+/**
+ * Playtest 2, note 2: the bounce comes from the SAME nail contact that deals
+ * the damage — one contact, both effects — so a killing blow bounces too.
+ */
+describe('pogo on the hit', () => {
+  /** Hang the Knight just above the enemy, falling, with a live downslash. */
+  function armDownslashOver(player: ReturnType<typeof createPlayer>, enemy: Enemy) {
+    const box = enemyBox(enemy);
+    player.position.x = enemy.position.x;
+    player.position.y = box.y - 10; // feet 10 px above its head: nail reaches, body doesn't
+    player.grounded = false;
+    player.velocity.y = 300; // falling
+    player.nailDir = 'down';
+    player.nailTimer = PHYSICS.nailStartup + PHYSICS.nailActiveTime / 2;
+    player.pogoedThisSwing = false;
+    player.swingId += 1;
+  }
+
+  it('bounces on the killing blow, the same step the enemy dies', () => {
+    const { state, player, enemy } = makeParts();
+    enemy.hp = 1;
+    armDownslashOver(player, enemy);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
+    expect(enemy.hp).toBe(0);
+    expect(enemy.dead).toBe(true);
+    expect(events.enemyDied).toBe(true);
+    expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+    expect(player.totalPogos).toBe(1);
+    expect(player.pogoPinElapsed).toBe(0);
+  });
+
+  it('bounces a surviving enemy on the same step as the hit', () => {
+    const { state, player, enemy } = makeParts();
+    armDownslashOver(player, enemy);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
+    expect(events.nailLanded).toBe(true);
+    expect(enemy.hp).toBe(ENEMIES.walker.hp - 1);
+    expect(enemy.dead).toBe(false);
+    expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+    expect(player.totalPogos).toBe(1);
+    expect(player.airDashAvailable).toBe(true);
+  });
+
+  it('never bounces twice in one swing, even if contact persists', () => {
+    const { state, player, enemy } = makeParts();
+    armDownslashOver(player, enemy);
+    stepArena(state, player, [enemy], FIXED_DT);
+    expect(player.totalPogos).toBe(1);
+    // Same swing, still overlapping: stepArena doesn't tick the swing clock.
+    player.velocity.y = 0;
+    stepArena(state, player, [enemy], FIXED_DT);
+    expect(player.totalPogos).toBe(1);
+    expect(player.velocity.y).toBe(0);
+    expect(state.hitsLanded).toBe(1); // and the hit is still one per swing
+  });
+
+  it('does not bounce when grounded (the hit still lands)', () => {
+    const { state, player, enemy } = makeParts();
+    armDownslashOver(player, enemy);
+    player.grounded = true;
+    player.velocity.y = 0;
+    stepArena(state, player, [enemy], FIXED_DT);
+    expect(state.hitsLanded).toBe(1);
+    expect(player.totalPogos).toBe(0);
+    expect(player.velocity.y).toBe(0);
+  });
+
+  it('does not bounce mid-dash (the hit still lands)', () => {
+    const { state, player, enemy } = makeParts();
+    armDownslashOver(player, enemy);
+    player.dashTimer = 0.1;
+    player.velocity.y = 0;
+    stepArena(state, player, [enemy], FIXED_DT);
+    expect(state.hitsLanded).toBe(1);
+    expect(player.totalPogos).toBe(0);
+    expect(player.velocity.y).toBe(0);
+    expect(player.pogoPinElapsed).toBe(-1);
+  });
+
+  it('bounces off the warden’s raised shield even though the hit is blocked', () => {
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    const warden = createEnemy('warden', 800, FLOOR_Y);
+    warden.shieldDir = 'up';
+    armDownslashOver(player, warden);
+    const events = stepArena(state, player, [warden], FIXED_DT);
+    expect(events.nailLanded).toBe(false);
+    expect(warden.hp).toBe(ENEMIES.warden.hp);
+    expect(warden.blockFlashTimer).toBeGreaterThan(0);
+    expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+    expect(player.totalPogos).toBe(1);
+  });
+
+  it('bounces in observe mode too (the feather nail is still a surface)', () => {
+    const { state, player, enemy } = makeParts(true);
+    armDownslashOver(player, enemy);
+    stepArena(state, player, [enemy], FIXED_DT);
+    expect(enemy.hp).toBe(ENEMIES.walker.hp);
+    expect(state.hitsLanded).toBe(0);
+    expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+    expect(player.totalPogos).toBe(1);
+  });
+
+  it('a dead enemy is not a bounce surface', () => {
+    const { state, player, enemy } = makeParts();
+    enemy.hp = 0;
+    enemy.dead = true;
+    state.respawnTimers[0] = 1;
+    armDownslashOver(player, enemy);
+    stepArena(state, player, [enemy], FIXED_DT);
+    expect(player.totalPogos).toBe(0);
+    expect(player.velocity.y).toBe(300); // still just falling
+  });
+});
+
+/**
+ * Several enemies at once (playtest 2: the finale's waves reuse the arena).
+ * ANY enemy's body or attack ends the run; the nail resolves against EACH
+ * enemy, one hit per swing per enemy; hits and kills count across all of
+ * them; every dead enemy respawns on its own timer.
+ */
+describe('multi-enemy arena', () => {
+  function makePair(observe = false) {
+    const state = createArenaState(observe);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    const enemies = [createEnemy('walker', 700, FLOOR_Y), createEnemy('walker', 900, FLOOR_Y)];
+    return { state, player, enemies };
+  }
+
+  /** Two walkers shoulder to shoulder, both inside one side slash. */
+  function makeHuddle() {
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    const enemies = [createEnemy('walker', 790, FLOOR_Y), createEnemy('walker', 820, FLOOR_Y)];
+    armSwingOver(player, 790, FLOOR_Y); // reach 80 px covers both
+    return { state, player, enemies };
+  }
+
+  it('ends the run when the SECOND enemy touches the player', () => {
+    const { state, player, enemies } = makePair();
+    player.position.x = enemies[1]!.position.x;
+    const events = stepArena(state, player, enemies, FIXED_DT);
+    expect(events.playerHit).toBe(true);
+    expect(state.over).toBe(true);
+  });
+
+  it('ends the run when the second enemy’s attack catches the player', () => {
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(540, FLOOR_Y);
+    const walker = createEnemy('walker', 1000, FLOOR_Y);
+    const duelist = createEnemy('duelist', 600, FLOOR_Y);
+    duelist.attackKind = 'lunge';
+    duelist.lockedDir = -1;
+    duelist.phase = 'active';
+    duelist.phaseTimer = 0.3;
+    const events = stepArena(state, player, [walker, duelist], FIXED_DT);
+    expect(events.playerHit).toBe(true);
+  });
+
+  it('nothing happens with no one near: the clock runs, nobody is hurt', () => {
+    const { state, player, enemies } = makePair();
+    const events = stepArena(state, player, enemies, FIXED_DT);
+    expect(events.playerHit).toBe(false);
+    expect(events.nailLanded).toBe(false);
+    expect(events.respawn).toEqual([]);
+    expect(state.elapsed).toBeCloseTo(FIXED_DT, 10);
+  });
+
+  it('one swing through two enemies hits both and counts two', () => {
+    const { state, player, enemies } = makeHuddle();
+    const events = stepArena(state, player, enemies, FIXED_DT);
+    expect(events.nailLanded).toBe(true);
+    expect(events.hits).toBe(2);
+    expect(state.hitsLanded).toBe(2);
+    expect(enemies[0]!.hp).toBe(ENEMIES.walker.hp - 1);
+    expect(enemies[1]!.hp).toBe(ENEMIES.walker.hp - 1);
+  });
+
+  it('still one hit per swing per enemy', () => {
+    const { state, player, enemies } = makeHuddle();
+    stepArena(state, player, enemies, FIXED_DT);
+    const again = stepArena(state, player, enemies, FIXED_DT); // same swing, same overlap
+    expect(again.nailLanded).toBe(false);
+    expect(again.hits).toBe(0);
+    expect(state.hitsLanded).toBe(2);
+    armSwingOver(player, 790, FLOOR_Y); // a new swing lands on both again
+    expect(stepArena(state, player, enemies, FIXED_DT).hits).toBe(2);
+    expect(state.hitsLanded).toBe(4);
+  });
+
+  it('a swing that reaches only one of them hits only that one', () => {
+    const { state, player, enemies } = makePair();
+    armSwingOver(player, enemies[1]!.position.x, FLOOR_Y);
+    const events = stepArena(state, player, enemies, FIXED_DT);
+    expect(events.hits).toBe(1);
+    expect(enemies[0]!.hp).toBe(ENEMIES.walker.hp);
+    expect(enemies[1]!.hp).toBe(ENEMIES.walker.hp - 1);
+  });
+
+  it('kills count across enemies and each dead enemy respawns on its own clock', () => {
+    const { state, player, enemies } = makePair();
+    // Kill enemy 0 (hp 2) with two swings.
+    armSwingOver(player, enemies[0]!.position.x, FLOOR_Y);
+    stepArena(state, player, enemies, FIXED_DT);
+    armSwingOver(player, enemies[0]!.position.x, FLOOR_Y);
+    const first = stepArena(state, player, enemies, FIXED_DT);
+    expect(first.enemyDied).toBe(true);
+    expect(enemies[0]!.dead).toBe(true);
+    expect(enemies[1]!.dead).toBe(false);
+    // Half the respawn delay later, kill enemy 1 too.
+    player.position.x = 300;
+    const half = Math.round(RESPAWN_DELAY / 2 / FIXED_DT);
+    for (let i = 0; i < half; i++) {
+      expect(stepArena(state, player, enemies, FIXED_DT).respawn).toEqual([]);
+    }
+    armSwingOver(player, enemies[1]!.position.x, FLOOR_Y);
+    stepArena(state, player, enemies, FIXED_DT);
+    armSwingOver(player, enemies[1]!.position.x, FLOOR_Y);
+    const second = stepArena(state, player, enemies, FIXED_DT);
+    expect(second.enemyDied).toBe(true);
+    expect(enemies[1]!.dead).toBe(true);
+    expect(state.hitsLanded).toBe(4);
+    // Enemy 0's respawn comes first, alone; enemy 1's follows about half a
+    // delay later. (Like the session, replace a slot when asked — the arena
+    // keeps asking until it is.)
+    player.position.x = 300;
+    const order: { at: number; slots: number[] }[] = [];
+    for (let i = 0; i < 200 && order.length < 2; i++) {
+      const ev = stepArena(state, player, enemies, FIXED_DT);
+      if (ev.respawn.length) {
+        order.push({ at: i, slots: ev.respawn });
+        for (const slot of ev.respawn) enemies[slot] = createEnemy('walker', 900, FLOOR_Y);
+      }
+    }
+    expect(order.map((o) => o.slots)).toEqual([[0], [1]]);
+    expect(order[1]!.at - order[0]!.at).toBeGreaterThanOrEqual(half - 1);
+    expect(enemies.every((e) => !e.dead)).toBe(true);
+    expect(state.over).toBe(false);
+  });
+
+  it('a dead enemy is harmless while the live one still bites', () => {
+    const { state, player, enemies } = makePair();
+    enemies[0]!.hp = 0;
+    enemies[0]!.dead = true;
+    state.respawnTimers[0] = RESPAWN_DELAY;
+    player.position.x = enemies[0]!.position.x;
+    expect(stepArena(state, player, enemies, FIXED_DT).playerHit).toBe(false);
+    player.position.x = enemies[1]!.position.x;
+    expect(stepArena(state, player, enemies, FIXED_DT).playerHit).toBe(true);
+  });
+
+  it('observe mode: a swing through two enemies flashes both and scores nothing', () => {
+    const { state, player, enemies } = makeHuddle();
+    state.observe = true;
+    const events = stepArena(state, player, enemies, FIXED_DT);
+    expect(events.hits).toBe(0);
+    expect(state.hitsLanded).toBe(0);
+    expect(enemies[0]!.hurtFlashTimer).toBeGreaterThan(0);
+    expect(enemies[1]!.hurtFlashTimer).toBeGreaterThan(0);
+    expect(enemies[0]!.hp).toBe(ENEMIES.walker.hp);
+  });
+
+  describe('pogo per enemy', () => {
+    function armDownslashOver(player: ReturnType<typeof createPlayer>, enemy: Enemy) {
+      const box = enemyBox(enemy);
+      player.position.x = enemy.position.x;
+      player.position.y = box.y - 10;
+      player.grounded = false;
+      player.velocity.y = 300;
+      player.nailDir = 'down';
+      player.nailTimer = PHYSICS.nailStartup + PHYSICS.nailActiveTime / 2;
+      player.pogoedThisSwing = false;
+      player.swingId += 1;
+    }
+
+    it('bounces off whichever enemy the downslash lands on', () => {
+      const { state, player, enemies } = makePair();
+      armDownslashOver(player, enemies[1]!);
+      stepArena(state, player, enemies, FIXED_DT);
+      expect(player.totalPogos).toBe(1);
+      expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+      expect(enemies[1]!.hp).toBe(ENEMIES.walker.hp - 1);
+      expect(enemies[0]!.hp).toBe(ENEMIES.walker.hp);
+    });
+
+    it('bounces on a killing blow to the second enemy', () => {
+      const { state, player, enemies } = makePair();
+      enemies[1]!.hp = 1;
+      armDownslashOver(player, enemies[1]!);
+      const events = stepArena(state, player, enemies, FIXED_DT);
+      expect(events.enemyDied).toBe(true);
+      expect(enemies[1]!.dead).toBe(true);
+      expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+      expect(player.totalPogos).toBe(1);
+    });
+
+    it('a downslash over two bodies at once: two hits, one bounce', () => {
+      const state = createArenaState(false);
+      state.started = true;
+      const player = createPlayer(300, FLOOR_Y);
+      const enemies = [createEnemy('walker', 790, FLOOR_Y), createEnemy('walker', 810, FLOOR_Y)];
+      armDownslashOver(player, enemies[0]!);
+      player.position.x = 800;
+      const events = stepArena(state, player, enemies, FIXED_DT);
+      expect(events.hits).toBe(2);
+      expect(player.totalPogos).toBe(1);
+      expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+    });
+
+    it('a dead enemy is no bounce surface, but its live neighbour is', () => {
+      const { state, player, enemies } = makePair();
+      enemies[0]!.hp = 0;
+      enemies[0]!.dead = true;
+      state.respawnTimers[0] = RESPAWN_DELAY;
+      armDownslashOver(player, enemies[0]!);
+      stepArena(state, player, enemies, FIXED_DT);
+      expect(player.totalPogos).toBe(0);
+      armDownslashOver(player, enemies[1]!);
+      stepArena(state, player, enemies, FIXED_DT);
+      expect(player.totalPogos).toBe(1);
+    });
+  });
+});
+
+/**
+ * The session as a staged game (playtest 2, note 1), driven headlessly —
+ * step() only, no canvas. Fail → record → Z restarts the SAME stage; clear
+ * → record → onStageCleared → banner → next stage; last clear → onAllCleared.
+ * Wave runs carry the wave number; observe mode never clears or reports.
+ */
+describe('arena session (staged game)', () => {
+  const IDLE: InputFrame = {
+    left: false,
+    right: false,
+    jumpHeld: false,
+    jumpPressed: false,
+    attackPressed: false,
+    up: false,
+    down: false,
+    dashPressed: false,
+  };
+  const COMFORT = { reduceShake: false, reduceFlashing: false };
+  const press = (partial: Partial<InputFrame>): InputFrame => ({ ...IDLE, ...partial });
+  /** Stages that clear by standing still for a moment (no hits needed). */
+  const quick = (n: number) =>
+    rosterStages()
+      .slice(0, n)
+      .map((d) => ({ ...d, surviveSeconds: 0.5, hitsRequired: 0 }));
+
+  it('fails on a touch, records the stage run, restarts the same stage on Z', () => {
+    recorded.length = 0;
+    const cleared: number[] = [];
+    const s = createDodgeArenaSession({
+      stages: rosterStages(),
+      startIndex: 1,
+      world: 'colosseum',
+      comfort: COMFORT,
+      onStageCleared: (i) => cleared.push(i),
+    });
+    for (let i = 0; i < 120; i++) s.step(IDLE, FIXED_DT); // nothing moves before input
+    expect(recorded).toHaveLength(0);
+    let steps = 0;
+    while (recorded.length === 0 && steps < 60 * 30) {
+      s.step(press({ right: true }), FIXED_DT); // walk into the flier's path
+      steps += 1;
+    }
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]).toMatchObject({ mode: 'dodge', enemyId: 'flier', cleared: false });
+    expect(recorded[0]!.wave).toBeUndefined();
+    expect(recorded[0]!.observeMode).toBeUndefined();
+    expect(cleared).toEqual([]);
+    for (let i = 0; i < 10; i++) s.step(IDLE, FIXED_DT); // the hit-stop freeze
+    s.step(press({ jumpPressed: true }), FIXED_DT); // Z: the flier again, not the walker
+    steps = 0;
+    while (recorded.length === 1 && steps < 60 * 30) {
+      s.step(press({ right: true }), FIXED_DT);
+      steps += 1;
+    }
+    expect(recorded[1]).toMatchObject({ enemyId: 'flier', cleared: false });
+  });
+
+  it('clears, banners, advances, and reports all-cleared after the last stage', () => {
+    recorded.length = 0;
+    const cleared: number[] = [];
+    let all = 0;
+    const s = createDodgeArenaSession({
+      stages: quick(2),
+      world: 'flat',
+      comfort: COMFORT,
+      onStageCleared: (i) => cleared.push(i),
+      onAllCleared: () => {
+        all += 1;
+      },
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT); // any input starts the stage
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    expect(cleared).toEqual([0]);
+    expect(all).toBe(0);
+    expect(recorded[0]).toMatchObject({ enemyId: 'walker', cleared: true });
+    // The banner holds; Z skips it; the next stage waits for input again.
+    s.step(press({ jumpPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    expect(cleared).toEqual([0]);
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    expect(cleared).toEqual([0, 1]);
+    expect(all).toBe(1);
+    expect(recorded[1]).toMatchObject({ enemyId: 'flier', cleared: true });
+  });
+
+  it('the banner advances on its own after two seconds', () => {
+    recorded.length = 0;
+    const cleared: number[] = [];
+    const s = createDodgeArenaSession({ stages: quick(2), world: 'flat', comfort: COMFORT });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60 * 3; i++) s.step(IDLE, FIXED_DT); // 0.5 s clear + 2 s banner
+    s.step(press({ attackPressed: true }), FIXED_DT); // starts stage 2
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    expect(recorded.map((r) => r.enemyId)).toEqual(['walker', 'flier']);
+    expect(cleared).toEqual([]); // no callback wired: free play records, never marks
+  });
+
+  it('waves: two enemies, runs tagged with the wave number', () => {
+    recorded.length = 0;
+    const s = createDodgeArenaSession({
+      stages: waveStages(),
+      startIndex: 1,
+      world: 'flat',
+      comfort: COMFORT,
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    let steps = 0;
+    while (recorded.length === 0 && steps < 60 * 60) {
+      s.step(IDLE, FIXED_DT); // stand still: the hunters come to her
+      steps += 1;
+    }
+    expect(recorded[0]).toMatchObject({ enemyId: 'duelist', wave: 2, cleared: false });
+  });
+
+  /** Walk into the enemy until the stage fails; returns the session. */
+  function failOnce() {
+    recorded.length = 0;
+    const started: number[] = [];
+    const failed: number[] = [];
+    const s = createDodgeArenaSession({
+      stages: rosterStages(),
+      startIndex: 1,
+      world: 'colosseum',
+      comfort: COMFORT,
+      onStageStarted: (i) => started.push(i),
+      onStageFailed: (i) => failed.push(i),
+    });
+    let steps = 0;
+    while (recorded.length === 0 && steps < 60 * 30) {
+      s.step(press({ right: true }), FIXED_DT);
+      steps += 1;
+    }
+    expect(recorded).toHaveLength(1);
+    return { s, started, failed };
+  }
+
+  /** What the HUD says, captured from a stub context. */
+  function hudText(s: ReturnType<typeof createDodgeArenaSession>): string {
+    const lines: string[] = [];
+    const ctx = new Proxy({} as CanvasRenderingContext2D, {
+      get: (_t, prop) =>
+        prop === 'fillText'
+          ? (text: string) => {
+              lines.push(text);
+            }
+          : () => undefined,
+      set: () => true,
+    });
+    s.render(ctx, 1);
+    return lines.join(' | ');
+  }
+
+  it('a Z pressed inside the death hit-stop does not restart the stage', () => {
+    const { s } = failOnce();
+    expect(hudText(s)).toContain('Got you.');
+    // FEEDBACK.playerHit.hitStop = 0.15 s = 9 frozen steps; press on the 2nd.
+    for (let i = 0; i < 9; i++) s.step(press({ jumpPressed: i === 1 }), FIXED_DT);
+    s.step(IDLE, FIXED_DT);
+    expect(hudText(s)).toContain('Got you.');
+    // A fresh press after the freeze restarts it.
+    s.step(press({ jumpPressed: true }), FIXED_DT);
+    expect(hudText(s)).not.toContain('Got you.');
+  });
+
+  it('tells the page every time a stage starts, and every time one is failed', () => {
+    const { s, started, failed } = failOnce();
+    expect(started).toEqual([1]); // once at construction
+    expect(failed).toEqual([1]);
+    for (let i = 0; i < 10; i++) s.step(IDLE, FIXED_DT);
+    s.step(press({ jumpPressed: true }), FIXED_DT);
+    expect(started).toEqual([1, 1]); // the same stage again
+  });
+
+  it('replaying from the top after the last clear tells the page it is on stage 0', () => {
+    const started: number[] = [];
+    const s = createDodgeArenaSession({
+      stages: quick(2),
+      startIndex: 1,
+      world: 'flat',
+      comfort: COMFORT,
+      onStageStarted: (i) => started.push(i),
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    expect(started).toEqual([1]);
+    s.step(press({ jumpPressed: true }), FIXED_DT);
+    expect(started).toEqual([1, 0]);
+  });
+
+  it('observe mode never fails into the progression either', () => {
+    recorded.length = 0;
+    const failed: number[] = [];
+    const s = createDodgeArenaSession({
+      stages: rosterStages(),
+      world: 'colosseum',
+      comfort: COMFORT,
+      observe: true,
+      onStageFailed: (i) => failed.push(i),
+    });
+    let steps = 0;
+    while (recorded.length === 0 && steps < 60 * 30) {
+      s.step(press({ right: true }), FIXED_DT);
+      steps += 1;
+    }
+    expect(recorded).toHaveLength(1);
+    expect(failed).toEqual([]);
+  });
+
+  it('the Knight spawns on open floor — a full jump from the spawn hits nothing', () => {
+    const apex = 240; // the full-jump apex is ~233 px; a little slack
+    const column = {
+      x: PLAYER_SPAWN_X - KNIGHT.hurtboxWidth / 2,
+      y: FLOOR_Y - apex,
+      width: KNIGHT.hurtboxWidth,
+      height: apex,
+    };
+    for (const kind of ['colosseum', 'flat'] as const) {
+      const overhead = arenaWorld(kind).solids.filter(
+        (b) =>
+          b.y + b.height <= FLOOR_Y &&
+          b.x < column.x + column.width &&
+          b.x + b.width > column.x &&
+          b.y < column.y + column.height &&
+          b.y + b.height > column.y,
+      );
+      expect(overhead).toEqual([]);
+    }
+    // And the enemies still spawn on the far side from her.
+    expect(PLAYER_SPAWN_X).toBeLessThan(CANVAS.width / 2);
+  });
+
+  it('observe mode never clears and never reports', () => {
+    recorded.length = 0;
+    const cleared: number[] = [];
+    const s = createDodgeArenaSession({
+      stages: quick(1),
+      world: 'colosseum',
+      comfort: COMFORT,
+      observe: true,
+      onStageCleared: (i) => cleared.push(i),
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    expect(cleared).toEqual([]);
+    expect(recorded).toHaveLength(0);
   });
 });

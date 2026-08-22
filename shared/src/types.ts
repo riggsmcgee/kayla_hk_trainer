@@ -50,6 +50,52 @@ export interface PracticeRun {
   durationMs: number;
   /** When the run began, as an ISO 8601 timestamp string. */
   startedAt: string;
+  /**
+   * Pogo course level (1–4). Levels 1–3 are the Bounce Bog; 4 is the
+   * finale's "put it all together" level. Runs recorded before levels
+   * existed have no value and are read as level 1.
+   */
+  level?: number;
+  /**
+   * Finale arena wave (1–3). Only set on 'dodge' runs played in the finale's
+   * wave mode; a plain Dodge Arena run (one enemy) leaves it unset.
+   */
+  wave?: number;
+  /**
+   * Did the run achieve its goal? Pogo: reached the goal flag. Dodge: the
+   * stage was passed — survived the full stage time AND landed the required
+   * hits. Pogo runs recorded before this field existed are read as cleared.
+   */
+  cleared?: boolean;
+}
+
+/** The one controller Kayla commits to in chapter 1 (Your Setup). */
+export type ControllerChoice = 'joycon' | 'leverless';
+
+/**
+ * Course progress, version 1 — what is DONE, as opposed to what was merely
+ * opened (the visited list) or recorded (runs). Stored in localStorage under
+ * its own key; the map, the gates and the chapter strip all derive from it.
+ */
+export interface ProgressV1 {
+  version: 1;
+  /** Her answer to "Which controller will you use?"; unset until answered. */
+  controller?: ControllerChoice;
+  /** Pogo course levels reached-the-goal at least once (1–3 in the Bounce Bog). */
+  courseLevelsCleared: number[];
+  /** Dodge Arena enemies whose stage has been passed (survive + required hits). */
+  arenaEnemiesCleared: EnemyId[];
+  /** The finale's pogo level (level 4) reached-the-goal at least once. */
+  finaleLevelCleared: boolean;
+  /** Finale arena waves passed (1–3). */
+  finaleWavesCleared: number[];
+  /**
+   * Things she chose to skip past rather than clear. Holds chapter ids
+   * ('pogo-course') or sub-keys ('pogo-course:level:2', 'finale:wave:2').
+   * A skipped thing counts as passed for unlocking what follows, but is
+   * drawn as unfinished on the map.
+   */
+  skipped: string[];
 }
 
 /**

@@ -1,15 +1,18 @@
-import { Link } from 'react-router';
+import { chapterById, chapterIndex } from '../chapters';
+import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
+import { ProveIt } from '../components/ProveIt';
 import { pogoRhythmDemo } from '../engine/demo';
-import { useMarkVisited } from '../storage/useChapterProgress';
 
 export function LessonPogo() {
-  useMarkVisited('pogo');
+  const chapter = chapterById('pogo');
   return (
-    <>
-      <p className="eyebrow">Chapter 2 · The Crossroads</p>
-      <h1>Pogo</h1>
+    <ChapterGate current="pogo">
+      <p className="eyebrow">
+        Chapter {chapterIndex('pogo')} · {chapter.place}
+      </p>
+      <h1>{chapter.title}</h1>
       <p className="lede">
         Kayla, the pogo — bouncing off things with a downward slash — is the one skill that changes
         how this game feels. Spikes become trampolines. Enemies become platforms.
@@ -41,8 +44,8 @@ export function LessonPogo() {
 
       <h2>Drills, in order</h2>
       <p>
-        Each is a lantern on the <Link to="/play/pogo">Pogo Course</Link>, so a miss costs seconds,
-        not the run:
+        These four are level 1 of the Pogo Course. Each is a lantern, so a miss costs seconds, not
+        the run:
       </p>
       <ol className="plain-list">
         <li>
@@ -61,7 +64,9 @@ export function LessonPogo() {
         </li>
       </ol>
 
+      <ProveIt current="pogo" />
+
       <ChapterNav current="pogo" />
-    </>
+    </ChapterGate>
   );
 }

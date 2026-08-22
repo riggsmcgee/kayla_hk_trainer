@@ -10,7 +10,13 @@
  */
 import { describe, expect, it } from 'vitest';
 import { FIXED_DT, KNIGHT, PHYSICS } from './constants';
-import { activeNailHitbox, createPlayer, respawnPlayer, stepPlayer } from './player';
+import {
+  activeNailHitbox,
+  applyPogoBounce,
+  createPlayer,
+  respawnPlayer,
+  stepPlayer,
+} from './player';
 import type { InputFrame, World } from './types';
 
 const FLOOR_Y = 600;
@@ -335,6 +341,53 @@ describe('coyote time and jump buffer', () => {
     const player = spawnGrounded(world);
     stepPlayer(player, frame({ jumpPressed: true, jumpHeld: true }), world, FIXED_DT);
     expect(player.coyoteTimer).toBe(0);
+  });
+});
+
+describe('applyPogoBounce', () => {
+  /** Airborne, mid-downslash, falling, with a live jump cut armed. */
+  function downslashing() {
+    const player = createPlayer(0, FLOOR_Y - 200);
+    player.nailDir = 'down';
+    player.pogoedThisSwing = false;
+    player.velocity.y = 300;
+    player.jumpCutArmed = true;
+    player.airDashAvailable = false;
+    return player;
+  }
+
+  it('applies the bounce and reports it', () => {
+    const player = downslashing();
+    expect(applyPogoBounce(player)).toBe(true);
+    expect(player.velocity.y).toBe(-PHYSICS.pogoVelocity);
+    expect(player.pogoPinElapsed).toBe(0);
+    expect(player.pogoedThisSwing).toBe(true);
+    expect(player.jumpPinElapsed).toBe(-1);
+    expect(player.jumpCutArmed).toBe(false);
+    expect(player.airDashAvailable).toBe(true);
+    expect(player.totalPogos).toBe(1);
+  });
+
+  it('bounces at most once per swing', () => {
+    const player = downslashing();
+    applyPogoBounce(player);
+    player.velocity.y = 0;
+    expect(applyPogoBounce(player)).toBe(false);
+    expect(player.velocity.y).toBe(0);
+    expect(player.totalPogos).toBe(1);
+  });
+
+  it.each([
+    ['grounded', (p: ReturnType<typeof createPlayer>) => void (p.grounded = true)],
+    ['dashing', (p: ReturnType<typeof createPlayer>) => void (p.dashTimer = 0.1)],
+    ['side slash', (p: ReturnType<typeof createPlayer>) => void (p.nailDir = 'side')],
+    ['up slash', (p: ReturnType<typeof createPlayer>) => void (p.nailDir = 'up')],
+  ])('refuses without side effects when %s', (_label, arrange) => {
+    const player = downslashing();
+    arrange(player);
+    const before = JSON.stringify(player);
+    expect(applyPogoBounce(player)).toBe(false);
+    expect(JSON.stringify(player)).toBe(before);
   });
 });
 

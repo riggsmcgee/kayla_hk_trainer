@@ -168,6 +168,28 @@ function overlaps(a: AABB, b: AABB): boolean {
 }
 
 /**
+ * The pogo bounce itself, for any surface the downslash has just connected
+ * with — a course orb in stepPlayer, or an enemy in the arena on the very
+ * contact that deals the damage (playtest 2: a killing blow bounces too).
+ * Returns false and touches nothing when a bounce must not happen: already
+ * bounced this swing, mid-dash (the dash owns the vertical axis; HK's dash
+ * and bounce are mutually exclusive), grounded, or not a downslash.
+ */
+export function applyPogoBounce(p: Player): boolean {
+  if (p.pogoedThisSwing || p.dashTimer > TIME_EPS || p.grounded || p.nailDir !== 'down') {
+    return false;
+  }
+  p.pogoedThisSwing = true;
+  p.pogoPinElapsed = 0;
+  p.velocity.y = -PHYSICS.pogoVelocity;
+  p.jumpPinElapsed = -1;
+  p.jumpCutArmed = false; // a bounce is not a jump: release can't cut it
+  p.airDashAvailable = true; // every pogo refreshes the dash, like HK
+  p.totalPogos += 1;
+  return true;
+}
+
+/**
  * Advance the player by one fixed step. Velocity is SET, never ramped —
  * instant accel/decel with full air control is the core of the HK feel.
  */
@@ -281,15 +303,7 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
     const nail = activeNailHitbox(p);
     if (nail) {
       for (const target of world.pogoables) {
-        if (!overlaps(nail, target)) continue;
-        p.pogoedThisSwing = true;
-        p.pogoPinElapsed = 0;
-        p.velocity.y = -PHYSICS.pogoVelocity;
-        p.jumpPinElapsed = -1;
-        p.jumpCutArmed = false; // a bounce is not a jump: release can't cut it
-        p.airDashAvailable = true; // every pogo refreshes the dash, like HK
-        p.totalPogos += 1;
-        break;
+        if (overlaps(nail, target) && applyPogoBounce(p)) break;
       }
     }
   }

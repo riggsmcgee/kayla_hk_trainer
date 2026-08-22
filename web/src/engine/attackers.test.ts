@@ -13,6 +13,7 @@ import {
   ATTACKS,
   createEnemy,
   enemyAttackHitbox,
+  enemyBox,
   resolveNailHit,
   stepEnemy,
   stepProjectile,
@@ -110,6 +111,40 @@ describe('duelist', () => {
     expect(resolveNailHit(player, duelist, true)).toBe('hit');
     expect(duelist.hp).toBe(ENEMIES.duelist.hp - 1);
   });
+
+  // Playtest 2: it hunts — marches in from anywhere, stalks once near, and
+  // keeps closing while its cooldown runs, so backing off buys time, not safety.
+  describe('hunting', () => {
+    it('marches in from across the whole arena, then stalks the last stretch', () => {
+      const A = ATTACKS.duelist;
+      expect(A.marchSpeed).toBeGreaterThan(A.approachSpeed);
+      const w = world();
+      const duelist = createEnemy('duelist', 1000, FLOOR_Y);
+      const t = targetAt(100, FLOOR_Y); // 900 px away
+      let x0 = duelist.position.x;
+      run(duelist, w, 60, t);
+      expect(x0 - duelist.position.x).toBeCloseTo(A.marchSpeed, 0);
+      expect(duelist.phase).toBe('idle');
+      duelist.position.x = 100 + A.stalkRange - 10;
+      x0 = duelist.position.x;
+      run(duelist, w, 60, t);
+      expect(x0 - duelist.position.x).toBeCloseTo(A.approachSpeed, 0);
+    });
+
+    it('keeps closing while on cooldown, down to a stand-off inside the trigger range', () => {
+      const w = world();
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      duelist.cooldownTimer = 5; // just attacked; cannot be provoked yet
+      const t = targetAt(450, FLOOR_Y); // inside the trigger range
+      run(duelist, w, 60, t);
+      expect(duelist.phase).toBe('idle');
+      expect(duelist.position.x).toBeLessThan(600 - 30); // it came closer anyway
+      run(duelist, w, 240, t);
+      // ...but stops short of walking into her.
+      expect(duelist.position.x - 450).toBeCloseTo(ATTACKS.duelist.standOff, 0);
+      expect(duelist.phase).toBe('idle');
+    });
+  });
 });
 
 describe('spitter', () => {
@@ -149,6 +184,75 @@ describe('spitter', () => {
     const x0 = spitter.position.x;
     run(spitter, w, 30, crowding);
     expect(spitter.position.x).toBeGreaterThan(x0); // fled right, away from the player
+  });
+
+  // Playtest 2: it hunts — a tighter preferred range, an altitude that
+  // follows her height band, and a back-off slower than the close-in.
+  describe('hunting', () => {
+    it('closes to its preferred range from across the arena (it holds still to spit)', () => {
+      const w = world();
+      const spitter = createEnemy('spitter', 1000, 430);
+      const t = targetAt(100, FLOOR_Y);
+      run(spitter, w, Math.ceil(20 / FIXED_DT), t);
+      const A = ATTACKS.spitter;
+      expect(A.preferredRange).toBeLessThanOrEqual(240);
+      expect(Math.abs(spitter.position.x - 100)).toBeLessThanOrEqual(A.preferredRange + A.rangeSlack);
+    });
+
+    it('backs off slower than it closes in, so the net motion is inward', () => {
+      const A = ATTACKS.spitter;
+      expect(A.backOffSpeed).toBeLessThan(A.strafeSpeed);
+      const w = world();
+      const far = createEnemy('spitter', 900, 430); // outside the band: closes in
+      const crowded = createEnemy('spitter', 500, 430); // inside it: backs off
+      const t = targetAt(480, FLOOR_Y);
+      run(far, w, 30, t);
+      run(crowded, w, 30, t);
+      expect(900 - far.position.x).toBeCloseTo(A.strafeSpeed / 2, 0);
+      expect(crowded.position.x - 500).toBeCloseTo(A.backOffSpeed / 2, 0);
+    });
+
+    it('comes down to her height band so a slash can reach it', () => {
+      const w = world();
+      const spitter = createEnemy('spitter', 700, 300); // well above nail reach
+      const t = targetAt(400, FLOOR_Y);
+      run(spitter, w, 600, t);
+      // A side slash spans feet-56 .. feet+8; an upslash reaches 128 px above the feet.
+      const box = enemyBox(spitter);
+      expect(box.y + box.height).toBeGreaterThan(FLOOR_Y - 128);
+      expect(box.y).toBeLessThan(FLOOR_Y + 8);
+      expect(box.y + box.height).toBeLessThanOrEqual(FLOOR_Y); // still airborne, never in the floor
+    });
+
+    it('rises with her when she stands on a platform', () => {
+      const w: World = {
+        solids: [
+          { x: -2000, y: FLOOR_Y, width: 6000, height: 200 },
+          { x: 190, y: FLOOR_Y - 130, width: 140, height: 18 },
+        ],
+      };
+      const spitter = createEnemy('spitter', 700, FLOOR_Y - 44);
+      run(spitter, w, 600, targetAt(260, FLOOR_Y - 130, true));
+      expect(spitter.position.y).toBeLessThan(FLOOR_Y - 130);
+    });
+
+    it('caught right under her ledge, it gets round it and up — never stuck in it', () => {
+      const ledge = { x: 190, y: FLOOR_Y - 130, width: 140, height: 18 };
+      const w: World = { solids: [{ x: -2000, y: FLOOR_Y, width: 6000, height: 200 }, ledge] };
+      const spitter = createEnemy('spitter', 260, FLOOR_Y - 10);
+      const t = targetAt(260, FLOOR_Y - 130, true);
+      for (let i = 0; i < 600; i++) {
+        stepEnemy(spitter, w, FIXED_DT, t);
+        const box = enemyBox(spitter);
+        const inLedge =
+          box.x < ledge.x + ledge.width &&
+          box.x + box.width > ledge.x &&
+          box.y < ledge.y + ledge.height &&
+          box.y + box.height > ledge.y;
+        expect(inLedge).toBe(false);
+      }
+      expect(spitter.position.y).toBeLessThan(FLOOR_Y - 130);
+    });
   });
 });
 
@@ -366,6 +470,26 @@ describe('warden', () => {
       run(warden, w, Math.ceil(3 / FIXED_DT), targetAt(100, FLOOR_Y));
       expect(warden.phase).toBe('idle');
       expect(warden.attackKind).toBeNull();
+    });
+  });
+
+  // Playtest 2: it hunts — marches across the arena, then slows to its
+  // deliberate stalk once it is close enough to square up.
+  describe('hunting', () => {
+    it('marches in from across the whole arena, then stalks the last stretch', () => {
+      const A = ATTACKS.warden;
+      expect(A.marchSpeed).toBeGreaterThan(A.approachSpeed);
+      const w = world();
+      const warden = createEnemy('warden', 1100, FLOOR_Y);
+      const t = targetAt(100, FLOOR_Y); // 1000 px away
+      let x0 = warden.position.x;
+      run(warden, w, 60, t);
+      expect(x0 - warden.position.x).toBeCloseTo(A.marchSpeed, 0);
+      // Bring it to the stalk zone and measure a second there.
+      warden.position.x = 100 + A.stalkRange - 10;
+      x0 = warden.position.x;
+      run(warden, w, 60, t);
+      expect(x0 - warden.position.x).toBeCloseTo(A.approachSpeed, 0);
     });
   });
 

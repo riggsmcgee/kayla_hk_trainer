@@ -1,19 +1,25 @@
 /**
- * Dodge Arena state machine (M3). Pure logic, session-agnostic.
+ * Dodge Arena state machine (M3, multi-enemy since playtest 2). Pure logic,
+ * session-agnostic.
  *
  * The mode's whole philosophy in one rule: the run ends on the FIRST hit
- * you take. Score = clean nail hits landed. Observe mode disarms the nail
- * (no damage, no score — just a flash showing where a hit WOULD land) so
- * the only thing left to practice is watching and not getting hit.
+ * you take — from ANY enemy's body, attack or projectile. Score = clean nail
+ * hits landed, counted across every enemy in the arena (one per swing per
+ * enemy). Observe mode disarms the nail (no damage, no score — just a flash
+ * showing where a hit WOULD land) so the only thing left to practice is
+ * watching and not getting hit.
+ *
+ * Whether the run PASSES (survive the time AND land the hits) is the stage
+ * rule in stages.ts; this file only says what touched what.
  */
 
-import { activeNailHitbox, playerHurtbox } from './player';
+import { activeNailHitbox, applyPogoBounce, playerHurtbox } from './player';
 import type { Player } from './player';
 import { enemyAttackHitbox, enemyBox, resolveNailHit } from './enemies';
 import type { Enemy, Projectile } from './enemies';
 import type { AABB } from './types';
 
-/** Seconds between a kill and the next enemy appearing. */
+/** Seconds between a kill and that enemy appearing again. */
 export const RESPAWN_DELAY = 1.4;
 
 export interface ArenaState {
@@ -22,18 +28,27 @@ export interface ArenaState {
   over: boolean;
   /** Run clock in seconds; frozen when the run ends. */
   elapsed: number;
+  /** Clean nail hits landed, across every enemy. */
   hitsLanded: number;
   observe: boolean;
-  /** Counts down after a kill; at zero the session spawns a fresh enemy. */
-  respawnTimer: number;
+  /**
+   * Per-enemy countdown after a kill, indexed like the enemies array the
+   * session passes to stepArena; at zero the session spawns a fresh enemy
+   * in that slot. Missing entries read as zero (a live enemy).
+   */
+  respawnTimers: number[];
 }
 
 export interface ArenaEvents {
   playerHit: boolean;
+  /** At least one clean hit landed this step. */
   nailLanded: boolean;
+  /** How many clean hits landed this step (a swing can pass through two bodies). */
+  hits: number;
+  /** At least one enemy died this step. */
   enemyDied: boolean;
-  /** The respawn delay just expired — replace the dead enemy now. */
-  respawnEnemy: boolean;
+  /** Indices of enemies whose respawn delay just expired — replace them now. */
+  respawn: number[];
 }
 
 export function createArenaState(observe: boolean): ArenaState {
@@ -43,7 +58,7 @@ export function createArenaState(observe: boolean): ArenaState {
     elapsed: 0,
     hitsLanded: 0,
     observe,
-    respawnTimer: 0,
+    respawnTimers: [],
   };
 }
 
@@ -71,15 +86,16 @@ function projectileBox(p: Projectile): AABB {
 export function stepArena(
   state: ArenaState,
   player: Player,
-  enemy: Enemy,
+  enemies: readonly Enemy[],
   dt: number,
   projectiles: Projectile[] = [],
 ): ArenaEvents {
   const events: ArenaEvents = {
     playerHit: false,
     nailLanded: false,
+    hits: 0,
     enemyDied: false,
-    respawnEnemy: false,
+    respawn: [],
   };
   if (state.over) return events;
 
@@ -106,34 +122,46 @@ export function stepArena(
     }
   }
 
-  // Respawn countdown after a kill.
-  if (enemy.dead) {
-    state.respawnTimer -= dt;
-    if (state.respawnTimer <= 0) events.respawnEnemy = true;
-    return events; // a dead enemy neither hurts nor takes hits
-  }
-
-  // Nail contact — resolveNailHit dedupes per swing and handles the
-  // warden's block + riposte; lethal only outside observe mode.
-  if (nail && overlaps(nail, enemyBox(enemy))) {
-    const result = resolveNailHit(player, enemy, !state.observe);
-    if (result === 'hit' && !state.observe) {
-      events.nailLanded = true;
-      state.hitsLanded += 1;
-      if (enemy.dead) {
-        events.enemyDied = true;
-        state.respawnTimer = RESPAWN_DELAY;
-      }
+  enemies.forEach((enemy, i) => {
+    // Respawn countdown after a kill — each slot on its own clock.
+    if (enemy.dead) {
+      const left = (state.respawnTimers[i] ?? 0) - dt;
+      state.respawnTimers[i] = left;
+      if (left <= 0) events.respawn.push(i);
+      return; // a dead enemy neither hurts nor takes hits
     }
-  }
 
-  // An active attack (lunge, swipe, riposte) that catches the body, or
-  // plain contact — either way, the run ends. The first hit is the lesson.
-  const attack = enemyAttackHitbox(enemy);
-  if ((attack && overlaps(hurtbox, attack)) || overlaps(hurtbox, enemyBox(enemy))) {
-    state.over = true;
-    events.playerHit = true;
-  }
+    // Nail contact — resolveNailHit dedupes per swing per enemy and handles
+    // the warden's block + riposte; lethal only outside observe mode.
+    if (nail && overlaps(nail, enemyBox(enemy))) {
+      const result = resolveNailHit(player, enemy, !state.observe);
+      if (result === 'hit' && !state.observe) {
+        events.nailLanded = true;
+        events.hits += 1;
+        state.hitsLanded += 1;
+        if (enemy.dead) {
+          events.enemyDied = true;
+          state.respawnTimers[i] = RESPAWN_DELAY;
+        }
+      }
+      // The bounce rides the SAME contact as the damage (playtest 2, note 2):
+      // a killing blow bounces, a blocked overhead hit bounces off the shield,
+      // a feather nail in observe mode still bounces. This is the only place
+      // an enemy acts as a pogo surface — the session never lists them in
+      // world.pogoables, so there is exactly one contact check. The bounce
+      // dedupes itself per swing, so two bodies under one downslash give
+      // two hits and one bounce.
+      applyPogoBounce(player);
+    }
+
+    // An active attack (lunge, swipe, riposte) that catches the body, or
+    // plain contact — either way, the run ends. The first hit is the lesson.
+    const attack = enemyAttackHitbox(enemy);
+    if ((attack && overlaps(hurtbox, attack)) || overlaps(hurtbox, enemyBox(enemy))) {
+      state.over = true;
+      events.playerHit = true;
+    }
+  });
 
   return events;
 }

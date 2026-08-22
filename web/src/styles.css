@@ -39,6 +39,17 @@ body {
   padding: 0;
 }
 
+/*
+ * Type scale. Every size below is in rem, so this one line is the dial:
+ * 112.5% of the browser default = 18 px (playtest 2: "try 18 pixels").
+ * A percentage rather than a px value so Kayla's own browser font-size
+ * preference still scales the whole site. The fine print has a floor of
+ * 0.85rem (~15 px); edge text she actually reads sits at 0.92–0.95rem (~17 px).
+ */
+html {
+  font-size: 112.5%;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -81,7 +92,8 @@ body {
 
 .site-nav {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   margin-left: auto;
 }
 
@@ -90,6 +102,8 @@ body {
   text-decoration: none;
   padding-bottom: 2px;
   border-bottom: 1px solid transparent;
+  /* Four links on a phone: wrap between links, never inside "Pogo Course". */
+  white-space: nowrap;
 }
 
 .site-nav a:hover {
@@ -110,9 +124,10 @@ body {
   padding: 2rem 1.5rem 3rem;
 }
 
+/* Headings: trimmed a touch from 1.9 / 2.1rem so they stay ~the same px at the 18 px root. */
 h1 {
   font-family: var(--font-display);
-  font-size: 1.9rem;
+  font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.2;
   margin: 0 0 0.75rem;
@@ -142,12 +157,19 @@ a {
 
 .muted {
   color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* Generic fine print — a caption, a footnote, a "remove before final build". */
+.fine-print {
+  font-size: 0.9rem;
+  color: var(--text-dim);
 }
 
 /* The chapter label above a title: "Chapter 2 · The Crossroads". */
 .eyebrow {
   font-family: var(--font-display);
-  font-size: 0.8rem;
+  font-size: 0.92rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gold);
@@ -203,7 +225,10 @@ a {
 }
 
 .home-hero {
-  font-size: 2.1rem;
+  /* Sits beside a 30rem map: at ~1000 px wide the hero column is ~360 px, so
+     this is as big as "Kayla, it starts at the well." can go and still break
+     onto two lines in Cinzel. */
+  font-size: 1.85rem;
 }
 
 .next-sign {
@@ -267,7 +292,7 @@ a {
   margin: 0 0 1rem;
   padding: 0;
   list-style: none;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   color: var(--text-dim);
 }
 
@@ -289,7 +314,7 @@ a {
 .signature {
   font-style: italic;
   color: var(--text-dim);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
 }
 
 /* the map itself */
@@ -544,7 +569,10 @@ a {
   margin-top: 0.35rem;
   text-align: center;
   line-height: 1.2;
-  max-width: min(10rem, 38vw);
+  /* Wide enough for "Kbug's Colosseum" on one line at 0.92rem Cinzel; the
+     stops sit at 28–72% of the map's width, so a 13rem label centred on the
+     outermost stop still clears the map's edge. */
+  max-width: min(13rem, 44vw);
   text-shadow:
     0 0 6px var(--bg-deep),
     0 0 2px var(--bg-deep);
@@ -552,7 +580,7 @@ a {
 
 .map-place {
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-size: 0.92rem;
   letter-spacing: 0.08em;
   color: var(--text-dim);
 }
@@ -651,22 +679,77 @@ a {
 
 .stop-place {
   font-family: var(--font-display);
-  font-size: 0.7rem;
+  font-size: 0.92rem;
   letter-spacing: 0.08em;
 }
 
 .stop-title {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
 }
 
-.stop-current a {
+/* "You are here": the selector matches `.chapter-strip .stop a` above, or that
+   rule's --text-dim would win on specificity; bold as well, so it isn't
+   colour alone. */
+.chapter-strip .stop-current a {
   color: var(--accent-strong);
 }
 
+.chapter-strip .stop-current .stop-title {
+  font-weight: 600;
+}
+
+/*
+ * "Next stop" under the strip. Laid out as a wrapping row so a label and a
+ * real .button sit side by side with breathing room, and drop onto two
+ * lines on a narrow screen instead of squeezing. Keep any prose in one
+ * element (a <span>) — each child is a flex item with the gap between.
+ */
 .chapter-next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.6rem;
   color: var(--text-dim);
   font-size: 0.95rem;
+  margin: 0.25rem 0 0;
+}
+
+.chapter-next .button {
   margin: 0;
+}
+
+/*
+ * Dev tools — a <details> block for the enemy picker / observe toggle that
+ * stay around for development and come out of the final build. Dashed and
+ * dim on purpose, so it reads as scaffolding, not as part of the dojo.
+ */
+.dev-tools {
+  margin: 1.5rem 0 0;
+  padding: 0.5rem 1rem 0.6rem;
+  border: 1px dashed var(--rock);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.dev-tools > summary {
+  cursor: pointer;
+  font-variant-caps: small-caps;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.dev-tools > summary:hover {
+  color: var(--text);
+}
+
+.dev-tools[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
+.dev-tools .arena-controls {
+  margin-top: 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -751,9 +834,16 @@ a {
   stroke-width: 0.8;
 }
 
+/*
+ * SVG text is in viewBox units, scaled by the card's width — the 18 px root
+ * (playtest 2, note 7) never reaches it. Sized so the callouts she reads
+ * clear ~15 px on a laptop (1024 px wide: ≈16.6 px callouts). The Joy-Con's
+ * button letters sit in r=3.8 discs and can't go much bigger; the leverless
+ * discs (r=12) have room.
+ */
 .cd .cd-label {
   font-family: var(--font-body);
-  font-size: 6.5px;
+  font-size: 7.5px;
   font-weight: 700;
   fill: var(--text);
   dominant-baseline: middle;
@@ -766,9 +856,13 @@ a {
   stroke-dasharray: 2 1.5;
 }
 
+.cd-leverless .cd-label {
+  font-size: 9px;
+}
+
 .cd .cd-callout text {
   font-family: var(--font-body);
-  font-size: 9px;
+  font-size: 10.5px;
   fill: var(--gold);
   dominant-baseline: middle;
 }
@@ -881,7 +975,7 @@ a {
 }
 
 .canvas-note {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--text-dim);
   margin-top: 0.5rem;
 }
@@ -908,7 +1002,7 @@ a {
   margin: 0.75rem 0 1.25rem;
   padding: 0;
   list-style: none;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: var(--text-dim);
 }
 
@@ -936,7 +1030,7 @@ a {
 .site-footer {
   border-top: 1px solid var(--rule);
   padding: 1rem 1.5rem;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   color: var(--text-dim);
 }
 

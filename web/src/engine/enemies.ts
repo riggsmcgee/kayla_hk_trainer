@@ -31,11 +31,33 @@ export type AttackKind = 'lunge' | 'antiair' | 'volley' | 'riposte' | 'bash';
 export type ShieldDir = 'front' | 'up';
 
 /**
- * Attack tuning beyond the research-sourced ENEMIES table. Everything here
- * is estimated (the warden has no HK analog at all); telegraph durations
- * come from ENEMIES[id].telegraph.
+ * Attack and hunting tuning beyond the research-sourced ENEMIES table.
+ * Everything here is estimated (the warden has no HK analog at all);
+ * telegraph durations come from ENEMIES[id].telegraph.
+ *
+ * Playtest 2: every enemy HUNTS — the arena has no safe corner. The hunt
+ * speeds are set so that any enemy reaches a Knight standing still on the
+ * far side of the Colosseum inside ten seconds (enemies.test.ts pins it).
  */
 export const ATTACKS = {
+  walker: {
+    /** Walking at the Knight; patrol (no target) keeps ENEMIES.walker.speed. */
+    chaseSpeed: 100,
+    /** Don't flip every frame when it's right under her — pace a little. */
+    turnSlack: 12,
+  },
+  flier: {
+    /**
+     * Its bobbing home point drifts toward the Knight's chest this fast —
+     * the Vengefly's chase speed from the research table. Playtest 2 asked
+     * for ~70, but with the 7 s bob period anything under ~125 leaves the
+     * far corner unreached after 10 s (measured against the property test).
+     */
+    huntSpeed: ENEMIES.flier.speed ?? 150,
+    /** Lissajous amplitudes: wide sweeps through her, a shallow rise and fall. */
+    bobX: 80,
+    bobY: 26,
+  },
   duelist: {
     /** Ground approach inside this range provokes the lunge. */
     triggerRange: 190,
@@ -48,8 +70,18 @@ export const ATTACKS = {
     antiAirRecovery: 0.55,
     /** Pause after recovery before it can be provoked again. */
     cooldown: 0.6,
-    /** Idle drift toward the player, forcing engagement. */
+    /**
+     * Idle closing speed inside stalkRange — cooldown or not. Playtest 2
+     * asked for ~80, but the anti-air lesson demo's 2.8 s cycle is cut to
+     * this pace: anything over ~50 lets a ground lunge wear its captions.
+     * So the stalk stays slow and the hunt is the march.
+     */
     approachSpeed: 45,
+    /** Beyond stalkRange it marches — no corner of the arena is out of reach. */
+    marchSpeed: 100,
+    stalkRange: 300,
+    /** It closes no nearer than this while waiting to be provoked. */
+    standOff: 100,
   },
   spitter: {
     volleyEvery: 2.5,
@@ -59,13 +91,25 @@ export const ATTACKS = {
     activeTime: 0.12,
     recovery: 0.8,
     /** It maneuvers to hold roughly this horizontal distance. */
-    preferredRange: 320,
+    preferredRange: 220,
     rangeSlack: 50,
+    /** Closing in. */
     strafeSpeed: 80,
+    /** Backing off when crowded — slower than closing, so the net drift is inward. */
+    backOffSpeed: 45,
+    /** It hovers with its feet this far above hers: inside a side slash and an upslash. */
+    hoverAbove: 44,
+    /** Altitude adjustment speed. */
+    climbSpeed: 80,
     sightRange: 700,
   },
   warden: {
-    approachSpeed: 32,
+    /** The deliberate stalk once it's near enough to square up. */
+    approachSpeed: 60,
+    /** Further out it marches — no corner of the arena is out of its reach. */
+    marchSpeed: 130,
+    /** Inside this horizontal distance it slows from the march to the stalk. */
+    stalkRange: 240,
     riposteActive: 0.35,
     riposteSpeed: 220,
     riposteRecovery: 0.9,
@@ -106,7 +150,7 @@ export interface Enemy extends EnemyState {
   blockFlashTimer: number;
   /** The last player swing that landed — one hit per swing. */
   lastHitSwingId: number;
-  /** Flier/spitter: fixed home point for altitude/bobbing. */
+  /** Flier/spitter: the home point the body bobs around; it drifts toward the Knight. */
   home: Vec2;
   /** Phase clock driving deterministic drift/flapping. */
   bobPhase: number;
@@ -176,34 +220,176 @@ function solidAt(world: World, x: number, y: number): boolean {
   );
 }
 
-/** Ground pacer: walk, turn at walls and at ledge edges. */
-function stepWalker(e: Enemy, world: World, dt: number): void {
-  const speed = ENEMIES.walker.speed ?? 80;
+/** The feet-anchored body box this enemy would have at (x, y). */
+function bodyAt(id: EnemyId, x: number, y: number): AABB {
+  const size = ENEMY_SIZES[id];
+  return { x: x - size.width / 2, y: y - size.height, width: size.width, height: size.height };
+}
+
+/** The first solid this box is strictly inside, if any — touching a surface is not being inside it. */
+function blockerOf(world: World, box: AABB): AABB | null {
+  for (const s of world.solids) {
+    if (
+      box.x < s.x + s.width &&
+      box.x + box.width > s.x &&
+      box.y < s.y + s.height &&
+      box.y + box.height > s.y
+    ) {
+      return s;
+    }
+  }
+  return null;
+}
+
+function insideSolid(world: World, box: AABB): boolean {
+  return blockerOf(world, box) !== null;
+}
+
+/** Chest height above the feet — where the fliers aim themselves and their shots. */
+const CHEST = 24;
+
+/** Can the walker step that way — floor under its toes and no wall in its face? */
+function footingAhead(e: Enemy, world: World, dir: 1 | -1): boolean {
   const size = ENEMY_SIZES.walker;
-  const aheadX = e.position.x + e.facing * (size.width / 2 + 2);
+  const aheadX = e.position.x + dir * (size.width / 2 + 2);
   const wallAhead = solidAt(world, aheadX, e.position.y - size.height / 2);
   const groundAhead = solidAt(world, aheadX, e.position.y + 6);
-  if (wallAhead || !groundAhead) {
+  return !wallAhead && groundAhead;
+}
+
+/**
+ * Ground pacer: walks at the Knight when it can see her, patrols when it
+ * can't. Either way it turns at walls and at ledge edges — with her up on
+ * a platform it paces beneath her rather than walking off.
+ */
+function stepWalker(e: Enemy, world: World, dt: number, t: Target | undefined): void {
+  const speed = t ? ATTACKS.walker.chaseSpeed : (ENEMIES.walker.speed ?? 80);
+  if (t) {
+    const dx = t.position.x - e.position.x;
+    if (Math.abs(dx) > ATTACKS.walker.turnSlack) {
+      const toward: 1 | -1 = dx >= 0 ? 1 : -1;
+      if (toward !== e.facing && footingAhead(e, world, toward)) e.facing = toward;
+    }
+  }
+  if (!footingAhead(e, world, e.facing)) {
     e.facing = (e.facing * -1) as 1 | -1;
   }
   e.velocity.x = e.facing * speed;
   e.position.x += e.velocity.x * dt;
 }
 
+/** How fast an airborne body may move per axis to keep up with where it wants to be. */
+const FLY_FOLLOW_SPEED = 260;
+
 /**
- * Drifting dummy: a deterministic Lissajous bob around its home point.
- * No RNG — the same session replays identically (lesson demos rely on it).
+ * Farthest a blocked airborne body will sidestep to get round what blocks
+ * it. Covers a ledge (140 wide, 18 tall); never a wall or the floor, which
+ * it simply presses against.
  */
-function stepFlier(e: Enemy, world: World, dt: number): void {
-  void world;
+const SIDESTEP_REACH = 160;
+
+/**
+ * Pick the nearer of two sidestep targets the body could actually occupy —
+ * preferring the one on the side `want` lies — or null when both are out of
+ * reach (a wall, the floor) or themselves inside something.
+ */
+function pickSidestep(
+  here: number,
+  want: number,
+  lo: number,
+  hi: number,
+  freeAt: (v: number) => boolean,
+): number | null {
+  const order = want <= lo ? [lo, hi] : want >= hi ? [hi, lo] : here - lo < hi - here ? [lo, hi] : [hi, lo];
+  for (const v of order) {
+    if (Math.abs(v - here) <= SIDESTEP_REACH && freeAt(v)) return v;
+  }
+  return null;
+}
+
+/**
+ * Move an airborne body toward `want`, one axis at a time, never into a
+ * solid. An axis blocked by geometry the body wants to be clear of — the
+ * ledge between it and the Knight standing on top — makes the OTHER axis
+ * sidestep round the blocker's nearer edge instead of tracking `want`, so
+ * nothing hovers forever under a platform. A blocked axis whose `want` is
+ * merely grazing the surface (a bob dipping into the floor) simply waits.
+ * (A body somehow already inside geometry is let out rather than pinned.)
+ */
+function flyToward(e: Enemy, world: World, want: Vec2, dt: number): void {
+  const size = ENEMY_SIZES[e.id];
+  const cap = FLY_FOLLOW_SPEED * dt;
+  const clamp = (v: number): number => Math.max(-cap, Math.min(cap, v));
+  const { x, y } = e.position;
+  const free = !insideSolid(world, bodyAt(e.id, x, y));
+
+  let gx = want.x;
+  let gy = want.y;
+  if (free) {
+    // Is `want` genuinely past this solid's height band — not a bob grazing its surface?
+    const wantBeyond = (s: AABB): boolean =>
+      want.y <= s.y || want.y - size.height >= s.y + s.height;
+    const blockX = blockerOf(world, bodyAt(e.id, x + clamp(want.x - x), y));
+    const blockY = blockerOf(world, bodyAt(e.id, x, y + clamp(want.y - y)));
+    // Up or down round whatever stops the sideways move.
+    if (blockX && wantBeyond(blockX)) {
+      const above = blockX.y;
+      const below = blockX.y + blockX.height + size.height;
+      gy =
+        pickSidestep(y, want.y, above, below, (v) => !insideSolid(world, bodyAt(e.id, x, v))) ??
+        want.y;
+    }
+    // Left or right round whatever stops the vertical move.
+    if (blockY && wantBeyond(blockY)) {
+      const left = blockY.x - size.width / 2;
+      const right = blockY.x + blockY.width + size.width / 2;
+      gx =
+        pickSidestep(x, want.x, left, right, (v) => !insideSolid(world, bodyAt(e.id, v, y))) ??
+        want.x;
+    }
+  }
+
+  const nx = x + clamp(gx - x);
+  if (!free || !insideSolid(world, bodyAt(e.id, nx, y))) e.position.x = nx;
+  const ny = y + clamp(gy - y);
+  if (!free || !insideSolid(world, bodyAt(e.id, e.position.x, ny))) e.position.y = ny;
+}
+
+/**
+ * Steer an airborne enemy's home point straight toward `goal` at `speed`.
+ * The home is invisible and its goal is always open air (the Knight's chest
+ * or the band above her feet), so it ignores geometry; the body that bobs
+ * around it is what flyToward keeps out of the walls and round the ledges.
+ */
+function steerHome(e: Enemy, goal: Vec2, speed: number, dt: number): void {
+  const dx = goal.x - e.home.x;
+  const dy = goal.y - e.home.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 1e-6) return;
+  const step = Math.min(dist, speed * dt);
+  e.home.x += (dx / dist) * step;
+  e.home.y += (dy / dist) * step;
+}
+
+/**
+ * Drifting dummy: a deterministic Lissajous bob around its home point — and
+ * the home point hunts, drifting toward the Knight's chest. No RNG — the
+ * same session replays identically (lesson demos rely on it).
+ */
+function stepFlier(e: Enemy, world: World, dt: number, t: Target | undefined): void {
   e.bobPhase += dt;
-  const t = e.bobPhase;
-  const nx = e.home.x + Math.sin(t * 0.9) * 80;
-  const ny = e.home.y + Math.sin(t * 1.7 + 1.2) * 34;
-  e.velocity.x = (nx - e.position.x) / dt;
-  e.facing = nx >= e.position.x ? 1 : -1;
-  e.position.x = nx;
-  e.position.y = ny;
+  if (t) {
+    steerHome(e, { x: t.position.x, y: t.position.y - CHEST }, ATTACKS.flier.huntSpeed, dt);
+  }
+  const ph = e.bobPhase;
+  const want: Vec2 = {
+    x: e.home.x + Math.sin(ph * 0.9) * ATTACKS.flier.bobX,
+    y: e.home.y + Math.sin(ph * 1.7 + 1.2) * ATTACKS.flier.bobY,
+  };
+  const x0 = e.position.x;
+  flyToward(e, world, want, dt);
+  e.velocity.x = (e.position.x - x0) / dt;
+  if (e.position.x !== x0) e.facing = e.position.x > x0 ? 1 : -1;
 }
 
 function setPhase(e: Enemy, phase: AttackPhase, seconds: number): void {
@@ -254,8 +440,10 @@ function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined):
         e.attackKind = 'lunge';
         e.lockedDir = dx >= 0 ? 1 : -1;
         setPhase(e, 'telegraph', telegraph);
-      } else if (adx < 420 && adx > A.triggerRange) {
-        drift(e, world, dx >= 0 ? 1 : -1, A.approachSpeed, dt);
+      } else if (adx > A.standOff) {
+        // Hunting: march from anywhere, stalk once near — cooldown or not.
+        const speed = adx > A.stalkRange ? A.marchSpeed : A.approachSpeed;
+        drift(e, world, dx >= 0 ? 1 : -1, speed, dt);
       }
       break;
     }
@@ -283,8 +471,31 @@ function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined):
 }
 
 /**
+ * Spitter hunting: hold the preferred range — closing in faster than it
+ * backs off, so the net drift is always inward — and hover in her height
+ * band so a slash can reach it. Moves the home point; the body follows in
+ * stepSpitter, which keeps it out of the geometry.
+ */
+function spitterManeuver(e: Enemy, t: Target, dt: number): void {
+  const A = ATTACKS.spitter;
+  const dx = t.position.x - e.position.x;
+  const adx = Math.abs(dx);
+  let vx = 0;
+  if (adx < A.preferredRange - A.rangeSlack) {
+    vx = (dx >= 0 ? -1 : 1) * A.backOffSpeed; // crowded: back off, slowly
+  } else if (adx > A.preferredRange + A.rangeSlack) {
+    vx = (dx >= 0 ? 1 : -1) * A.strafeSpeed; // close in
+  }
+  e.home.x += vx * dt;
+  const dy = t.position.y - A.hoverAbove - e.home.y;
+  e.home.y += Math.sign(dy) * Math.min(Math.abs(dy), A.climbSpeed * dt);
+}
+
+/**
  * Ranged spitter: holds distance, winds up, spits a 3-shot fan, and is wide
- * open in recovery — the window to close in and punish.
+ * open in recovery — the window to close in and punish. The brain runs the
+ * phases; the body then rides a small bob around the home point, never into
+ * geometry.
  */
 function stepSpitter(
   e: Enemy,
@@ -292,23 +503,24 @@ function stepSpitter(
   dt: number,
   t: Target | undefined,
 ): Projectile[] | null {
+  e.bobPhase += dt;
+  e.phaseTimer -= dt;
+  const shots = spitterPhases(e, dt, t);
+  const want: Vec2 = { x: e.home.x, y: e.home.y + Math.sin(e.bobPhase * 2.2) * 10 };
+  flyToward(e, world, want, dt);
+  return shots;
+}
+
+function spitterPhases(e: Enemy, dt: number, t: Target | undefined): Projectile[] | null {
   const A = ATTACKS.spitter;
   const telegraph = ENEMIES.spitter.telegraph ?? 0.5;
-  e.bobPhase += dt;
-  e.position.y = e.home.y + Math.sin(e.bobPhase * 2.2) * 10;
-  e.phaseTimer -= dt;
   switch (e.phase) {
     case 'idle': {
       e.cooldownTimer = Math.max(0, e.cooldownTimer - dt);
       if (!t) return null;
       faceTarget(e, t);
-      const dx = t.position.x - e.position.x;
-      const adx = Math.abs(dx);
-      if (adx < A.preferredRange - A.rangeSlack) {
-        drift(e, world, dx >= 0 ? -1 : 1, A.strafeSpeed, dt); // back off
-      } else if (adx > A.preferredRange + A.rangeSlack && adx < A.sightRange) {
-        drift(e, world, dx >= 0 ? 1 : -1, A.strafeSpeed, dt); // close in
-      }
+      spitterManeuver(e, t, dt);
+      const adx = Math.abs(t.position.x - e.position.x);
       if (e.cooldownTimer <= 0 && adx < A.sightRange) {
         e.attackKind = 'volley';
         setPhase(e, 'telegraph', telegraph);
@@ -325,7 +537,7 @@ function stepSpitter(
             x: e.position.x + e.facing * 10,
             y: e.position.y - size.height / 2,
           };
-          const aim = Math.atan2(t.position.y - 24 - mouth.y, t.position.x - mouth.x);
+          const aim = Math.atan2(t.position.y - CHEST - mouth.y, t.position.x - mouth.x);
           const spread = (A.spreadDeg * Math.PI) / 180;
           const shots: Projectile[] = [];
           for (let i = 0; i < A.shots; i++) {
@@ -403,8 +615,10 @@ function stepWarden(e: Enemy, world: World, dt: number, t: Target | undefined): 
       faceTarget(e, t);
       const dx = t.position.x - e.position.x;
       const adx = Math.abs(dx);
-      if (adx > 60 && adx < 520) {
-        drift(e, world, dx >= 0 ? 1 : -1, A.approachSpeed, dt);
+      // Hunting: march from anywhere, stalk once it's close enough to square up.
+      if (adx > 60) {
+        const speed = adx > A.stalkRange ? A.marchSpeed : A.approachSpeed;
+        drift(e, world, dx >= 0 ? 1 : -1, speed, dt);
       }
       // Lingering in front — on the ground or hopping — draws the bash.
       const dy = e.position.y - t.position.y;
@@ -448,8 +662,9 @@ function stepWarden(e: Enemy, world: World, dt: number, t: Target | undefined): 
 }
 
 /**
- * Advance one enemy by one step. Attackers need to see the player (`target`);
- * the dummies ignore it. Returns projectiles spawned this step, if any.
+ * Advance one enemy by one step. Every enemy hunts the player (`target`)
+ * when it can see one; without a target the dummies patrol and the
+ * attackers hold still. Returns projectiles spawned this step, if any.
  */
 export function stepEnemy(
   e: Enemy,
@@ -462,10 +677,10 @@ export function stepEnemy(
   if (e.dead) return null;
   switch (e.id) {
     case 'walker':
-      stepWalker(e, world, dt);
+      stepWalker(e, world, dt, target);
       return null;
     case 'flier':
-      stepFlier(e, world, dt);
+      stepFlier(e, world, dt, target);
       return null;
     case 'duelist':
       stepDuelist(e, world, dt, target);

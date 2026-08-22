@@ -7,10 +7,23 @@
  * take one nail hit per swing, die at 0 hp.
  */
 import { describe, expect, it } from 'vitest';
-import { ENEMIES, FIXED_DT } from './constants';
-import { applyNailHit, createEnemy, enemyBox, stepEnemy } from './enemies';
-import { createPlayer } from './player';
-import type { World } from './types';
+import type { EnemyId } from '@dojo/shared';
+import { CANVAS, ENEMIES, FIXED_DT } from './constants';
+import { arenaWorld, spawnX } from './dodgeArenaSession';
+import {
+  ATTACKS,
+  applyNailHit,
+  createEnemy,
+  enemyAttackHitbox,
+  enemyBox,
+  stepEnemy,
+  stepProjectile,
+  type Enemy,
+  type Projectile,
+  type Target,
+} from './enemies';
+import { createPlayer, playerHurtbox } from './player';
+import type { AABB, World } from './types';
 
 const FLOOR_Y = 600;
 
@@ -112,3 +125,218 @@ describe('enemyBox', () => {
     expect(box.x + box.width / 2).toBe(200);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Playtest 2 — "every enemy hunts her": no corner of the arena is safe.
+// ---------------------------------------------------------------------------
+
+function overlaps(a: AABB, b: AABB): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/** The Colosseum she actually plays in — the session's own geometry, not a mirror. */
+function colosseum(): World {
+  return arenaWorld('colosseum');
+}
+
+/** The finale's flat arena: floor and walls, no ledges. */
+function flatArena(): World {
+  return arenaWorld('flat');
+}
+
+const ROSTER: EnemyId[] = ['walker', 'flier', 'duelist', 'spitter', 'warden'];
+const AIRBORNE = new Set<EnemyId>(['flier', 'spitter']);
+/** Hugging the left wall, dead centre, hugging the right wall (the hurtbox is 18 px wide). */
+const GROUND_SPOTS: Array<[number, number]> = [
+  [30, FLOOR_Y],
+  [CANVAS.width / 2, FLOOR_Y],
+  [CANVAS.width - 30, FLOOR_Y],
+];
+const LEDGE_SPOTS: Array<[number, number]> = [
+  [260, FLOOR_Y - 130],
+  [908, FLOOR_Y - 130],
+];
+
+/** Spawn where the session would: the far side of the arena at the enemy's normal height. */
+function spawnFarFrom(id: EnemyId, playerX: number): Enemy {
+  return createEnemy(id, spawnX(0, playerX), AIRBORNE.has(id) ? 430 : FLOOR_Y);
+}
+
+interface Hunt {
+  /** Steps until something of the enemy's touched the Knight, or -1. */
+  hitAt: number;
+  /** Closest horizontal approach over the run. */
+  minAdx: number;
+  /** Steps on which the enemy's body sat inside world geometry. */
+  stuckSteps: number;
+}
+
+/** Ten simulated seconds of one enemy hunting a Knight who never moves. */
+function hunt(id: EnemyId, spot: [number, number], world: World, seconds = 10): Hunt {
+  const player = createPlayer(spot[0], spot[1]);
+  player.grounded = true;
+  const target: Target = { position: player.position, grounded: true };
+  const hurt = playerHurtbox(player);
+  const e = spawnFarFrom(id, spot[0]);
+  let shots: Projectile[] = [];
+  let hitAt = -1;
+  let minAdx = Number.POSITIVE_INFINITY;
+  let stuckSteps = 0;
+  const steps = Math.round(seconds / FIXED_DT);
+  for (let i = 0; i < steps; i++) {
+    const spawned = stepEnemy(e, world, FIXED_DT, target);
+    if (spawned) shots.push(...spawned);
+    for (const s of shots) stepProjectile(s, world, FIXED_DT);
+    const body = enemyBox(e);
+    if (world.solids.some((s) => overlaps(body, s))) stuckSteps++;
+    minAdx = Math.min(minAdx, Math.abs(e.position.x - player.position.x));
+    const attack = enemyAttackHitbox(e);
+    const shotHit = shots.some(
+      (s) =>
+        !s.dead &&
+        overlaps(hurt, {
+          x: s.position.x - s.radius,
+          y: s.position.y - s.radius,
+          width: s.radius * 2,
+          height: s.radius * 2,
+        }),
+    );
+    if (hitAt < 0 && (overlaps(body, hurt) || (attack && overlaps(attack, hurt)) || shotHit)) {
+      hitAt = i;
+    }
+    shots = shots.filter((s) => !s.dead);
+  }
+  return { hitAt, minAdx, stuckSteps };
+}
+
+describe('hunting — no safe corner (playtest 2)', () => {
+  describe.each(ROSTER)('%s', (id) => {
+    it.each(GROUND_SPOTS)(
+      'reaches a Knight standing still at (%i, %i) in the Colosseum within 10 s',
+      (x, y) => {
+        const h = hunt(id, [x, y], colosseum());
+        expect(h.stuckSteps).toBe(0);
+        expect(h.hitAt).toBeGreaterThanOrEqual(0);
+      },
+    );
+
+    it.each(GROUND_SPOTS)(
+      'reaches a Knight standing still at (%i, %i) in the flat finale arena within 10 s',
+      (x, y) => {
+        const h = hunt(id, [x, y], flatArena());
+        expect(h.stuckSteps).toBe(0);
+        expect(h.hitAt).toBeGreaterThanOrEqual(0);
+      },
+    );
+
+    // Ledges: the fliers reach her; the ground enemies can't climb, so they
+    // pace directly beneath her — a ledge is a pause, never a hiding place.
+    it.each(LEDGE_SPOTS)('hunts a Knight perched on the ledge at (%i, %i)', (x, y) => {
+      const h = hunt(id, [x, y], colosseum());
+      expect(h.stuckSteps).toBe(0);
+      if (AIRBORNE.has(id)) {
+        expect(h.hitAt).toBeGreaterThanOrEqual(0);
+      } else {
+        expect(h.minAdx).toBeLessThanOrEqual(130);
+      }
+    });
+  });
+});
+
+describe('walker hunting', () => {
+  it('turns toward the Knight and walks at her', () => {
+    const world = ledgeWorld();
+    const walker = createEnemy('walker', 100, FLOOR_Y);
+    walker.facing = -1; // looking away
+    const t: Target = { position: { x: 350, y: FLOOR_Y }, grounded: true };
+    const x0 = walker.position.x;
+    for (let i = 0; i < 60; i++) stepEnemy(walker, world, FIXED_DT, t);
+    expect(walker.facing).toBe(1);
+    expect(walker.position.x - x0).toBeCloseTo(ATTACKS.walker.chaseSpeed, 0);
+  });
+
+  it('will not walk off a ledge edge chasing a Knight beyond it', () => {
+    const world = ledgeWorld(); // slab ends at x = 400
+    const walker = createEnemy('walker', 300, FLOOR_Y);
+    const t: Target = { position: { x: 700, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 300; i++) {
+      stepEnemy(walker, world, FIXED_DT, t);
+      expect(walker.position.x).toBeLessThan(400);
+      expect(walker.position.x).toBeGreaterThan(0);
+    }
+  });
+
+  it('paces beneath a Knight standing on a platform above it', () => {
+    const world = colosseum();
+    const walker = createEnemy('walker', 700, FLOOR_Y);
+    const t: Target = { position: { x: 260, y: FLOOR_Y - 130 }, grounded: true };
+    for (let i = 0; i < 600; i++) stepEnemy(walker, world, FIXED_DT, t);
+    expect(Math.abs(walker.position.x - 260)).toBeLessThan(40);
+    expect(walker.position.y).toBe(FLOOR_Y); // never climbed, never sank
+  });
+});
+
+describe('flier hunting', () => {
+  it('drifts its home toward the Knight at the hunt speed, still bobbing deterministically', () => {
+    const world = flatArena();
+    const a = createEnemy('flier', 900, 430);
+    const b = createEnemy('flier', 900, 430);
+    const t: Target = { position: { x: 100, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 60; i++) {
+      stepEnemy(a, world, FIXED_DT, t);
+      stepEnemy(b, world, FIXED_DT, t);
+    }
+    expect(Math.hypot(a.home.x - 900, a.home.y - 430)).toBeCloseTo(ATTACKS.flier.huntSpeed, 0);
+    expect(a.home.x).toBeLessThan(900);
+    expect(a.position).toEqual(b.position); // no RNG
+  });
+
+  it('never sinks into the floor while diving at a grounded Knight', () => {
+    const world = flatArena();
+    const flier = createEnemy('flier', 300, 430);
+    const t: Target = { position: { x: 320, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 900; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      expect(flier.position.y).toBeLessThanOrEqual(FLOOR_Y);
+    }
+  });
+
+  it('a bob grazing the floor makes it wait, not wander off sideways', () => {
+    // The sidestep is for ledges: the floor's edges are out of reach.
+    const world = flatArena();
+    const flier = createEnemy('flier', 640, 430);
+    const t: Target = { position: { x: 640, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 1200; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      expect(Math.abs(flier.position.x - 640)).toBeLessThanOrEqual(ATTACKS.flier.bobX + 1);
+    }
+  });
+
+  it('is blocked by a ledge, not pinned: from above it, it still reaches a Knight beneath', () => {
+    const world = colosseum();
+    const flier = createEnemy('flier', 908, 430); // over the right ledge
+    const player = createPlayer(908, FLOOR_Y); // standing right under it
+    const t: Target = { position: player.position, grounded: true };
+    let hit = false;
+    for (let i = 0; i < 600 && !hit; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      expect(overlaps(enemyBox(flier), world.solids[4]!)).toBe(false);
+      hit = overlaps(enemyBox(flier), playerHurtbox(player));
+    }
+    expect(hit).toBe(true);
+  });
+
+  it('goes around a ledge instead of waiting underneath a Knight standing on it', () => {
+    const world = colosseum();
+    const flier = createEnemy('flier', 260, FLOOR_Y - 10); // directly beneath the left ledge
+    const player = createPlayer(260, FLOOR_Y - 130);
+    const t: Target = { position: player.position, grounded: true };
+    let hit = false;
+    for (let i = 0; i < 600 && !hit; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      hit = overlaps(enemyBox(flier), playerHurtbox(player));
+    }
+    expect(hit).toBe(true);
+  });
+});
+

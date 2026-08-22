@@ -1,28 +1,49 @@
 /**
- * The chapter strip: the map's path, flattened into a row, shown on every
+ * The chapter strip: the map's road, flattened into a row, shown on every
  * chapter page so Kayla always knows where she is and what's next. The
  * sequence is real (PLAN §6 teaching order), which is why it's numbered.
+ *
+ * Each stop is drawn in the same state the map draws it — done (lit, full),
+ * visited / skipped (unfinished), locked (faded) — from storage/progress.ts,
+ * so the two can never disagree. "Next stop →" is a real button (playtest 2,
+ * note 7).
  */
 import { Link } from 'react-router';
-import { CHAPTERS, nextChapter, type ChapterId } from '../chapters';
-import { useLitChapters } from '../storage/useChapterProgress';
+import { CHAPTERS, countWord, nextChapter, type ChapterId } from '../chapters';
+import type { ChapterState } from '../storage/progress';
+import { useMapProgress } from '../storage/useChapterProgress';
+import '../styles/gates.css';
 
 interface ChapterNavProps {
   current: ChapterId;
+  /** The "Next stop →" button under the strip; a gated page hides it (its gate has the right button). */
+  showNext?: boolean;
 }
 
-export function ChapterNav({ current }: ChapterNavProps) {
-  const lit = useLitChapters();
+const STATE_SR: Partial<Record<ChapterState, string>> = {
+  done: ', done',
+  skipped: ', skipped',
+  locked: ', locked',
+};
+
+export function ChapterNav({ current, showNext = true }: ChapterNavProps) {
+  const { states } = useMapProgress();
   const next = nextChapter(current);
   return (
     <nav className="chapter-nav" aria-label="Chapters">
       <ol className="chapter-strip">
         {CHAPTERS.map((c, i) => {
           const isCurrent = c.id === current;
-          const isLit = lit.has(c.id) || isCurrent;
-          const cls = ['stop', isCurrent ? 'stop-current' : '', isLit ? 'stop-lit' : '']
+          const state = states[c.id];
+          const cls = [
+            'stop',
+            `stop-${state}`,
+            isCurrent ? 'stop-current' : '',
+            state === 'done' ? 'stop-lit' : '',
+          ]
             .filter(Boolean)
             .join(' ');
+          const sr = STATE_SR[state];
           return (
             <li key={c.id} className={cls}>
               <Link to={c.route} aria-current={isCurrent ? 'page' : undefined}>
@@ -37,23 +58,26 @@ export function ChapterNav({ current }: ChapterNavProps) {
                     {i + 1}. {c.place}
                   </span>
                   <span className="stop-title">{c.title}</span>
-                  {isLit && !isCurrent && <span className="sr-only">, done</span>}
+                  {sr && <span className="sr-only">{sr}</span>}
                 </span>
               </Link>
             </li>
           );
         })}
       </ol>
-      {next ? (
+      {!showNext ? null : next ? (
         <p className="chapter-next">
-          Next stop:{' '}
-          <Link to={next.route}>
-            {next.place} — {next.title}
+          <Link className="button" to={next.route}>
+            Next stop → {next.place}
           </Link>
+          <span className="chapter-next-title">{next.title}</span>
         </p>
       ) : (
         <p className="chapter-next">
-          That’s the whole map. <Link to="/">Back to the start</Link> and go again.
+          <span>
+            That’s the whole map — {countWord(CHAPTERS.length)} stops.{' '}
+            <Link to="/">Back to the start</Link> and go again.
+          </span>
         </p>
       )}
     </nav>
