@@ -514,10 +514,50 @@ function drawSpitter(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bo
 }
 
 /**
+ * The skyward windup, as one signed number across the 0.5 s telegraph.
+ *
+ * Positive is LOADED (crushed down under the shield), negative is THROWN
+ * (extended). Three beats, and each one is doing a job:
+ *
+ *  - **the snap.** It opens at 0.35, not at 0. A windup that eases from zero
+ *    makes its first frames identical to the pose it interrupts — and the
+ *    pose it interrupts here is "shield held overhead", which is exactly what
+ *    she was already looking at when she rang it. He has just been hit; he
+ *    reacts on the frame, not a tenth of a second later.
+ *  - **the hold.** Full load at 0.66 (0.33 s), then dead still until 0.84.
+ *    Motion, motion, stop — the stop lands about one reaction time before the
+ *    column, and it is the beat that says "now". Every other tell in this game
+ *    is a single held pose, so this one is the only one that can offer it.
+ *  - **the throw.** 0.84 → 1.0 runs 1 → −1, so he is already extending as the
+ *    column arrives and the two read as one motion rather than two events.
+ */
+function skywardLoad(k: number): number {
+  if (k < 0.66) return 0.35 + 0.65 * Math.sin((k / 0.66) * (Math.PI / 2));
+  if (k < 0.84) return 1;
+  return 1 - 2 * ((k - 0.84) / 0.16);
+}
+
+/**
  * Shield warden: broad figure behind a slab of shield. The shield is drawn
  * where it actually blocks — across the front, or flat over the head when
  * it has re-aimed upward — so the open side is visible. Telegraph raises
  * it, active (riposte/bash) throws it forward, recovery drops it low.
+ *
+ * The skyward is the exception, and playtest 3 caught why: its telegraph used
+ * to draw the slab at exactly the idle-overhead position, so for half a second
+ * he was pixel-for-pixel a warden simply holding his shield up, and then a
+ * 170×194 column appeared out of nothing. It now COILS — see `skywardLoad` —
+ * with the slab anchored to the coiling body instead of to the constant `h`,
+ * so the shield rides his skull down and then climbs off it.
+ *
+ * Two things it deliberately does NOT do. It never rotates the slab off flat
+ * or moves it out from overhead: `shieldCovers` still blocks an overhead hit
+ * all through the telegraph, so a shield drawn anywhere else would be the art
+ * lying about a live rule. And it draws no ghost of the column — `COLORS.slash`
+ * means "this is live and will hurt you now" in all three places the renderer
+ * uses it, and a preview would spend that promise on something that is not yet
+ * true. What the column needs her to know is that the danger starts at his head
+ * and goes up; the shield climbing off his crown says that with his own body.
  */
 function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, body: string): void {
   const size = ENEMY_SIZES.warden;
@@ -527,25 +567,42 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
   const bash = enemy.attackKind === 'bash';
   const skyward = enemy.attackKind === 'skyward';
 
-  // Body: a stout rounded slab; hunches for the bash telegraph.
-  const hunch = enemy.phase === 'telegraph' && bash ? 0.9 : 1;
-  const lean = enemy.phase === 'active' ? enemy.lockedDir * (bash ? 8 : 5) : 0;
+  // The skyward windup: loaded through the tell, held extended while the
+  // column is live so the strike carries on out of the coil.
+  const load = !skyward
+    ? 0
+    : enemy.phase === 'telegraph'
+      ? skywardLoad(phaseProgress(enemy, A.skywardTell))
+      : enemy.phase === 'active'
+        ? -1
+        : 0;
+
+  // Body: a stout rounded slab; hunches for the bash telegraph, and squashes
+  // and springs for the skyward. Volume-conserving, like the Knight's own
+  // squash/stretch: 0.84 × 1.19 ≈ 1.
+  const hunch = (enemy.phase === 'telegraph' && bash ? 0.9 : 1) * (1 - 0.16 * load);
+  const spread = 1 + 0.19 * load;
+  // No sideways lurch on the skyward: it is a purely vertical strike, and a
+  // lean would point at a direction the column does not go.
+  const lean = enemy.phase === 'active' && !skyward ? enemy.lockedDir * (bash ? 8 : 5) : 0;
+  const bodyTop = feet.y - h * hunch;
   ctx.fillStyle = body;
   ctx.beginPath();
-  ctx.moveTo(feet.x - w * 0.32, feet.y);
+  ctx.moveTo(feet.x - w * 0.32 * spread, feet.y);
+  ctx.quadraticCurveTo(feet.x - w * 0.38 * spread + lean, bodyTop, feet.x + lean, bodyTop);
   ctx.quadraticCurveTo(
-    feet.x - w * 0.38 + lean,
-    feet.y - h * hunch,
-    feet.x + lean,
-    feet.y - h * hunch,
+    feet.x + w * 0.38 * spread + lean,
+    bodyTop,
+    feet.x + w * 0.32 * spread,
+    feet.y,
   );
-  ctx.quadraticCurveTo(feet.x + w * 0.38 + lean, feet.y - h * hunch, feet.x + w * 0.32, feet.y);
   ctx.closePath();
   ctx.fill();
-  // Eye.
+  // Eye. It rides up in the head as he loads — the same cue the duelist's
+  // anti-air uses to say "it is you up there he is answering".
   ctx.fillStyle = COLORS.enemyDetail;
   ctx.beginPath();
-  ctx.arc(feet.x + enemy.facing * 6 + lean, feet.y - h * hunch + 12, 3, 0, Math.PI * 2);
+  ctx.arc(feet.x + enemy.facing * 6 + lean, bodyTop + 12 - 4 * load, 3, 0, Math.PI * 2);
   ctx.fill();
 
   const flash = enemy.blockFlashTimer > 0;
@@ -564,11 +621,25 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
       4,
     );
   } else if (skyward && (enemy.phase === 'telegraph' || enemy.phase === 'active')) {
-    // Committed upward: the shield rises with the column and the front is
-    // bare the whole time (playtest 3, note 4).
+    // Committed upward: the front is bare the whole time (playtest 3, note 4).
+    //
+    // The slab hangs off `bodyTop` — the COILING body — not off the constant
+    // `h`. That one anchor is what turns a held prop into a windup: as he
+    // crushes down the shield sinks with him and presses onto his skull, and
+    // when he throws it climbs off the crown, opening a widening band of
+    // empty background between head and shield. Nothing else in the game
+    // makes that shape, which is what lets it mean "up" on its own.
+    //
+    // `gap` is 12 at rest, so load 0 reproduces the idle-overhead slab
+    // exactly and the non-skyward paths are untouched.
     const k = enemy.phase === 'active' ? phaseProgress(enemy, A.skywardActive) : 0;
     const slabW = w + 14;
-    ctx.roundRect(feet.x - slabW / 2, feet.y - h - 12 - k * 10, slabW, sw, 4);
+    const gap = 12 - 9 * load;
+    // On the throw only, it slides a little toward where the column will
+    // stand — behind his facing (`skywardBack`), which is the one actionable
+    // fact in the whole attack: the danger is behind him, so run forward.
+    const drift = -enemy.lockedDir * 6 * Math.max(0, -load);
+    ctx.roundRect(feet.x - slabW / 2 + drift, bodyTop - gap - k * 10, slabW, sw, 4);
   } else if (enemy.phase === 'telegraph' || enemy.phase === 'active') {
     // Raised high (telegraph) then thrown forward (active).
     const k =
