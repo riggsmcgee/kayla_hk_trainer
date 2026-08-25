@@ -4,7 +4,7 @@
  * juice pass. Colors mirror the site palette in styles.css.
  */
 
-import { KNIGHT, PHYSICS } from './constants';
+import { ENEMIES, KNIGHT, PHYSICS } from './constants';
 import type { Mover } from './course';
 import { moverBox } from './course';
 import type { Enemy, Projectile } from './enemies';
@@ -343,7 +343,13 @@ export function drawEnemy(
   }
 
   // Gold rim during recovery: the punish window, spelled out in color.
-  if (!enemy.dead && enemy.phase === 'recovery') {
+  //
+  // Never on the Bills. Gold means "hit it NOW" everywhere else on this site,
+  // including in the lesson copy that teaches the colour, and neither Bill can
+  // be hit at all — so a rim around Bill stuck at the wall would be the
+  // picture telling her to do the one thing that does nothing. His stuck
+  // second is read from the pose instead (renderBillMan's "stuck").
+  if (!enemy.dead && enemy.phase === 'recovery' && !ENEMIES[enemy.id].invulnerable) {
     const size2 = ENEMY_SIZES[enemy.id];
     ctx.strokeStyle = COLORS.punishGold;
     ctx.lineWidth = 2;

@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnemyId } from '@dojo/shared';
 import { ENEMIES } from './constants';
 import { ATTACKS, createEnemy, type AttackKind, type Enemy } from './enemies';
-import { drawEnemy } from './render';
+import { COLORS, drawEnemy } from './render';
 
 const FLOOR_Y = 600;
 
@@ -150,6 +150,35 @@ describe("the warden's skyward tell", () => {
     }).join('\n');
     for (const elapsed of [0, 0.125, 0.25, 0.375, 0.49]) {
       expect(tellPose(c, elapsed).join('\n')).not.toBe(shieldUpIdle);
+    }
+  });
+});
+
+describe('the punish rim is only ever drawn on something punishable', () => {
+  const RIM_STROKE = 'strokeStyle=' + COLORS.punishGold;
+
+  it('rims a recovering warden — gold is the whole lesson', () => {
+    const ops = paint('warden', (e) => {
+      e.phase = 'recovery';
+      e.attackKind = 'riposte';
+      e.phaseTimer = 0.5;
+    });
+    expect(ops).toContain(RIM_STROKE);
+  });
+
+  it('never rims a Bill, because neither of them can be punished', () => {
+    // Gold means "hit it NOW" everywhere else on this site, including in the
+    // lesson copy that teaches the colour. On a boss whose whole rule is that
+    // the nail does nothing, a rim would be the picture contradicting the
+    // fight. Bill's stuck second reads from his pose instead.
+    for (const id of ['bill', 'dog'] as const) {
+      const ops = paint(id, (e) => {
+        e.phase = 'recovery';
+        e.attackKind = id === 'bill' ? 'lance' : 'bones';
+        e.phaseTimer = 0.5;
+      });
+      expect(ops).not.toContain(RIM_STROKE);
+      expect(ops.length).toBeGreaterThan(0);
     }
   });
 });
