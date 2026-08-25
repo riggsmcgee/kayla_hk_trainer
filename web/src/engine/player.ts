@@ -244,7 +244,13 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
   if (dashing) {
     p.velocity.x = p.dashDir * PHYSICS.dashSpeed;
     p.velocity.y = 0;
-    p.dashTimer = Math.max(0, p.dashTimer - dt);
+    // Snap at the epsilon, not at zero. 15 steps of 1/60 taken off 0.25 leave
+    // 4.9e-17, which is NOT > TIME_EPS — so without the snap this branch never
+    // runs again, the value is pinned there until the next dash, and
+    // drawKnight's `dashTimer > 0` streak follows her forever (playtest 3,
+    // note 5). Every other timer is decremented unconditionally further down.
+    const left = p.dashTimer - dt;
+    p.dashTimer = left <= TIME_EPS ? 0 : left;
   } else if (p.pogoPinElapsed >= 0) {
     // Pinned pogo rise: not hold-dependent — always the full 0.25 s unless
     // a dash or head bump interrupts it. The epsilon keeps the 15-step pin

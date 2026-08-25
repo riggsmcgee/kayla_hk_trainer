@@ -459,6 +459,31 @@ describe('collision', () => {
 });
 
 describe('dash', () => {
+  it('lands the dash timer on exactly zero, so the streak stops (playtest 3, note 5)', () => {
+    const world = flatWorld();
+    const player = spawnGrounded(world);
+    stepPlayer(player, frame({ dashPressed: true }), world, FIXED_DT);
+    const dashSteps = Math.round(PHYSICS.dashDuration / FIXED_DT);
+    steps(player, world, dashSteps - 1, frame());
+    // toBe, never toBeCloseTo: the bug this pins IS a value too small to see
+    // (4.9e-17), and drawKnight gates the streak on `dashTimer > 0`.
+    expect(player.dashTimer).toBe(0);
+  });
+
+  it('keeps the dash exactly as long as it was, so the snap costs no frame', () => {
+    const world = flatWorld();
+    const player = spawnGrounded(world);
+    stepPlayer(player, frame({ dashPressed: true }), world, FIXED_DT);
+    const dashSteps = Math.round(PHYSICS.dashDuration / FIXED_DT);
+    steps(player, world, dashSteps - 2, frame());
+    // Step 15 of 15 is still the dash...
+    stepPlayer(player, frame(), world, FIXED_DT);
+    expect(player.velocity.x).toBe(PHYSICS.dashSpeed);
+    // ...and step 16 is not.
+    stepPlayer(player, frame(), world, FIXED_DT);
+    expect(player.velocity.x).not.toBe(PHYSICS.dashSpeed);
+  });
+
   it('stays grounded through a ground dash (feet never leave the floor)', () => {
     const world = flatWorld();
     const player = spawnGrounded(world);
