@@ -70,7 +70,8 @@ const CODE_PATTERN = /^[A-Za-z][A-Za-z0-9]{0,31}$/;
  */
 export function bindingsFromSettings(settings: SettingsV1): Record<Action, string[]> {
   const stored: unknown = settings.inputBindings;
-  const table = stored !== null && typeof stored === 'object' ? (stored as Record<string, unknown>) : {};
+  const table =
+    stored !== null && typeof stored === 'object' ? (stored as Record<string, unknown>) : {};
   const out = {} as Record<Action, string[]>;
   for (const action of ACTIONS) {
     const raw = table[action];
@@ -174,6 +175,27 @@ export function createKeyboardInput(bindings: Bindings = DEFAULT_BINDINGS): Keyb
     },
     isGameKey: (code) => table.has(code),
   };
+}
+
+/**
+ * Did the player touch anything at all this frame? Used by the overlays that
+ * say "press any key" — a ready screen, a demo skip, a boss card.
+ *
+ * Deliberately broader than the pogo course's start-the-clock check, which
+ * excludes up/down/jumpHeld so holding DOWN cannot start a run. Do not unify
+ * the two: one asks 'is she there?', the other 'has the run begun?'.
+ */
+export function anyInput(f: InputFrame): boolean {
+  return (
+    f.left ||
+    f.right ||
+    f.up ||
+    f.down ||
+    f.jumpHeld ||
+    f.jumpPressed ||
+    f.attackPressed ||
+    f.dashPressed
+  );
 }
 
 /** True when the event targets a control that must keep its own keys. */

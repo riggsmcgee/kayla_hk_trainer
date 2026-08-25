@@ -10,6 +10,7 @@ import { moverBox } from './course';
 import type { Enemy, Projectile } from './enemies';
 import { ATTACKS, ENEMY_SIZES } from './enemies';
 import type { Player } from './player';
+import { drawBill, drawBillDog } from './renderBills';
 import type { AABB, Vec2, World } from './types';
 
 export const COLORS = {
@@ -42,6 +43,18 @@ export const COLORS = {
   /** Green = pokeable (destroyable projectiles), same language. */
   pokeGreen: '#9fd8a8',
   blockFlash: '#bcd9f7',
+  /**
+   * The boss pair breaks the palette on purpose — everything else in the
+   * arena is enemyBody grey, and Bill is a man in a white shirt with an
+   * orange foam finger. First and only place the colour language bends.
+   */
+  billSkin: '#e8c9a8',
+  billHair: '#6b4a32',
+  billShirt: '#f2f0ea',
+  billJeans: '#4a5f8a',
+  billShoe: '#2b2f3d',
+  foamOrange: '#f08a2c',
+  dogWhite: '#f4f2ec',
 } as const;
 
 export function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: number): void {
@@ -265,54 +278,68 @@ export function drawEnemy(
     ctx.stroke();
   }
 
-  if (enemy.id === 'walker') {
-    // Crawlid-ish: a low rounded shell with stubby legs and a forward eye.
-    const w = size.width;
-    const h = size.height;
-    ctx.fillStyle = body;
-    ctx.beginPath();
-    ctx.moveTo(feet.x - w / 2, feet.y - 3);
-    ctx.quadraticCurveTo(feet.x - w / 2, feet.y - h, feet.x, feet.y - h);
-    ctx.quadraticCurveTo(feet.x + w / 2, feet.y - h, feet.x + w / 2, feet.y - 3);
-    ctx.closePath();
-    ctx.fill();
-    // Legs: little nubs that alternate with movement.
-    const step = Math.sin(timeS * 14) * 2;
-    ctx.fillRect(feet.x - w * 0.3, feet.y - 4, 5, 4 + step);
-    ctx.fillRect(feet.x - 2, feet.y - 4, 5, 4 - step);
-    ctx.fillRect(feet.x + w * 0.3 - 4, feet.y - 4, 5, 4 + step);
-    // Eye toward facing.
-    ctx.fillStyle = COLORS.enemyDetail;
-    ctx.beginPath();
-    ctx.arc(feet.x + enemy.facing * (w / 2 - 9), feet.y - h + 9, 3, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (enemy.id === 'flier') {
-    // Vengefly-ish: round body, flapping wing triangles, one keen eye.
-    const r = size.width / 2;
-    const cy = feet.y - size.height / 2;
-    const flap = Math.sin(timeS * 18) * 10;
-    ctx.fillStyle = body;
-    for (const side of [-1, 1] as const) {
+  switch (enemy.id) {
+    case 'walker': {
+      // Crawlid-ish: a low rounded shell with stubby legs and a forward eye.
+      const w = size.width;
+      const h = size.height;
+      ctx.fillStyle = body;
       ctx.beginPath();
-      ctx.moveTo(feet.x + side * (r - 4), cy - 4);
-      ctx.lineTo(feet.x + side * (r + 16), cy - 12 - flap);
-      ctx.lineTo(feet.x + side * (r + 2), cy + 4);
+      ctx.moveTo(feet.x - w / 2, feet.y - 3);
+      ctx.quadraticCurveTo(feet.x - w / 2, feet.y - h, feet.x, feet.y - h);
+      ctx.quadraticCurveTo(feet.x + w / 2, feet.y - h, feet.x + w / 2, feet.y - 3);
       ctx.closePath();
       ctx.fill();
+      // Legs: little nubs that alternate with movement.
+      const step = Math.sin(timeS * 14) * 2;
+      ctx.fillRect(feet.x - w * 0.3, feet.y - 4, 5, 4 + step);
+      ctx.fillRect(feet.x - 2, feet.y - 4, 5, 4 - step);
+      ctx.fillRect(feet.x + w * 0.3 - 4, feet.y - 4, 5, 4 + step);
+      // Eye toward facing.
+      ctx.fillStyle = COLORS.enemyDetail;
+      ctx.beginPath();
+      ctx.arc(feet.x + enemy.facing * (w / 2 - 9), feet.y - h + 9, 3, 0, Math.PI * 2);
+      ctx.fill();
+      break;
     }
-    ctx.beginPath();
-    ctx.arc(feet.x, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = COLORS.enemyDetail;
-    ctx.beginPath();
-    ctx.arc(feet.x + enemy.facing * 5, cy - 2, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (enemy.id === 'duelist') {
-    drawDuelist(ctx, feet, enemy, body);
-  } else if (enemy.id === 'spitter') {
-    drawSpitter(ctx, feet, enemy, body);
-  } else {
-    drawWarden(ctx, feet, enemy, body);
+    case 'flier': {
+      // Vengefly-ish: round body, flapping wing triangles, one keen eye.
+      const r = size.width / 2;
+      const cy = feet.y - size.height / 2;
+      const flap = Math.sin(timeS * 18) * 10;
+      ctx.fillStyle = body;
+      for (const side of [-1, 1] as const) {
+        ctx.beginPath();
+        ctx.moveTo(feet.x + side * (r - 4), cy - 4);
+        ctx.lineTo(feet.x + side * (r + 16), cy - 12 - flap);
+        ctx.lineTo(feet.x + side * (r + 2), cy + 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(feet.x, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = COLORS.enemyDetail;
+      ctx.beginPath();
+      ctx.arc(feet.x + enemy.facing * 5, cy - 2, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case 'duelist':
+      drawDuelist(ctx, feet, enemy, body);
+      break;
+    case 'spitter':
+      drawSpitter(ctx, feet, enemy, body);
+      break;
+    case 'warden':
+      drawWarden(ctx, feet, enemy, body);
+      break;
+    case 'bill':
+      drawBill(ctx, feet, enemy);
+      break;
+    case 'dog':
+      drawBillDog(ctx, feet, enemy);
+      break;
   }
 
   // Gold rim during recovery: the punish window, spelled out in color.

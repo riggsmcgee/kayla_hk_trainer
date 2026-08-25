@@ -25,7 +25,26 @@ export interface Projectile {
   dead: boolean;
 }
 
-export type AttackKind = 'lunge' | 'antiair' | 'volley' | 'riposte' | 'bash';
+/**
+ * Every attack any enemy can be in the middle of. The union is complete up
+ * front — `enemyAttackHitbox`'s switch is exhaustive with no `default`, so a
+ * kind added later would break the build rather than silently draw nothing.
+ *
+ * duelist: lunge, antiair, leap · spitter: volley · warden: riposte, bash,
+ * skyward · bill: lance, swat · dog: bones, roll.
+ */
+export type AttackKind =
+  | 'lunge'
+  | 'antiair'
+  | 'leap'
+  | 'volley'
+  | 'riposte'
+  | 'bash'
+  | 'skyward'
+  | 'lance'
+  | 'swat'
+  | 'bones'
+  | 'roll';
 
 /** Where the warden's shield is held: across its front, or overhead. */
 export type ShieldDir = 'front' | 'up';
@@ -168,6 +187,26 @@ export interface Enemy extends EnemyState {
   shieldReaimTimer: number;
   /** Warden: seconds the Knight has lingered in bash range. */
   lingerTimer: number;
+  /** Duelist leap: which beat of rise → hang → dive the jump is on. */
+  leapStage: 'rise' | 'hang' | 'dive' | null;
+  /** Duelist leap: where the jump started, and the perch it is arcing to. */
+  leapFrom: Vec2;
+  leapTo: Vec2;
+  /** Duelist leap: the direction committed to at the end of the hang. */
+  leapAim: Vec2;
+  /** Duelist leap: the floor height to land back on. */
+  leapGroundY: number;
+  /** Duelist: seconds the Knight has spent moving away, and standing still. */
+  retreatTimer: number;
+  awayTimer: number;
+  /** Duelist: last frame's target x, so footwork reads HER movement, not his. */
+  lastTargetX: number;
+  /** Boss: past 1:00 the pair speeds up and leaves less gap. */
+  hot: boolean;
+  /** Bill: seconds since the Knight last bounced off his head (shake-off clock). */
+  sinceBounce: number;
+  /** Dog: true while it is balled up and rolling. */
+  roll: boolean;
 }
 
 /** Visual/collision sizes per enemy (width × height, feet-anchored). */
@@ -177,6 +216,10 @@ export const ENEMY_SIZES: Record<EnemyId, { width: number; height: number }> = {
   spitter: { width: 38, height: 34 },
   duelist: { width: 34, height: 52 },
   warden: { width: 40, height: 56 },
+  /** Bill stands 160 px tall — head and shoulders over everything else here. */
+  bill: { width: 68, height: 160 },
+  /** The dog is a little larger than the Knight (48 px sprite, 18x47 hurtbox). */
+  dog: { width: 64, height: 58 },
 };
 
 export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
@@ -201,6 +244,17 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     shieldDir: 'front',
     shieldReaimTimer: 0,
     lingerTimer: 0,
+    leapStage: null,
+    leapFrom: { x, y },
+    leapTo: { x, y },
+    leapAim: { x: 0, y: 0 },
+    leapGroundY: y,
+    retreatTimer: 0,
+    awayTimer: 0,
+    lastTargetX: x,
+    hot: false,
+    sinceBounce: 0,
+    roll: false,
   };
 }
 
@@ -247,6 +301,38 @@ function insideSolid(world: World, box: AABB): boolean {
 
 /** Chest height above the feet — where the fliers aim themselves and their shots. */
 const CHEST = 24;
+
+/**
+ * A fan of `count` projectiles from `mouth`, centred on the line to `aimAt`
+ * and spread `spreadDeg` degrees wide. With count = 1 the single shot flies
+ * straight at the aim point (the `count - 1` divisor would be a division by
+ * zero, so it is special-cased).
+ *
+ * Shared by the spitter's volley and the dog's bones, so anything the lesson
+ * teaches about poking one out of the air holds for both.
+ */
+export function fanShots(
+  mouth: Vec2,
+  aimAt: Vec2,
+  count: number,
+  spreadDeg: number,
+  speed: number,
+  radius = 7,
+): Projectile[] {
+  const aim = Math.atan2(aimAt.y - mouth.y, aimAt.x - mouth.x);
+  const spread = (spreadDeg * Math.PI) / 180;
+  const shots: Projectile[] = [];
+  for (let i = 0; i < count; i++) {
+    const angle = count === 1 ? aim : aim + spread * (i / (count - 1) - 0.5);
+    shots.push({
+      position: { ...mouth },
+      velocity: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed },
+      radius,
+      dead: false,
+    });
+  }
+  return shots;
+}
 
 /** Can the walker step that way — floor under its toes and no wall in its face? */
 function footingAhead(e: Enemy, world: World, dir: 1 | -1): boolean {
@@ -300,7 +386,8 @@ function pickSidestep(
   hi: number,
   freeAt: (v: number) => boolean,
 ): number | null {
-  const order = want <= lo ? [lo, hi] : want >= hi ? [hi, lo] : here - lo < hi - here ? [lo, hi] : [hi, lo];
+  const order =
+    want <= lo ? [lo, hi] : want >= hi ? [hi, lo] : here - lo < hi - here ? [lo, hi] : [hi, lo];
   for (const v of order) {
     if (Math.abs(v - here) <= SIDESTEP_REACH && freeAt(v)) return v;
   }
@@ -537,22 +624,13 @@ function spitterPhases(e: Enemy, dt: number, t: Target | undefined): Projectile[
             x: e.position.x + e.facing * 10,
             y: e.position.y - size.height / 2,
           };
-          const aim = Math.atan2(t.position.y - CHEST - mouth.y, t.position.x - mouth.x);
-          const spread = (A.spreadDeg * Math.PI) / 180;
-          const shots: Projectile[] = [];
-          for (let i = 0; i < A.shots; i++) {
-            const angle = aim + spread * (i / (A.shots - 1) - 0.5);
-            shots.push({
-              position: { ...mouth },
-              velocity: {
-                x: Math.cos(angle) * A.projSpeed,
-                y: Math.sin(angle) * A.projSpeed,
-              },
-              radius: 7,
-              dead: false,
-            });
-          }
-          return shots;
+          return fanShots(
+            mouth,
+            { x: t.position.x, y: t.position.y - CHEST },
+            A.shots,
+            A.spreadDeg,
+            A.projSpeed,
+          );
         }
       }
       break;
@@ -570,13 +648,25 @@ function spitterPhases(e: Enemy, dt: number, t: Target | undefined): Projectile[
   return null;
 }
 
-/** Is the target overhead (feet above the warden's head, roughly centred)? */
-function overhead(e: Enemy, t: Target): boolean {
-  const size = ENEMY_SIZES.warden;
+/**
+ * Is the target overhead — feet above this enemy's shoulders and roughly
+ * centred on it? `halfWidth` is how far to either side still counts.
+ *
+ * The 0.8x height (rather than the full height) is what makes "above" mean
+ * "above the shoulders": at the warden's 56 px that is 44.8 px, so a Knight
+ * hanging just over his head reads as overhead before she is clear of him.
+ */
+export function overheadOf(e: Enemy, t: Target, halfWidth: number): boolean {
+  const size = ENEMY_SIZES[e.id];
   return (
     t.position.y < e.position.y - size.height * 0.8 &&
-    Math.abs(t.position.x - e.position.x) < ATTACKS.warden.overheadHalfWidth
+    Math.abs(t.position.x - e.position.x) < halfWidth
   );
+}
+
+/** The warden's overhead test, at its own reach. */
+function overhead(e: Enemy, t: Target): boolean {
+  return overheadOf(e, t, ATTACKS.warden.overheadHalfWidth);
 }
 
 /**
@@ -690,6 +780,9 @@ export function stepEnemy(
     case 'warden':
       stepWarden(e, world, dt, target);
       return null;
+    case 'bill':
+    case 'dog':
+      return null;
   }
 }
 
@@ -729,6 +822,15 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
       };
     case 'volley':
       return null; // the projectiles carry the threat
+    // Stubs. The attacks exist in the union so the switch stays exhaustive;
+    // their boxes arrive with their state machines.
+    case 'leap':
+    case 'skyward':
+    case 'lance':
+    case 'swat':
+    case 'bones':
+    case 'roll':
+      return null;
   }
 }
 

@@ -7,8 +7,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { SettingsV1 } from '@dojo/shared';
+import type { InputFrame } from './types';
 import {
   ACTIONS,
+  anyInput,
   DEFAULT_BINDINGS,
   bindingsFromSettings,
   bindingsToSettings,
@@ -175,9 +177,7 @@ describe('rebindable bindings', () => {
 
   it('falls back to defaults when nothing is stored', () => {
     expect(bindingsFromSettings(BASE_SETTINGS)).toEqual(DEFAULT_BINDINGS);
-    expect(bindingsFromSettings({ ...BASE_SETTINGS, inputBindings: {} })).toEqual(
-      DEFAULT_BINDINGS,
-    );
+    expect(bindingsFromSettings({ ...BASE_SETTINGS, inputBindings: {} })).toEqual(DEFAULT_BINDINGS);
   });
 
   it('falls back per action when the stored value is invalid', () => {
@@ -259,5 +259,31 @@ describe('rebind (the Settings "Change" capture)', () => {
     rebind(before, 'jump', 'KeyX');
     expect(before.attack).toEqual(['KeyX']);
     expect(before.jump).toEqual(['KeyZ', 'Space']);
+  });
+});
+
+describe('anyInput', () => {
+  const quiet: InputFrame = {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    jumpHeld: false,
+    jumpPressed: false,
+    attackPressed: false,
+    dashPressed: false,
+  };
+  const fields = Object.keys(quiet) as (keyof InputFrame)[];
+
+  it('is false for a frame with nothing pressed', () => {
+    expect(anyInput(quiet)).toBe(false);
+  });
+
+  it.each(fields)('is true when only %s is set', (field) => {
+    expect(anyInput({ ...quiet, [field]: true })).toBe(true);
+  });
+
+  it('covers every field of InputFrame, so a new action cannot be missed', () => {
+    expect(fields).toHaveLength(8);
   });
 });

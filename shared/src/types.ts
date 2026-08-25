@@ -23,8 +23,13 @@ export type PracticeMode = 'pogo' | 'dodge';
  *               or overhead when the Knight is above) and re-aims with a lag;
  *               a blocked hit draws a telegraphed riposte, lingering in front
  *               draws a bash; recovery after either is open from every side.
+ * - `bill` / `dog` — the boss pair at the bottom of the well. Invulnerable
+ *               furniture: the nail bounces off them and nothing else happens.
+ *
+ * EnemyId is everything the enemy sim can be; ROSTER (engine/roster.ts) is the
+ * five the Colosseum teaches, and stays five.
  */
-export type EnemyId = 'walker' | 'flier' | 'duelist' | 'spitter' | 'warden';
+export type EnemyId = 'walker' | 'flier' | 'duelist' | 'spitter' | 'warden' | 'bill' | 'dog';
 
 /**
  * One recorded practice session.

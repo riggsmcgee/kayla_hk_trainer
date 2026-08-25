@@ -16,13 +16,7 @@ import type { ArenaState } from './arena';
 import { CANVAS } from './constants';
 import { createEnemy, stepEnemy, stepProjectile } from './enemies';
 import type { Enemy, Projectile } from './enemies';
-import {
-  FEEDBACK,
-  LAND_SQUASH_TIME,
-  computeStretch,
-  createEdgeCarry,
-  createJuice,
-} from './juice';
+import { FEEDBACK, LAND_SQUASH_TIME, computeStretch, createEdgeCarry, createJuice } from './juice';
 import type { ComfortSettings } from './juice';
 import { createPlayer, stepPlayer } from './player';
 import {
@@ -35,13 +29,18 @@ import {
   drawWorld,
   lerpVec,
 } from './render';
+import { formatClock } from './clock';
 import { createStageState, startStage, stepStage } from './stages';
 import type { StageDef, StageState } from './stages';
 import { recordRun } from '../storage/recordRun';
 import type { GameSession } from './session';
 import type { InputFrame, Vec2, World } from './types';
 
-const FLOOR_Y = 600;
+/**
+ * The arena floor. Exported because the boss fight stands on the same one.
+ * @internal exported for the boss session and the tests
+ */
+export const FLOOR_Y = 600;
 /**
  * Where the Knight starts every stage and every checkpoint restart: open
  * floor, clear of both ledges, so the first jump or pogo of an attempt gets
@@ -131,14 +130,6 @@ export function spawnX(index: number, awayFromX: number): number {
 
 function spawnEnemy(id: EnemyId, index: number, awayFromX: number): Enemy {
   return createEnemy(id, spawnX(index, awayFromX), spawnHeight(id));
-}
-
-/** m:ss — whole seconds, the way a stage clock reads. */
-function formatClock(seconds: number): string {
-  const whole = Math.floor(seconds);
-  const m = Math.floor(whole / 60);
-  const s = whole - m * 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function describeTime(seconds: number): string {
@@ -260,7 +251,11 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
 
       if (stage.status === 'ready') {
         const anyInput =
-          input.left || input.right || input.jumpPressed || input.dashPressed || input.attackPressed;
+          input.left ||
+          input.right ||
+          input.jumpPressed ||
+          input.dashPressed ||
+          input.attackPressed;
         if (anyInput) {
           startStage(stage);
           arena.started = true;
