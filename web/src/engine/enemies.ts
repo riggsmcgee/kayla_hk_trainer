@@ -176,6 +176,25 @@ export const ATTACKS = {
     bashRecovery: 0.8,
     /** Pause after any attack before lingering counts again. */
     bashCooldown: 0.9,
+    /**
+     * The skyward column: his answer to a hit into the raised shield
+     * (playtest 3, note 4 — an overhead hit used to draw the same forward
+     * riposte, which she was never in front of, so hitting his shield from
+     * above cost her nothing).
+     *
+     * Its bottom sits at his HEAD, not at his feet, which is the whole
+     * design: a Knight standing in front of him on the ground is never
+     * inside it, even while it is live. That is what makes the loop work —
+     * hit the shield from above, get out sideways, drop back in, and take
+     * the front while he is still recovering.
+     */
+    skywardTell: 0.5,
+    skywardActive: 0.3,
+    skywardRecovery: 1.0,
+    skywardTop: 250,
+    skywardWidth: 170,
+    /** The column sits this far BEHIND his facing — she blocked from up there. */
+    skywardBack: 45,
   },
 } as const;
 
@@ -694,6 +713,28 @@ function overhead(e: Enemy, t: Target): boolean {
   return overheadOf(e, t, ATTACKS.warden.overheadHalfWidth);
 }
 
+/** How long the warden's active phase lasts, per attack. */
+function activeTime(kind: AttackKind | null): number {
+  const A = ATTACKS.warden;
+  if (kind === 'bash') return A.bashActive;
+  if (kind === 'skyward') return A.skywardActive;
+  return A.riposteActive;
+}
+
+/**
+ * How long the warden's recovery lasts, per attack — the punish window.
+ * Exported because render.ts measures the recovery sag against it, and a
+ * skyward measured against the riposte's total would sag at the wrong rate.
+ */
+export function wardenRecoveryTime(kind: AttackKind | null): number {
+  const A = ATTACKS.warden;
+  if (kind === 'bash') return A.bashRecovery;
+  if (kind === 'skyward') return A.skywardRecovery;
+  return A.riposteRecovery;
+}
+
+const recoveryTime = wardenRecoveryTime;
+
 /**
  * Shield warden (playtest 1 redesign): the shield covers ONE side — its
  * front, or overhead once the Knight hangs above it — and re-aims only after
@@ -709,7 +750,8 @@ function stepWarden(e: Enemy, world: World, dt: number, t: Target | undefined): 
 
   // Shield aim: track the Knight's side with a re-aim delay. While attacking
   // the shield is committed forward (a swung shield can't also cover the head).
-  if (t && (e.phase === 'idle' || e.phase === 'recovery')) {
+  const skyward = e.attackKind === 'skyward';
+  if (t && (e.phase === 'idle' || (e.phase === 'recovery' && !skyward))) {
     const wanted: ShieldDir = overhead(e, t) ? 'up' : 'front';
     if (wanted !== e.shieldDir) {
       e.shieldReaimTimer += dt;
@@ -755,19 +797,22 @@ function stepWarden(e: Enemy, world: World, dt: number, t: Target | undefined): 
       break;
     }
     case 'telegraph':
-      if (e.phaseTimer <= 0) {
-        setPhase(e, 'active', e.attackKind === 'bash' ? A.bashActive : A.riposteActive);
-      }
+      if (e.phaseTimer <= 0) setPhase(e, 'active', activeTime(e.attackKind));
       break;
     case 'active':
-      drift(e, world, e.lockedDir, e.attackKind === 'bash' ? A.bashSpeed : A.riposteSpeed, dt);
-      if (e.phaseTimer <= 0) {
-        setPhase(e, 'recovery', e.attackKind === 'bash' ? A.bashRecovery : A.riposteRecovery);
+      // No drift on the skyward: a bash-style lunge would carry him onto the
+      // ground she is about to land on, and "the front is open" is the whole
+      // promise of the attack.
+      if (!skyward) {
+        drift(e, world, e.lockedDir, e.attackKind === 'bash' ? A.bashSpeed : A.riposteSpeed, dt);
       }
+      if (e.phaseTimer <= 0) setPhase(e, 'recovery', recoveryTime(e.attackKind));
       break;
     case 'recovery':
       if (e.phaseTimer <= 0) {
         e.attackKind = null;
+        e.shieldDir = 'front'; // the arm comes down when he is idle again
+        e.shieldReaimTimer = 0;
         e.cooldownTimer = A.bashCooldown;
         e.lingerTimer = 0;
         setPhase(e, 'idle', 0);
@@ -851,12 +896,22 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
         width: 56,
         height: 48,
       };
+    case 'skyward': {
+      const A = ATTACKS.warden;
+      const cx = e.position.x - e.lockedDir * A.skywardBack;
+      return {
+        x: cx - A.skywardWidth / 2,
+        y: e.position.y - A.skywardTop,
+        // Bottom at his head: the ground in front of him stays safe.
+        height: A.skywardTop - size.height,
+        width: A.skywardWidth,
+      };
+    }
     case 'volley':
       return null; // the projectiles carry the threat
     // Stubs. The attacks exist in the union so the switch stays exhaustive;
     // their boxes arrive with their state machines.
     case 'leap':
-    case 'skyward':
     case 'lance':
     case 'swat':
     case 'bones':
@@ -891,19 +946,31 @@ export function resolveNailHit(player: Player, e: Enemy, lethal: boolean): NailH
   if (e.dead || e.lastHitSwingId === player.swingId) return 'none';
   e.lastHitSwingId = player.swingId;
 
-  if (e.id === 'warden' && e.phase !== 'recovery' && shieldCovers(player, e)) {
-    e.blockFlashTimer = 0.18;
-    if (e.phase === 'idle') {
-      e.attackKind = 'riposte';
-      e.lockedDir = player.position.x >= e.position.x ? 1 : -1;
-      e.facing = e.lockedDir;
-      // A swung shield can't also cover the head (same commitment as the bash).
-      e.shieldDir = 'front';
-      e.shieldReaimTimer = 0;
-      e.lingerTimer = 0;
-      setPhase(e, 'telegraph', ENEMIES.warden.telegraph ?? 0.4);
+  if (e.id === 'warden' && e.phase !== 'recovery') {
+    const hitFrom = swingSide(player);
+    if (shieldCovers(player, e, hitFrom)) {
+      e.blockFlashTimer = 0.18;
+      if (e.phase === 'idle') {
+        e.lockedDir = player.position.x >= e.position.x ? 1 : -1;
+        e.facing = e.lockedDir;
+        e.shieldReaimTimer = 0;
+        e.lingerTimer = 0;
+        if (hitFrom === 'up') {
+          // She rang his raised shield from above, so he answers upward: the
+          // shield stays committed UP and the column goes where she is. His
+          // front is bare from the telegraph on, which is the opening the
+          // loop is built around (playtest 3, note 4).
+          e.attackKind = 'skyward';
+          setPhase(e, 'telegraph', ATTACKS.warden.skywardTell);
+        } else {
+          e.attackKind = 'riposte';
+          // A swung shield can't also cover the head (same as the bash).
+          e.shieldDir = 'front';
+          setPhase(e, 'telegraph', ENEMIES.warden.telegraph ?? 0.4);
+        }
+      }
+      return 'blocked';
     }
-    return 'blocked';
   }
 
   e.hurtFlashTimer = 0.18;
@@ -917,9 +984,13 @@ export function resolveNailHit(player: Player, e: Enemy, lethal: boolean): NailH
   return 'hit';
 }
 
+/** Which side of the warden a swing arrives on: overhead, or across its front. */
+function swingSide(player: Player): ShieldDir {
+  return player.nailDir === 'down' ? 'up' : 'front';
+}
+
 /** Does the warden's shield stand between this swing and its body? */
-function shieldCovers(player: Player, e: Enemy): boolean {
-  const hitFrom: ShieldDir = player.nailDir === 'down' ? 'up' : 'front';
+function shieldCovers(player: Player, e: Enemy, hitFrom: ShieldDir): boolean {
   if (hitFrom !== e.shieldDir) return false;
   if (hitFrom === 'front') {
     const side = Math.sign(player.position.x - e.position.x);

@@ -120,6 +120,12 @@ function attackTimeline(e: Enemy): { telegraph: number; active: number; recovery
         active: ATTACKS.warden.bashActive,
         recovery: ATTACKS.warden.bashRecovery,
       };
+    case 'skyward':
+      return {
+        telegraph: ATTACKS.warden.skywardTell,
+        active: ATTACKS.warden.skywardActive,
+        recovery: ATTACKS.warden.skywardRecovery,
+      };
     default:
       return null;
   }

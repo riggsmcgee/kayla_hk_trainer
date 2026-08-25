@@ -8,7 +8,7 @@ import { KNIGHT, PHYSICS } from './constants';
 import type { Mover } from './course';
 import { moverBox } from './course';
 import type { Enemy, Projectile } from './enemies';
-import { ATTACKS, ENEMY_SIZES } from './enemies';
+import { ATTACKS, ENEMY_SIZES, wardenRecoveryTime } from './enemies';
 import type { Player } from './player';
 import { drawBill, drawBillDog } from './renderBills';
 import type { AABB, Vec2, World } from './types';
@@ -525,6 +525,7 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
   const h = size.height;
   const A = ATTACKS.warden;
   const bash = enemy.attackKind === 'bash';
+  const skyward = enemy.attackKind === 'skyward';
 
   // Body: a stout rounded slab; hunches for the bash telegraph.
   const hunch = enemy.phase === 'telegraph' && bash ? 0.9 : 1;
@@ -553,7 +554,7 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
   ctx.beginPath();
   if (enemy.phase === 'recovery') {
     // Dropped low at the side: wide open, the gold window.
-    const k = phaseProgress(enemy, bash ? A.bashRecovery : A.riposteRecovery);
+    const k = phaseProgress(enemy, wardenRecoveryTime(enemy.attackKind));
     const sag = 6 + k * 4;
     ctx.roundRect(
       feet.x + enemy.facing * (w / 2 + 2) - sw / 2,
@@ -562,6 +563,12 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
       h * 0.4,
       4,
     );
+  } else if (skyward && (enemy.phase === 'telegraph' || enemy.phase === 'active')) {
+    // Committed upward: the shield rises with the column and the front is
+    // bare the whole time (playtest 3, note 4).
+    const k = enemy.phase === 'active' ? phaseProgress(enemy, A.skywardActive) : 0;
+    const slabW = w + 14;
+    ctx.roundRect(feet.x - slabW / 2, feet.y - h - 12 - k * 10, slabW, sw, 4);
   } else if (enemy.phase === 'telegraph' || enemy.phase === 'active') {
     // Raised high (telegraph) then thrown forward (active).
     const k =
@@ -580,6 +587,28 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
     ctx.roundRect(shieldX - sw / 2, feet.y - h * 0.85, sw, h * 0.85, 4);
   }
   ctx.fill();
+
+  if (skyward && enemy.phase === 'active') {
+    // Same numbers enemyAttackHitbox uses — this site teaches by showing true
+    // hitboxes, so the column has to be drawn where it actually is.
+    const k = phaseProgress(enemy, A.skywardActive);
+    const cx = feet.x - enemy.lockedDir * A.skywardBack;
+    const top = feet.y - A.skywardTop;
+    const height = A.skywardTop - h;
+    ctx.save();
+    ctx.globalAlpha = 0.5 * (1 - k * 0.55);
+    ctx.fillStyle = COLORS.slash;
+    ctx.fillRect(cx - A.skywardWidth / 2, top, A.skywardWidth, height);
+    ctx.globalAlpha = 0.9 * (1 - k * 0.55);
+    ctx.strokeStyle = COLORS.slash;
+    ctx.lineWidth = 2;
+    const edge = top + height * (1 - Math.min(1, k * 1.6));
+    ctx.beginPath();
+    ctx.moveTo(cx - A.skywardWidth / 2, edge);
+    ctx.lineTo(cx + A.skywardWidth / 2, edge);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 /** Spitter shots: pale-green pokeable orbs (green = "your nail beats this"). */

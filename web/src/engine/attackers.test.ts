@@ -26,6 +26,17 @@ import type { World } from './types';
 
 const FLOOR_Y = 600;
 
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+function boxesOverlap(a: Box, b: Box): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
 function world(): World {
   return { solids: [{ x: -2000, y: FLOOR_Y, width: 6000, height: 200 }] };
 }
@@ -510,7 +521,9 @@ describe('warden', () => {
       above.swingId = 1;
       above.nailDir = 'down';
       expect(resolveNailHit(above, warden, true)).toBe('blocked');
-      expect(warden.attackKind).toBe('riposte'); // a block still provokes
+      // Deliberate reversal (playtest 3, note 4): an overhead block draws the
+      // SKYWARD column now, not the forward riposte she was never in front of.
+      expect(warden.attackKind).toBe('skyward');
 
       // Drop in front and slash before it re-aims: the open side.
       warden.phase = 'idle';
@@ -555,7 +568,7 @@ describe('warden', () => {
       expect(warden.shieldDir).toBe('front');
     });
 
-    it('commits the shield forward when a riposte starts, even one provoked from above', () => {
+    it('commits the shield UPWARD on a skyward, leaving the front bare from the tell on', () => {
       const w = world();
       const warden = createEnemy('warden', 600, FLOOR_Y);
       run(
@@ -569,11 +582,101 @@ describe('warden', () => {
       above.swingId = 1;
       above.nailDir = 'down';
       expect(resolveNailHit(above, warden, true)).toBe('blocked');
+      expect(warden.attackKind).toBe('skyward');
+      // The shield stays up, which is exactly what opens the front.
+      expect(warden.shieldDir).toBe('up');
+
+      // A second downslash into that raised shield still rings off it, and
+      // does NOT restart the attack — being overhead is simply the wrong
+      // place to be once he has committed (ratified).
+      above.swingId = 2;
+      expect(resolveNailHit(above, warden, true)).toBe('blocked');
+      expect(warden.phase).toBe('telegraph');
+
+      // The front, meanwhile, is open from the telegraph onward.
+      const front = createPlayer(540, FLOOR_Y);
+      front.swingId = 3;
+      front.nailFacing = 1;
+      front.nailDir = 'side';
+      expect(resolveNailHit(front, warden, true)).toBe('hit');
+    });
+
+    it('a front block still draws the plain forward riposte', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      run(warden, w, 5, targetAt(540, FLOOR_Y));
+      expect(warden.shieldDir).toBe('front');
+      const front = createPlayer(540, FLOOR_Y);
+      front.swingId = 1;
+      front.nailDir = 'side';
+      front.nailFacing = 1;
+      expect(resolveNailHit(front, warden, true)).toBe('blocked');
       expect(warden.attackKind).toBe('riposte');
       expect(warden.shieldDir).toBe('front');
-      // A downslash during the telegraph now lands: the shield is busy.
-      above.swingId = 2;
-      expect(resolveNailHit(above, warden, true)).toBe('hit');
+    });
+
+    it('stands its column on his head, so the ground in front of him stays safe', () => {
+      const A = ATTACKS.warden;
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      warden.attackKind = 'skyward';
+      warden.phase = 'active';
+      warden.lockedDir = 1;
+      const box = enemyAttackHitbox(warden)!;
+      expect(box.y).toBe(FLOOR_Y - A.skywardTop);
+      expect(box.y + box.height).toBe(FLOOR_Y - ENEMY_SIZES.warden.height);
+      expect(box.width).toBe(A.skywardWidth);
+      // It leans BEHIND his facing — that is where she was when she blocked.
+      expect(box.x + box.width / 2).toBe(600 - A.skywardBack);
+
+      // A Knight standing on the ground in front of him is never inside it,
+      // even while it is live. That is what makes the loop work.
+      const grounded = { x: 640 - 9, y: FLOOR_Y - 47, width: 18, height: 47 };
+      expect(boxesOverlap(box, grounded)).toBe(false);
+    });
+
+    it('catches a Knight still hanging where she blocked', () => {
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      warden.attackKind = 'skyward';
+      warden.phase = 'active';
+      warden.lockedDir = 1;
+      const box = enemyAttackHitbox(warden)!;
+      // Feet 90 px up, which is where the overhead block happens.
+      const hovering = { x: 600 - 9, y: FLOOR_Y - 90 - 47, width: 18, height: 47 };
+      expect(boxesOverlap(box, hovering)).toBe(true);
+    });
+
+    it('does not lunge while the column is up — the front must stay reachable', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      warden.attackKind = 'skyward';
+      warden.lockedDir = 1;
+      warden.phase = 'active';
+      warden.phaseTimer = ATTACKS.warden.skywardActive;
+      const startX = warden.position.x;
+      const steps = Math.round(ATTACKS.warden.skywardActive / FIXED_DT);
+      for (let i = 0; i < steps; i++) {
+        stepEnemy(warden, w, FIXED_DT, targetAt(600, FLOOR_Y - 90, false));
+      }
+      expect(warden.position.x).toBe(startX);
+    });
+
+    it('keeps the shield up through the whole skyward recovery', () => {
+      const w = world();
+      const warden = createEnemy('warden', 600, FLOOR_Y);
+      warden.attackKind = 'skyward';
+      warden.shieldDir = 'up';
+      warden.lockedDir = 1;
+      warden.phase = 'recovery';
+      warden.phaseTimer = ATTACKS.warden.skywardRecovery;
+      // She is on the ground in front of him now — which normally re-aims the
+      // shield down within reaimDownDelay.
+      const steps = Math.round(ATTACKS.warden.skywardRecovery / FIXED_DT) - 2;
+      for (let i = 0; i < steps; i++) stepEnemy(warden, w, FIXED_DT, targetAt(540, FLOOR_Y));
+      expect(warden.shieldDir).toBe('up');
+      // And it comes down once he is idle again.
+      for (let i = 0; i < 4; i++) stepEnemy(warden, w, FIXED_DT, targetAt(540, FLOOR_Y));
+      expect(warden.phase).toBe('idle');
+      expect(warden.shieldDir).toBe('front');
     });
   });
 
