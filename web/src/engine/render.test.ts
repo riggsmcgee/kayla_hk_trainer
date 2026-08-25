@@ -86,6 +86,10 @@ const ATTACK_CASES: {
   { id: 'warden', kind: 'riposte', tell: ENEMIES.warden.telegraph ?? 0.4, shieldDir: 'front' },
   { id: 'warden', kind: 'bash', tell: ENEMIES.warden.telegraph ?? 0.4, shieldDir: 'front' },
   { id: 'warden', kind: 'skyward', tell: ATTACKS.warden.skywardTell, shieldDir: 'up' },
+  { id: 'bill', kind: 'lance', tell: ENEMIES.bill.telegraph ?? 0.6 },
+  { id: 'bill', kind: 'swat', tell: ATTACKS.bill.swatTelegraph },
+  { id: 'dog', kind: 'bones', tell: ENEMIES.dog.telegraph ?? 0.45 },
+  { id: 'dog', kind: 'roll', tell: ATTACKS.dog.rollTelegraph },
 ];
 
 function idlePose(c: (typeof ATTACK_CASES)[number]): string[] {
