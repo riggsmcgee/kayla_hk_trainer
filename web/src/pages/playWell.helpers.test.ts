@@ -20,6 +20,7 @@ function progress(over: Partial<ProgressV1> = {}): ProgressV1 {
     arenaEnemiesCleared: [],
     finaleLevelCleared: false,
     finaleWavesCleared: [],
+    finaleBossCleared: false,
     skipped: [],
     ...over,
   };

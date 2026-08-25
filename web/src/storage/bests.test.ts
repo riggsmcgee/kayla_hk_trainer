@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PracticeRun } from '@dojo/shared';
-import { arenaBest, courseBest, waveBest } from './bests';
+import { arenaBest, bossBest, courseBest, waveBest } from './bests';
 
 let n = 0;
 function run(over: Partial<PracticeRun>): PracticeRun {
@@ -93,5 +93,42 @@ describe('waveBest', () => {
     expect(waveBest(runs, 1)).toEqual({ hitsLanded: 8, durationMs: 60_000, cleared: true });
     expect(waveBest(runs, 2)).toEqual({ hitsLanded: 4, durationMs: 31_000, cleared: false });
     expect(waveBest(runs, 3)).toBeNull();
+  });
+});
+
+describe('bossBest', () => {
+  const boss = (over: Partial<PracticeRun>): PracticeRun =>
+    run({ mode: 'dodge', boss: true, ...over });
+
+  it('takes the longest survival while she has never reached 1:30', () => {
+    const runs = [
+      boss({ cleared: false, durationMs: 41_000 }),
+      boss({ cleared: false, durationMs: 82_000 }),
+      boss({ cleared: false, durationMs: 6_000 }),
+    ];
+    expect(bossBest(runs)?.durationMs).toBe(82_000);
+    expect(bossBest(runs)?.cleared).toBe(false);
+  });
+
+  it('prefers a cleared run over a longer uncleared one', () => {
+    // Not a contradiction: an uncleared run cannot be longer than a cleared
+    // one in this fight, but the ordering must still say clears come first.
+    const runs = [
+      boss({ cleared: false, durationMs: 89_000 }),
+      boss({ cleared: true, durationMs: 91_000 }),
+    ];
+    expect(bossBest(runs)).toEqual({ hitsLanded: 0, durationMs: 91_000, cleared: true });
+  });
+
+  it('is null until she has met them', () => {
+    expect(bossBest([run({ mode: 'dodge', enemyId: 'warden' })])).toBeNull();
+  });
+
+  it('never lets a boss run be mistaken for an arena or wave best', () => {
+    const runs = [boss({ cleared: true, durationMs: 95_000 })];
+    for (const id of ['walker', 'flier', 'spitter', 'duelist', 'warden'] as const) {
+      expect(arenaBest(runs, id)).toBeNull();
+    }
+    for (const wave of [1, 2, 3]) expect(waveBest(runs, wave)).toBeNull();
   });
 });

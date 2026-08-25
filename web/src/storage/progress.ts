@@ -50,6 +50,11 @@ export function finaleLevelSkipKey(): string {
   return 'finale:level';
 }
 
+/** The `skipped` key for walking past the Two Bills. */
+export function bossSkipKey(): string {
+  return 'finale:boss';
+}
+
 /**
  * Progress plus what the runs prove: a cleared Pogo Course run means its
  * level is cleared, even when the progress record never saw it — runs from
@@ -84,9 +89,19 @@ export function arenaCleared(progress: ProgressV1): boolean {
   return ROSTER.every((e) => progress.arenaEnemiesCleared.includes(e.id));
 }
 
-/** The finale's level and every wave. */
+/**
+ * The finale's level, every wave, and the Two Bills.
+ *
+ * The boss counts: the ratified road is "level 4 → the waves → the Bills",
+ * and beat 3 is done at 1:30. So the well is not finished until she has met
+ * them — which is what moves the Knight to the end of the road.
+ */
 export function finaleCleared(progress: ProgressV1): boolean {
-  return progress.finaleLevelCleared && allCleared(progress.finaleWavesCleared, FINALE_WAVE_COUNT);
+  return (
+    progress.finaleLevelCleared &&
+    allCleared(progress.finaleWavesCleared, FINALE_WAVE_COUNT) &&
+    progress.finaleBossCleared
+  );
 }
 
 /** Is this stop finished, by its own rule (see Chapter.done)? */

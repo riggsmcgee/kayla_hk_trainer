@@ -25,6 +25,7 @@ function progress(over: Partial<ProgressV1> = {}): ProgressV1 {
     arenaEnemiesCleared: [],
     finaleLevelCleared: false,
     finaleWavesCleared: [],
+    finaleBossCleared: false,
     skipped: [],
     ...over,
   };
@@ -40,6 +41,7 @@ const everythingDone = progress({
   ...arenaDone,
   finaleLevelCleared: true,
   finaleWavesCleared: allWaves,
+  finaleBossCleared: true,
 });
 
 const none: ReadonlySet<ChapterId> = new Set();
@@ -68,10 +70,15 @@ describe('chapterDone', () => {
     expect(chapterDone('reading-enemies', arenaDone)).toBe(true);
   });
 
-  it('the finale needs its level and all three waves', () => {
+  it('the finale needs its level, all three waves, AND the Two Bills', () => {
     expect(chapterDone('finale', progress({ finaleWavesCleared: allWaves }))).toBe(false);
     expect(
       chapterDone('finale', progress({ finaleLevelCleared: true, finaleWavesCleared: [1, 2] })),
+    ).toBe(false);
+    // The waves alone no longer finish the well: the ratified road ends at
+    // the Bills, and beat 3 is done at 1:30.
+    expect(
+      chapterDone('finale', progress({ finaleLevelCleared: true, finaleWavesCleared: allWaves })),
     ).toBe(false);
     expect(chapterDone('finale', everythingDone)).toBe(true);
   });

@@ -46,7 +46,9 @@ function readVisited(runs: readonly PracticeRun[]): Set<ChapterId> {
   const visited = new Set<ChapterId>(progressStore.listVisited() as ChapterId[]);
   for (const run of runs) {
     if (run.mode === 'pogo') visited.add(run.level === FINALE_LEVEL ? 'finale' : 'pogo-course');
-    else visited.add(run.wave !== undefined ? 'finale' : 'dodge-arena');
+    // A boss run is a finale run even though it carries no wave number;
+    // without the second test it would light the Dodge Arena stop instead.
+    else visited.add(run.wave !== undefined || run.boss === true ? 'finale' : 'dodge-arena');
   }
   return visited;
 }

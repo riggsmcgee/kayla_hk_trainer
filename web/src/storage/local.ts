@@ -73,6 +73,7 @@ export const DEFAULT_PROGRESS: Readonly<ProgressV1> = Object.freeze({
   arenaEnemiesCleared: [],
   finaleLevelCleared: false,
   finaleWavesCleared: [],
+  finaleBossCleared: false,
   skipped: [],
 });
 
@@ -83,6 +84,7 @@ function freshProgress(): ProgressV1 {
     arenaEnemiesCleared: [],
     finaleLevelCleared: false,
     finaleWavesCleared: [],
+    finaleBossCleared: false,
     skipped: [],
   };
 }
@@ -128,6 +130,7 @@ export interface LocalStore {
   markWaveCleared(wave: number): void;
   /** The finale's pogo level (level 4) reached-the-goal. */
   markFinaleLevelCleared(): void;
+  markFinaleBossCleared(): void;
   /** Her answer to chapter 1's question; answering again overwrites. */
   setController(controller: ControllerChoice): void;
   /** Skip a chapter ('pogo-course') or a sub-step ('pogo-course:level:2', 'finale:wave:2'). */
@@ -204,6 +207,9 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
       finaleWavesCleared: Array.isArray(stored.finaleWavesCleared)
         ? [...stored.finaleWavesCleared]
         : fresh.finaleWavesCleared,
+      // No migration: a blob written before the boss existed reads false,
+      // which is exactly right — she has not met them yet.
+      finaleBossCleared: stored.finaleBossCleared === true,
       skipped: Array.isArray(stored.skipped) ? [...stored.skipped] : fresh.skipped,
     };
   }
@@ -244,6 +250,7 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
     markWaveCleared: (wave) =>
       updateProgress((p) => ({ ...p, finaleWavesCleared: addUnique(p.finaleWavesCleared, wave) })),
     markFinaleLevelCleared: () => updateProgress((p) => ({ ...p, finaleLevelCleared: true })),
+    markFinaleBossCleared: () => updateProgress((p) => ({ ...p, finaleBossCleared: true })),
     setController: (controller) => updateProgress((p) => ({ ...p, controller })),
     markSkipped: (key) => updateProgress((p) => ({ ...p, skipped: addUnique(p.skipped, key) })),
     clearAllProgress: () => {

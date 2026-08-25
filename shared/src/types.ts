@@ -67,6 +67,13 @@ export interface PracticeRun {
    */
   wave?: number;
   /**
+   * The Two Bills, at the bottom of the well. Set only on boss runs, and the
+   * reason they carry no enemyId and no wave: those two fields are what
+   * arenaBest and waveBest filter on, so a boss run can never be mistaken for
+   * a Colosseum or a wave best.
+   */
+  boss?: boolean;
+  /**
    * Did the run achieve its goal? Pogo: reached the goal flag. Dodge: the
    * stage was passed — survived the full stage time AND landed the required
    * hits. Pogo runs recorded before this field existed are read as cleared.
@@ -94,6 +101,8 @@ export interface ProgressV1 {
   finaleLevelCleared: boolean;
   /** Finale arena waves passed (1–3). */
   finaleWavesCleared: number[];
+  /** The Two Bills survived to 1:30 at least once. */
+  finaleBossCleared: boolean;
   /**
    * Things she chose to skip past rather than clear. Holds chapter ids
    * ('pogo-course') or sub-keys ('pogo-course:level:2', 'finale:wave:2').

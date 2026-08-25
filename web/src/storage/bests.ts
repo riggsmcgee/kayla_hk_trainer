@@ -84,3 +84,15 @@ export function arenaBest(runs: readonly PracticeRun[], enemyId: EnemyId): Stage
 export function waveBest(runs: readonly PracticeRun[], wave: number): StageBest | null {
   return stageBest(runs.filter((r) => r.mode === 'dodge' && r.wave === wave));
 }
+
+/**
+ * Best run against the Two Bills.
+ *
+ * `stageBest` already means the right thing here without a special case: it
+ * prefers a cleared run, and among uncleared ones takes the LONGEST survival
+ * — which for a fight scored in seconds is precisely "her best time". Boss
+ * runs land no hits, so the hits tie-breaker never fires.
+ */
+export function bossBest(runs: readonly PracticeRun[]): StageBest | null {
+  return stageBest(runs.filter((r) => r.mode === 'dodge' && r.boss === true));
+}

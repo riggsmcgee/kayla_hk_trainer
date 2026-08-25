@@ -165,6 +165,7 @@ describe('progress', () => {
       arenaEnemiesCleared: [],
       finaleLevelCleared: false,
       finaleWavesCleared: [],
+      finaleBossCleared: false,
       skipped: [],
     });
     expect(store.getProgress()).toEqual(DEFAULT_PROGRESS);
@@ -185,6 +186,8 @@ describe('progress', () => {
     store.markSkipped('pogo-course:level:3');
     store.markFinaleLevelCleared();
     store.markFinaleLevelCleared();
+    store.markFinaleBossCleared();
+    store.markFinaleBossCleared();
     store.setController('joycon');
     store.setController('leverless');
     expect(store.getProgress()).toEqual({
@@ -194,6 +197,7 @@ describe('progress', () => {
       arenaEnemiesCleared: ['walker'],
       finaleLevelCleared: true,
       finaleWavesCleared: [1],
+      finaleBossCleared: true,
       skipped: ['pogo-course:level:3'],
     });
   });
