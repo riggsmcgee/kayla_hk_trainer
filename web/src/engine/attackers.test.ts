@@ -8,9 +8,10 @@
  * everything outside post-counter recovery and ripostes when poked.
  */
 import { describe, expect, it } from 'vitest';
-import { ENEMIES, FIXED_DT } from './constants';
+import { ENEMIES, FIXED_DT, PHYSICS } from './constants';
 import {
   ATTACKS,
+  ENEMY_SIZES,
   createEnemy,
   enemyAttackHitbox,
   enemyBox,
@@ -90,6 +91,157 @@ describe('duelist', () => {
     run(duelist, w, 2, targetAt(540, FLOOR_Y - 90, false)); // jumping in
     expect(duelist.phase).toBe('telegraph');
     expect(duelist.attackKind).toBe('antiair');
+  });
+
+  describe('the anti-air column (playtest 3, note 6)', () => {
+    /**
+     * The pogo chain she actually flies, measured off the shipped physics:
+     * a downslash contact at ~120 px above his feet, an apex of ~240, and a
+     * bounce every 0.600 s. Driving the real profile is the point — a target
+     * parked at one height would prove nothing about a chain.
+     */
+    const CHAIN = { contact: 120, apex: 240, period: 0.6 };
+
+    /** Her feet at time t while chaining pogos straight down onto him. */
+    function chainFeetY(t: number): number {
+      const phase = (t % CHAIN.period) / CHAIN.period;
+      // Up on the first half, down on the second — a triangle is close enough
+      // to the real arc for a containment test, and it is honest about its
+      // endpoints, which is what the box has to cover.
+      const k = phase < 0.5 ? phase * 2 : (1 - phase) * 2;
+      return FLOOR_Y - (CHAIN.contact + (CHAIN.apex - CHAIN.contact) * k);
+    }
+
+    /**
+     * Run a duelist against a Knight who follows `feetAt`/`xAt`, and report
+     * the first second at which the live swipe overlaps her hurtbox.
+     */
+    function caughtAt(
+      xAt: (t: number) => number,
+      feetAt: (t: number) => number,
+      seconds = 3,
+    ): number {
+      const w = world();
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      duelist.cooldownTimer = 0;
+      const steps = Math.round(seconds / FIXED_DT);
+      for (let i = 0; i < steps; i++) {
+        const t = i * FIXED_DT;
+        const target: Target = {
+          position: { x: xAt(t), y: feetAt(t) },
+          grounded: false,
+        };
+        stepEnemy(duelist, w, FIXED_DT, target);
+        const box = enemyAttackHitbox(duelist);
+        if (!box) continue;
+        // Her hurtbox: 18 wide, 47 tall, hanging above her feet.
+        const hurt = { x: target.position.x - 9, y: target.position.y - 47, width: 18, height: 47 };
+        const hit =
+          box.x < hurt.x + hurt.width &&
+          box.x + box.width > hurt.x &&
+          box.y < hurt.y + hurt.height &&
+          box.y + box.height > hurt.y;
+        if (hit) return t;
+      }
+      return -1;
+    }
+
+    it('draws the box its own constants describe, so the picture cannot drift', () => {
+      const A = ATTACKS.duelist;
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      duelist.attackKind = 'antiair';
+      duelist.phase = 'active';
+      duelist.lockedDir = 1;
+      const box = enemyAttackHitbox(duelist)!;
+      expect(box.width).toBe(A.antiAirWidth);
+      expect(box.y).toBe(FLOOR_Y - A.antiAirTop);
+      // It stands on his shoulders, not on the floor: a Knight on the ground
+      // beside him is never inside it.
+      expect(box.y + box.height).toBe(FLOOR_Y - ENEMY_SIZES.duelist.height);
+      expect(box.x + box.width / 2).toBe(600 + A.antiAirForward);
+    });
+
+    it('reaches the top of a straight-down pogo chain within three quarters of a second', () => {
+      // The whole of note 6 in one assertion: chaining pogos on his head used
+      // to be free forever, because the old box topped out 12 px below the
+      // bottom of her bounce.
+      const t = caughtAt(() => 600, chainFeetY);
+      expect(t).toBeGreaterThanOrEqual(0);
+      expect(t).toBeLessThan(0.75);
+    });
+
+    /**
+     * The escape window, measured against the shipped physics rather than
+     * assumed. Leaving `leaveAt` seconds after the bounce that provoked him:
+     *
+     *   leave   running (332)   dashing (800)
+     *   0.00    escapes         escapes
+     *   0.10    escapes         escapes
+     *   0.15    CAUGHT          escapes
+     *   0.20    CAUGHT          escapes
+     *   0.30    CAUGHT          CAUGHT
+     *
+     * So: about a tenth of a second to run, about two tenths to dash, and
+     * after that she is committed. That is the shape "one hit, then get out"
+     * has to have — the way back in is to bait the column and punish its
+     * recovery, which is the ratified reading of note 3.
+     *
+     * The column travels forward at antiAirDashSpeed (260) while it is live,
+     * which is why a LATE run does not save her: she only nets 72 px/s on it,
+     * and she needs ~80.
+     */
+    it('never catches her if she leaves the moment she bounces', () => {
+      expect(caughtAt((s) => 600 + s * PHYSICS.runSpeed, chainFeetY)).toBe(-1);
+    });
+
+    it('still lets her out on a run a tenth of a second late', () => {
+      const leaveAt = 0.1;
+      const away = (s: number) => (s < leaveAt ? 600 : 600 + (s - leaveAt) * PHYSICS.runSpeed);
+      expect(caughtAt(away, chainFeetY)).toBe(-1);
+    });
+
+    it('still lets her out on a dash twice that late, which is what the dash is for', () => {
+      const leaveAt = 0.2;
+      const away = (s: number) => (s < leaveAt ? 600 : 600 + (s - leaveAt) * PHYSICS.dashSpeed);
+      expect(caughtAt(away, chainFeetY)).toBe(-1);
+    });
+
+    it('catches her if she commits too late — the tell is the whole warning', () => {
+      // 0.05 s before the swipe lands, nothing saves her. Deliberate: the
+      // 0.35 s telegraph IS the fairness contract, and reacting to its last
+      // three frames is not reacting.
+      const leaveAt = 0.3;
+      const away = (s: number) => (s < leaveAt ? 600 : 600 + (s - leaveAt) * PHYSICS.dashSpeed);
+      expect(caughtAt(away, chainFeetY)).toBeGreaterThanOrEqual(0);
+    });
+
+    it('catches her if she stays for the second bounce', () => {
+      // One bounce is 0.600 s; going back for a second one means still being
+      // over him when the column lands.
+      const t = caughtAt(() => 600, chainFeetY, 2);
+      expect(t).toBeGreaterThanOrEqual(0);
+      expect(t).toBeLessThan(CHAIN.period * 2);
+    });
+
+    it('carries the swipe forward at antiAirDashSpeed and no faster', () => {
+      const w = world();
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      duelist.cooldownTimer = 0;
+      const above: Target = { position: { x: 610, y: FLOOR_Y - 150 }, grounded: false };
+      // Into the telegraph, then through the whole active window.
+      let steps = 0;
+      while (duelist.phase !== 'active' && steps < 120) {
+        stepEnemy(duelist, w, FIXED_DT, above);
+        steps++;
+      }
+      const startX = duelist.position.x;
+      const activeSteps = Math.round(ATTACKS.duelist.antiAirActive / FIXED_DT);
+      for (let i = 0; i < activeSteps; i++) stepEnemy(duelist, w, FIXED_DT, above);
+      const travelled = Math.abs(duelist.position.x - startX);
+      const expected = ATTACKS.duelist.antiAirDashSpeed * ATTACKS.duelist.antiAirActive;
+      expect(travelled).toBeGreaterThan(expected * 0.85);
+      expect(travelled).toBeLessThanOrEqual(expected + 1);
+    });
   });
 
   it('exposes a damage hitbox only during the active phase', () => {

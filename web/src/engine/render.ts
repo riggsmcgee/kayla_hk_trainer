@@ -380,10 +380,10 @@ function drawDuelist(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bo
   let lift = 0;
   if (antiAir && enemy.phase === 'active') {
     const k = phaseProgress(enemy, A.antiAirActive);
-    lift = 34 * Math.sin(Math.min(1, k * 1.4) * (Math.PI / 2));
+    lift = 46 * Math.sin(Math.min(1, k * 1.4) * (Math.PI / 2));
   } else if (antiAir && enemy.phase === 'recovery') {
     const k = phaseProgress(enemy, A.antiAirRecovery);
-    lift = 34 * Math.max(0, 1 - k * 3.5);
+    lift = 46 * Math.max(0, 1 - k * 3.5);
   }
   const base = { x: feet.x, y: feet.y - lift };
 
@@ -433,12 +433,25 @@ function drawDuelist(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bo
       ctx.stroke();
     }
     if (enemy.phase === 'active') {
-      // Upward slash crescent: the swipe, drawn where the real hitbox sits.
+      // The swipe is a tall forward column (playtest 3, note 6). Drawn from
+      // the same ATTACKS numbers enemyAttackHitbox uses, because this site
+      // teaches by showing true hitboxes — a crescent over his head here
+      // would be teaching her the old, wrong shape.
+      const cx = feet.x + enemy.lockedDir * A.antiAirForward;
+      const top = feet.y - A.antiAirTop;
+      const height = A.antiAirTop - size.height;
       ctx.save();
-      ctx.globalAlpha = 0.85 * (1 - k * 0.6);
-      ctx.lineWidth = 4;
+      ctx.globalAlpha = 0.5 * (1 - k * 0.55);
+      ctx.fillStyle = COLORS.slash;
+      ctx.fillRect(cx - A.antiAirWidth / 2, top, A.antiAirWidth, height);
+      ctx.globalAlpha = 0.9 * (1 - k * 0.55);
+      ctx.strokeStyle = COLORS.slash;
+      ctx.lineWidth = 2;
+      // A leading edge that sweeps up the column, so the eye reads "rising".
+      const edge = top + height * (1 - Math.min(1, k * 1.6));
       ctx.beginPath();
-      ctx.arc(feet.x, feet.y - size.height - 4, 34 + k * 8, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.moveTo(cx - A.antiAirWidth / 2, edge);
+      ctx.lineTo(cx + A.antiAirWidth / 2, edge);
       ctx.stroke();
       ctx.restore();
     }

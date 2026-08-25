@@ -87,6 +87,27 @@ export const ATTACKS = {
     lungeRecovery: 0.7,
     antiAirActive: 0.25,
     antiAirRecovery: 0.55,
+    /**
+     * The anti-air is a tall forward COLUMN, not a swipe over his head
+     * (playtest 3, note 6: "I can pogo him forever").
+     *
+     * Measured, not guessed. His old box spanned 52-104 px above his feet.
+     * A straight-down pogo chain keeps her feet in [116, 242] — contact at
+     * ~120, apex ~240, one bounce every 0.600 s — so she was 12 px above the
+     * top of it for the whole chain, every chain, forever.
+     *
+     * 210 catches her anywhere in that band. +-60 wide because the only
+     * escape must be HORIZONTAL: 0.35 s of telegraph buys her 116 px at run
+     * speed (332) or 233 on a dash, so running clears the column with 56 px
+     * to spare, and bouncing again does not. He stays on the ground in the
+     * simulation — the leap is drawing only.
+     */
+    antiAirTop: 210,
+    antiAirWidth: 120,
+    /** The column sits this far forward of his centre, along lockedDir. */
+    antiAirForward: 20,
+    /** He carries the swipe forward at this speed while it is live. */
+    antiAirDashSpeed: 260,
     /** Pause after recovery before it can be provoked again. */
     cooldown: 0.6,
     /**
@@ -542,6 +563,10 @@ function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined):
     case 'active':
       if (e.attackKind === 'lunge') {
         drift(e, world, e.lockedDir, A.lungeSpeed, dt);
+      } else if (e.attackKind === 'antiair') {
+        // The column travels with him. Slow enough that running out of it
+        // still works, fast enough that standing under it does not.
+        drift(e, world, e.lockedDir, A.antiAirDashSpeed, dt);
       }
       if (e.phaseTimer <= 0) {
         setPhase(e, 'recovery', e.attackKind === 'lunge' ? A.lungeRecovery : A.antiAirRecovery);
@@ -799,13 +824,19 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
         width: 60,
         height: 44,
       };
-    case 'antiair':
+    case 'antiair': {
+      // A column standing on his shoulders, leaning the way he committed.
+      // Drawn from the same constants in render.ts, so the picture and the
+      // box can never disagree.
+      const A = ATTACKS.duelist;
+      const cx = e.position.x + e.lockedDir * A.antiAirForward;
       return {
-        x: e.position.x - 34,
-        y: e.position.y - size.height - 52,
-        width: 68,
-        height: 52,
+        x: cx - A.antiAirWidth / 2,
+        y: e.position.y - A.antiAirTop,
+        width: A.antiAirWidth,
+        height: A.antiAirTop - size.height,
       };
+    }
     case 'riposte':
       return {
         x: e.lockedDir === 1 ? front : front - 64,
