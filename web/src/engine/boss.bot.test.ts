@@ -157,6 +157,31 @@ describe('being airborne is', () => {
     // Several full cycles, not one lucky escape.
     expect(run.lancesDodged).toBeGreaterThanOrEqual(4);
   });
+
+  /** Jump on a fixed beat, holding the ascent, ignoring what Bill is doing. */
+  function jumpOnABeat(periodFrames: number, offsetFrames: number): () => InputFrame {
+    let frame = -1;
+    return () => {
+      frame += 1;
+      const k = (frame + offsetFrames) % periodFrames;
+      return k === 0 ? press({ jumpPressed: true, jumpHeld: true }) : press({ jumpHeld: k < 12 });
+    };
+  }
+
+  it('but rhythm alone never does — the tell has to be read', () => {
+    // Every beat from 0.5 s to 1.5 s, at ten offsets each. The full jump is
+    // 1.03 s and only 0.55 s of it clears his head, so a fixed cadence is
+    // above him about half the time and has to be lucky several passes
+    // running. None of the 210 is.
+    const survivors: string[] = [];
+    for (let period = 30; period <= 90; period += 3) {
+      for (let offset = 0; offset < 40; offset += 4) {
+        const run = play(30, jumpOnABeat(period, offset));
+        if (run.survivedSeconds === 30) survivors.push(`${period}f+${offset}`);
+      }
+    }
+    expect(survivors).toEqual([]);
+  });
 });
 
 /**
