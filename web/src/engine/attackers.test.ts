@@ -8,7 +8,7 @@
  * everything outside post-counter recovery and ripostes when poked.
  */
 import { describe, expect, it } from 'vitest';
-import { ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
+import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
 import {
   ATTACKS,
   ENEMY_SIZES,
@@ -1072,5 +1072,116 @@ describe('Bill the man', () => {
       ATTACKS.bill.lanceSpeedHot / ATTACKS.bill.lanceSpeed,
       2,
     );
+  });
+});
+
+/**
+ * Bill the dog. Nothing here is new vocabulary — the bones are the spitter's
+ * fan and the ball is course level 2's red orb — so the assertions are about
+ * SAMENESS: same fan shape, same pogo-safe rule, same arcs every time.
+ */
+describe('Bill the dog', () => {
+  /** Step him into his roll and hand back the world he is rolling in. */
+  function rolling(hot = false): { dog: Enemy; w: World; t: Target } {
+    const w = arenaWorld();
+    const dog = createEnemy('dog', 584, FLOOR_Y);
+    dog.hot = hot;
+    dog.rollTimer = 0; // his roll is due
+    const t = targetAt(200, FLOOR_Y);
+    for (let i = 0; i < 60 * 5 && !dog.roll; i++) stepEnemy(dog, w, FIXED_DT, t);
+    expect(dog.roll).toBe(true);
+    return { dog, w, t };
+  }
+
+  it('spits the spitter fan: three shots, aimed at her chest, pokeable', () => {
+    const w = arenaWorld();
+    const dog = createEnemy('dog', 584, FLOOR_Y);
+    const t = targetAt(900, FLOOR_Y);
+    const shots = run(dog, w, 60 * 5, t);
+    expect(shots).toHaveLength(ATTACKS.dog.shots);
+
+    // Same fan geometry the lesson taught: evenly spread about the aim line.
+    const angles = shots.map((sh) => Math.atan2(sh.velocity.y, sh.velocity.x));
+    const spread = Math.max(...angles) - Math.min(...angles);
+    expect(spread).toBeCloseTo((ATTACKS.dog.spreadDeg * Math.PI) / 180, 5);
+    for (const sh of shots) {
+      expect(Math.hypot(sh.velocity.x, sh.velocity.y)).toBeCloseTo(ATTACKS.dog.projSpeed, 5);
+    }
+
+    // And the nail still nullifies them — stepArena owns that, but the shape
+    // it needs (a live projectile with a radius) is what is asserted here.
+    expect(shots.every((sh) => !sh.dead && sh.radius > 0)).toBe(true);
+  });
+
+  it('bounces in even arcs — every hop reaches the same height', () => {
+    const { dog, w, t } = rolling();
+    const apexes: number[] = [];
+    let arcTop = dog.position.y;
+    let rising = true;
+    for (let i = 0; i < 60 * 5 && dog.roll; i++) {
+      const before = dog.position.y;
+      stepEnemy(dog, w, FIXED_DT, t);
+      if (dog.position.y < before) {
+        rising = true;
+        arcTop = Math.min(arcTop, dog.position.y);
+      } else if (rising) {
+        apexes.push(arcTop);
+        rising = false;
+        arcTop = dog.position.y;
+      }
+    }
+    // 620 up against 1500 down is a 128 px apex; six arcs fit in the 5 s roll.
+    expect(apexes.length).toBeGreaterThanOrEqual(5);
+    const analytic = ATTACKS.dog.rollLaunch ** 2 / (2 * ATTACKS.dog.rollGravity);
+    for (const apex of apexes) {
+      expect(apex).toBeCloseTo(apexes[0]!, 6); // no decay, ever
+      expect(FLOOR_Y - apex).toBeGreaterThan(analytic - 10);
+      expect(FLOOR_Y - apex).toBeLessThanOrEqual(analytic);
+    }
+  });
+
+  it('never leaves the arena, and comes off both walls', () => {
+    const { dog, w, t } = rolling();
+    const half = ENEMY_SIZES.dog.width / 2;
+    const directions = new Set<number>();
+    for (let i = 0; i < 60 * 5 && dog.roll; i++) {
+      stepEnemy(dog, w, FIXED_DT, t);
+      directions.add(Math.sign(dog.velocity.x));
+      expect(dog.position.x).toBeGreaterThanOrEqual(half);
+      expect(dog.position.x).toBeLessThanOrEqual(CANVAS.width - half);
+    }
+    expect(directions).toEqual(new Set([1, -1]));
+  });
+
+  it('uncurls back onto the floor when the roll runs out', () => {
+    const { dog, w, t } = rolling();
+    for (let i = 0; i < 60 * 8 && dog.roll; i++) stepEnemy(dog, w, FIXED_DT, t);
+    expect(dog.roll).toBe(false);
+    expect(dog.position.y).toBe(FLOOR_Y);
+    expect(dog.attackKind).toBeNull();
+    expect(dog.velocity.y).toBe(0);
+  });
+
+  it('carries the ball a quarter further per second while hot', () => {
+    const travelled = (hot: boolean): number => {
+      const { dog, w, t } = rolling(hot);
+      const from = dog.position.x;
+      // Half a second, well inside the first arc, so no wall is involved.
+      run(dog, w, 30, t);
+      return Math.abs(dog.position.x - from);
+    };
+    expect(travelled(true) / travelled(false)).toBeCloseTo(
+      ATTACKS.dog.rollSpeedXHot / ATTACKS.dog.rollSpeedX,
+      2,
+    );
+  });
+
+  it('is deterministic — two dogs given the same seconds stay identical', () => {
+    const a = rolling();
+    const b = rolling();
+    run(a.dog, a.w, 60 * 4, a.t);
+    run(b.dog, b.w, 60 * 4, b.t);
+    expect(a.dog.position).toEqual(b.dog.position);
+    expect(a.dog.velocity).toEqual(b.dog.velocity);
   });
 });

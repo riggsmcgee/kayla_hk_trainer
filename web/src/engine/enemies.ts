@@ -284,6 +284,8 @@ export const ATTACKS = {
     shots: 3,
     spreadDeg: 35,
     projSpeed: 300,
+    bonesActive: 0.12,
+    bonesRecovery: 0.6,
     rollEvery: 6.5,
     rollEveryHot: 4.5,
     rollTelegraph: 0.45,
@@ -339,7 +341,7 @@ export interface Enemy extends EnemyState {
   leapTo: Vec2;
   /** Duelist leap: the direction committed to at the end of the hang. */
   leapAim: Vec2;
-  /** Duelist leap: the floor height to land back on. */
+  /** Duelist leap and dog roll: the floor height to land back on. */
   leapGroundY: number;
   /** Duelist: seconds the Knight has spent moving away, and standing still. */
   retreatTimer: number;
@@ -354,6 +356,11 @@ export interface Enemy extends EnemyState {
   roll: boolean;
   /** Bill: lance passes still owed after the current one (1 while hot). */
   lancePasses: number;
+  /**
+   * Dog: seconds until the next roll. The bones ride `cooldownTimer`, so the
+   * two attacks run off independent clocks and neither can starve the other.
+   */
+  rollTimer: number;
 }
 
 /** Visual/collision sizes per enemy (width × height, feet-anchored). */
@@ -409,6 +416,7 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     sinceBounce: 0,
     roll: false,
     lancePasses: 0,
+    rollTimer: ATTACKS.dog.rollEvery,
   };
 }
 
@@ -1176,6 +1184,127 @@ function stepBill(e: Enemy, world: World, dt: number, t: Target | undefined): vo
 }
 
 /**
+ * The ball, mid-bounce.
+ *
+ * Its own gravity, not the world's: 620 up against 1500 down gives a 128 px
+ * apex and a 0.83 s arc, which is slow enough to read and land on. Every
+ * floor bounce re-launches to exactly the same speed, so the arcs never decay
+ * into an unreadable skitter — six identical hops across the five seconds.
+ */
+function stepRoll(e: Enemy, world: World, dt: number): void {
+  const A = ATTACKS.dog;
+  const half = ENEMY_SIZES[e.id].width / 2;
+
+  e.velocity.y += A.rollGravity * dt;
+  e.position.y += e.velocity.y * dt;
+  if (e.position.y >= e.leapGroundY) {
+    e.position.y = e.leapGroundY;
+    e.velocity.y = -A.rollLaunch;
+  }
+
+  const nextX = e.position.x + e.velocity.x * dt;
+  const wall = blockerOf(world, bodyAt(e.id, nextX, e.position.y));
+  if (wall) {
+    e.position.x = e.velocity.x > 0 ? wall.x - half : wall.x + wall.width + half;
+    e.velocity.x = -e.velocity.x;
+  } else {
+    e.position.x = nextX;
+  }
+  e.facing = e.velocity.x >= 0 ? 1 : -1;
+
+  if (e.phaseTimer > 0) return;
+  // Uncurl where he lands, not in mid-air.
+  e.roll = false;
+  e.position.y = e.leapGroundY;
+  e.velocity.x = 0;
+  e.velocity.y = 0;
+  e.attackKind = null;
+  e.rollTimer = e.hot ? A.rollEveryHot : A.rollEvery;
+  setPhase(e, 'idle', 0);
+}
+
+/**
+ * Bill the dog — the family's other Bill, in at 0:30 and just as unkillable.
+ *
+ * Both his attacks are deliberately vocabulary she already owns, because
+ * nothing new is taught at the end of the road:
+ *
+ * - BONES are the spitter's fan, built by the same `fanShots`, so poking one
+ *   out of the air works exactly the way chapter 3 taught it.
+ * - The ROLL is the red orb from course level 2 — pogo-safe on top
+ *   (`enemyHurtsBox`), lethal on the sides.
+ *
+ * Two independent deterministic timers and no RNG anywhere, so the fight is
+ * reproducible and the demos and tests can depend on it.
+ */
+function stepDog(e: Enemy, world: World, dt: number, t: Target | undefined): Projectile[] | null {
+  const A = ATTACKS.dog;
+  const telegraph = ENEMIES.dog.telegraph ?? 0.45;
+  e.phaseTimer -= dt;
+  e.cooldownTimer = Math.max(0, e.cooldownTimer - dt);
+  e.rollTimer = Math.max(0, e.rollTimer - dt);
+
+  // While he is balled up the roll owns the body outright.
+  if (e.roll) {
+    stepRoll(e, world, dt);
+    return null;
+  }
+
+  switch (e.phase) {
+    case 'idle': {
+      if (!t) return null;
+      faceTarget(e, t);
+      const dx = t.position.x - e.position.x;
+      if (Math.abs(dx) > 60) drift(e, world, dx >= 0 ? 1 : -1, A.huntSpeed, dt);
+
+      // The roll goes first when both are due: it is the bigger commitment,
+      // and a volley fired into a roll she is already dodging is noise.
+      const kind = e.rollTimer <= 0 ? 'roll' : e.cooldownTimer <= 0 ? 'bones' : null;
+      if (!kind) return null;
+      e.attackKind = kind;
+      e.lockedDir = dx >= 0 ? 1 : -1;
+      e.facing = e.lockedDir;
+      setPhase(e, 'telegraph', kind === 'roll' ? A.rollTelegraph : telegraph);
+      return null;
+    }
+    case 'telegraph': {
+      if (e.phaseTimer > 0) return null;
+      if (e.attackKind === 'roll') {
+        e.roll = true;
+        e.velocity.x = e.lockedDir * (e.hot ? A.rollSpeedXHot : A.rollSpeedX);
+        e.velocity.y = -A.rollLaunch;
+        setPhase(e, 'active', A.rollTime);
+        return null;
+      }
+      setPhase(e, 'active', A.bonesActive);
+      if (!t) return null;
+      const size = ENEMY_SIZES.dog;
+      const mouth: Vec2 = {
+        x: e.position.x + e.facing * (size.width / 2),
+        y: e.position.y - size.height / 2,
+      };
+      return fanShots(
+        mouth,
+        { x: t.position.x, y: t.position.y - CHEST },
+        A.shots,
+        A.spreadDeg,
+        A.projSpeed,
+      );
+    }
+    case 'active':
+      if (e.phaseTimer <= 0) setPhase(e, 'recovery', A.bonesRecovery);
+      return null;
+    case 'recovery':
+      if (e.phaseTimer <= 0) {
+        e.attackKind = null;
+        e.cooldownTimer = e.hot ? A.bonesEveryHot : A.bonesEvery;
+        setPhase(e, 'idle', 0);
+      }
+      return null;
+  }
+}
+
+/**
  * Advance one enemy by one step. Every enemy hunts the player (`target`)
  * when it can see one; without a target the dummies patrol and the
  * attackers hold still. Returns projectiles spawned this step, if any.
@@ -1208,7 +1337,7 @@ export function stepEnemy(
       stepBill(e, world, dt, target);
       return null;
     case 'dog':
-      return null;
+      return stepDog(e, world, dt, target);
   }
 }
 
@@ -1302,10 +1431,12 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
         height: A.swatHeight,
       };
     }
-    // Stubs. The dog's attacks exist in the union so the switch stays
-    // exhaustive; their boxes arrive with his state machine.
     case 'bones':
+      return null; // the projectiles carry the threat, same as the volley
     case 'roll':
+      // The ball's threat is its BODY, and only its lower band at that —
+      // arena.ts's enemyHurtsBox owns that rule so the pogo-safe cap and the
+      // damage check can never drift apart.
       return null;
   }
 }
