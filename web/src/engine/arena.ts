@@ -15,7 +15,7 @@
 
 import { activeNailHitbox, applyPogoBounce, playerHurtbox } from './player';
 import type { Player } from './player';
-import { enemyAttackHitbox, enemyBox, resolveNailHit } from './enemies';
+import { ATTACKS, enemyAttackHitbox, enemyBox, resolveNailHit } from './enemies';
 import type { Enemy, Projectile } from './enemies';
 import type { AABB } from './types';
 
@@ -76,6 +76,25 @@ function projectileBox(p: Projectile): AABB {
     width: p.radius * 2,
     height: p.radius * 2,
   };
+}
+
+/**
+ * The part of an enemy that DAMAGES her, which is not always its whole body.
+ *
+ * Only the rolling dog differs: the top `rollSafeCap` pixels of the ball are
+ * safe to ride, so a downslash onto it is rewarded and a shoulder-first
+ * approach is not. That is deliberately the red orb's rule from course level
+ * 2 (render.ts draws the same pale cap that the orb's dark ring draws), so
+ * the boss teaches nothing new — it asks for something she already learned.
+ *
+ * The BOUNCE check still uses the full `enemyBox`, so her nail rings off the
+ * whole ball while only the lower band can kill her.
+ */
+export function enemyHurtsBox(e: Enemy): AABB {
+  const box = enemyBox(e);
+  if (e.id !== 'dog' || e.attackKind !== 'roll') return box;
+  const cap = ATTACKS.dog.rollSafeCap;
+  return { x: box.x, y: box.y + cap, width: box.width, height: box.height - cap };
 }
 
 export function stepArena(
@@ -159,7 +178,7 @@ export function stepArena(
     // An active attack (lunge, swipe, riposte) that catches the body, or
     // plain contact — either way, the run ends. The first hit is the lesson.
     const attack = enemyAttackHitbox(enemy);
-    if ((attack && overlaps(hurtbox, attack)) || overlaps(hurtbox, enemyBox(enemy))) {
+    if ((attack && overlaps(hurtbox, attack)) || overlaps(hurtbox, enemyHurtsBox(enemy))) {
       state.over = true;
       events.playerHit = true;
     }

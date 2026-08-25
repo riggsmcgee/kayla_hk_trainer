@@ -8,10 +8,10 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
-import { RESPAWN_DELAY, createArenaState, stepArena } from './arena';
+import { RESPAWN_DELAY, createArenaState, enemyHurtsBox, stepArena } from './arena';
 import { PLAYER_SPAWN_X, arenaWorld, createDodgeArenaSession } from './dodgeArenaSession';
 import { OVERLAY_LOCKOUT_SECONDS } from './session';
-import { createEnemy, enemyBox } from './enemies';
+import { ATTACKS, ENEMY_SIZES, createEnemy, enemyBox } from './enemies';
 import type { Enemy } from './enemies';
 import { createPlayer } from './player';
 import { rosterStages, waveStages } from './stages';
@@ -889,5 +889,90 @@ describe('arena session (staged game)', () => {
     for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
     expect(cleared).toEqual([]);
     expect(recorded).toHaveLength(0);
+  });
+  it('the Bills are moving furniture: the nail bounces, nothing else happens', () => {
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    const bill = createEnemy('bill', 800, FLOOR_Y);
+
+    // A hundred distinct swings, so the per-swing dedupe cannot be what
+    // hides the damage.
+    for (let i = 0; i < 100; i++) {
+      armSwingOver(player, bill.position.x, bill.position.y);
+      const events = stepArena(state, player, [bill], FIXED_DT);
+      expect(events.nailLanded).toBe(false);
+      expect(events.hits).toBe(0);
+      expect(events.enemyDied).toBe(false);
+    }
+    expect(bill.hp).toBe(ENEMIES.bill.hp);
+    expect(bill.dead).toBe(false);
+    expect(state.hitsLanded).toBe(0);
+  });
+
+  it('a downslash onto a Bill still bounces her, and still costs him nothing', () => {
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    const dog = createEnemy('dog', 800, FLOOR_Y);
+
+    // Straight down onto the dog, in the air, mid-swing.
+    player.position.x = dog.position.x;
+    player.position.y = dog.position.y - ENEMY_SIZES.dog.height - 20;
+    player.grounded = false;
+    player.nailDir = 'down';
+    player.nailTimer = PHYSICS.nailStartup + PHYSICS.nailActiveTime / 2;
+    player.swingId += 1;
+    player.pogoedThisSwing = false; // a fresh swing has not bounced yet
+
+    const events = stepArena(state, player, [dog], FIXED_DT);
+    expect(player.totalPogos).toBe(1);
+    expect(events.nailLanded).toBe(false);
+    expect(state.hitsLanded).toBe(0);
+    expect(dog.hp).toBe(ENEMIES.dog.hp);
+  });
+
+  it('the rolling dog is safe on top and lethal on the sides', () => {
+    const dog = createEnemy('dog', 800, FLOOR_Y);
+    // Not rolling: the hurt box is the whole body, like everyone else.
+    expect(enemyHurtsBox(dog)).toEqual(enemyBox(dog));
+
+    dog.attackKind = 'roll';
+    dog.roll = true;
+    const body = enemyBox(dog);
+    const hurts = enemyHurtsBox(dog);
+    expect(hurts.y).toBe(body.y + ATTACKS.dog.rollSafeCap);
+    expect(hurts.height).toBe(body.height - ATTACKS.dog.rollSafeCap);
+    expect(hurts.x).toBe(body.x);
+    expect(hurts.width).toBe(body.width);
+  });
+
+  it('every other enemy hurts with its whole body', () => {
+    for (const id of ['walker', 'flier', 'spitter', 'duelist', 'warden', 'bill'] as const) {
+      const e = createEnemy(id, 500, FLOOR_Y);
+      expect(enemyHurtsBox(e)).toEqual(enemyBox(e));
+    }
+  });
+
+  it('riding the top cap of the rolling ball is survivable; 30 px lower is not', () => {
+    const roller = () => {
+      const d = createEnemy('dog', 800, FLOOR_Y);
+      d.attackKind = 'roll';
+      d.roll = true;
+      return d;
+    };
+    const top = enemyBox(roller()).y;
+
+    const perched = createArenaState(false);
+    perched.started = true;
+    // Her feet just inside the cap, so her hurtbox bottom is above the
+    // lethal band — riding the ball, which is what the cap is for.
+    const safe = createPlayer(800, top + ATTACKS.dog.rollSafeCap - 1);
+    expect(stepArena(perched, safe, [roller()], FIXED_DT).playerHit).toBe(false);
+
+    const sunk = createArenaState(false);
+    sunk.started = true;
+    const caught = createPlayer(800, top + ATTACKS.dog.rollSafeCap + 30);
+    expect(stepArena(sunk, caught, [roller()], FIXED_DT).playerHit).toBe(true);
   });
 });

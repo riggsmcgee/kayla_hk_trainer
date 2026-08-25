@@ -224,6 +224,83 @@ export const ATTACKS = {
     /** The column sits this far BEHIND his facing — she blocked from up there. */
     skywardBack: 45,
   },
+  /**
+   * Bill the man. Every number here is DERIVED from the shipped physics, not
+   * guessed — see the working in docs/plans/2026-08-24-playtest-3-build.md
+   * § T11. The two that matter:
+   *
+   * - `lanceHeight` 130 is the reason the answer is 'be airborne'. A full
+   *   jump reaches 233 px and spends 0.667 s of its 1.033 s above the band,
+   *   so clearing the lance is generous — but no patch of FLOOR is safe,
+   *   corners included, which is the lesson.
+   * - `swatAfterBounce` 0.5 makes the FIRST head bounce free by
+   *   construction: the clock only starts AT a bounce, and she is back above
+   *   his head for 0.600 s after one, so the 0.41 s nail cadence lands the
+   *   second bounce at ~0.55 s — inside the swat. One hit, then get out.
+   *
+   * Tune `lanceSpeed` and `lanceHeight` if the fight is wrong. Never PHYSICS:
+   * gravity is the one estimated value in it and it prices the course too.
+   */
+  bill: {
+    /** He walks at her the whole time; there is nowhere to wait him out. */
+    marchSpeed: 90,
+    /** He closes no nearer than this while winding up. */
+    standOff: 90,
+    lanceEvery: 2.6,
+    lanceEveryHot: 1.7,
+    lanceSpeed: 760,
+    lanceSpeedHot: 950,
+    /** Seconds stuck against the far wall after the pass — her only rest. */
+    lanceStuck: 1.0,
+    /** The foam finger's reach in front of him, and how high the pass sweeps. */
+    lanceReach: 90,
+    lanceHeight: 130,
+    /** Seconds above his head before he swats. The first bounce is free. */
+    swatAfterBounce: 0.5,
+    swatTelegraph: 0.4,
+    swatActive: 0.3,
+    swatRecovery: 0.8,
+    /** The swat is a column on his shoulders: 440 - 150 puts its top at y 290. */
+    swatWidth: 140,
+    swatHeight: 150,
+    /** She counts as above him inside this horizontal half-width. */
+    overheadHalfWidth: 90,
+    cooldown: 0.8,
+    cooldownHot: 0.5,
+  },
+  /**
+   * Bill the dog. Both attacks are deliberately vocabulary she already owns:
+   * the bones are the spitter's fan (same `fanShots`, so poking one out of
+   * the air works identically), and the rolling ball is the red orb from
+   * course level 2 — pogo-safe on top, lethal on the sides.
+   *
+   * No RNG anywhere: two independent timers, so the fight is reproducible and
+   * every test and demo can depend on it.
+   */
+  dog: {
+    huntSpeed: 110,
+    bonesEvery: 3.0,
+    bonesEveryHot: 2.0,
+    shots: 3,
+    spreadDeg: 35,
+    projSpeed: 300,
+    rollEvery: 6.5,
+    rollEveryHot: 4.5,
+    rollTelegraph: 0.45,
+    /** Seconds the ball bounces before it uncurls. */
+    rollTime: 5.0,
+    rollSpeedX: 260,
+    rollSpeedXHot: 325,
+    /**
+     * Re-launch speed at every floor bounce, and the ball's own gravity —
+     * 620 and 1500 give a 128 px apex, 0.83 s and 215 px per arc, so about
+     * six readable arcs across the 5 s roll.
+     */
+    rollLaunch: 620,
+    rollGravity: 1500,
+    /** The pogo-safe cap on top of the ball. Drawn, so the rule is visible. */
+    rollSafeCap: 26,
+  },
 } as const;
 
 /** Full simulation state for one enemy. */
@@ -1103,6 +1180,17 @@ export type NailHitResult = 'hit' | 'blocked' | 'none';
 export function resolveNailHit(player: Player, e: Enemy, lethal: boolean): NailHitResult {
   if (e.dead || e.lastHitSwingId === player.swingId) return 'none';
   e.lastHitSwingId = player.swingId;
+
+  // The boss pair is furniture: the nail rings off them and nothing else
+  // happens — no damage, no counter, no death. 'blocked' already means
+  // exactly that, so NailHitResult gains no member and no exhaustive switch
+  // breaks; stepArena only scores 'hit', and bounces her either way.
+  if (ENEMIES[e.id].invulnerable) {
+    e.blockFlashTimer = 0.18;
+    // Landing on his head is what arms the shake-off clock.
+    if (player.nailDir === 'down') e.sinceBounce = 0;
+    return 'blocked';
+  }
 
   if (e.id === 'warden' && e.phase !== 'recovery') {
     const hitFrom = swingSide(player);
