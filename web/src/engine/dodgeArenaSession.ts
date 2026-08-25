@@ -5,9 +5,9 @@
  * one steps in. A touch restarts the SAME stage — death is a checkpoint,
  * never the whole roster. After the last stage, the page is told.
  *
- * The same session plays Kbug's Colosseum (one enemy per stage, two ledges)
- * and the finale's waves (two enemies per stage, a flat floor). Every stage
- * attempt is recorded as one run so the bests can read it back.
+ * The same session plays Kbug's Colosseum (one enemy per stage) and the
+ * finale's waves (two enemies per stage). Both are the same flat floor. Every
+ * stage attempt is recorded as one run so the bests can read it back.
  */
 
 import type { EnemyId } from '@dojo/shared';
@@ -42,18 +42,15 @@ import type { InputFrame, Vec2, World } from './types';
  */
 export const FLOOR_Y = 600;
 /**
- * Where the Knight starts every stage and every checkpoint restart: open
- * floor, clear of both ledges, so the first jump or pogo of an attempt gets
- * its full height (under a ledge it would bonk after 65 px). Left of centre,
- * so the enemies spawn on the far right.
+ * Where the Knight starts every stage and every checkpoint restart. Left of
+ * centre, so the enemies always spawn on the far right of her. The floor is
+ * flat now, so nothing overhangs it — but the value still matters, because
+ * spawnX() picks the far wall by comparing against the canvas mid-point.
  * @internal exported for the tests
  */
 export const PLAYER_SPAWN_X = 450;
 /** Seconds the "Stage clear" banner hangs before the next stage steps in (Z skips it). */
 export const STAGE_CLEAR_BANNER_SECONDS = 2;
-
-/** Which floor the stages play on. */
-export type ArenaWorldKind = 'colosseum' | 'flat';
 
 /**
  * What the stages are: the Colosseum's roster (one enemy each; runs are
@@ -67,7 +64,6 @@ export interface ArenaSessionConfig {
   stages: readonly StageDef[];
   /** Stage to begin at (resume); clamped into range. Default 0. */
   startIndex?: number;
-  world: ArenaWorldKind;
   comfort: ComfortSettings;
   /**
    * DEV TOOL: remove in the final build. Observe mode: the nail is a feather
@@ -95,20 +91,27 @@ export interface ArenaSessionConfig {
   jumpKey?: string;
 }
 
-/** The stage's floor, walls and (in the Colosseum) two ledges. @internal exported for the tests */
-export function arenaWorld(kind: ArenaWorldKind): World {
-  const solids = [
-    { x: -200, y: FLOOR_Y, width: CANVAS.width + 400, height: 200 },
-    { x: -32, y: -400, width: 32, height: CANVAS.height + 400 },
-    { x: CANVAS.width, y: -400, width: 32, height: CANVAS.height + 400 },
-  ];
-  if (kind === 'colosseum') {
-    solids.push(
-      { x: 190, y: FLOOR_Y - 130, width: 140, height: 18 },
-      { x: 838, y: FLOOR_Y - 130, width: 140, height: 18 },
-    );
-  }
-  return { solids };
+/**
+ * The stage's floor and two walls. Flat, everywhere — the Colosseum's two
+ * ledges are gone (playtest 3, note 7: she never used them and they broke up
+ * a fight that reads better as one open floor).
+ *
+ * The ledge-avoidance behaviour in this module's enemies is deliberately
+ * KEPT: stepWalker's edge turn, the flier's SIDESTEP_REACH and flyToward's
+ * sidestep have no geometry to act on here any more, but they are still
+ * covered by the hand-built platform worlds in the tests, and any future
+ * arena with a platform in it needs them back working on day one.
+ *
+ * @internal exported for the tests
+ */
+export function arenaWorld(): World {
+  return {
+    solids: [
+      { x: -200, y: FLOOR_Y, width: CANVAS.width + 400, height: 200 },
+      { x: -32, y: -400, width: 32, height: CANVAS.height + 400 },
+      { x: CANVAS.width, y: -400, width: 32, height: CANVAS.height + 400 },
+    ],
+  };
 }
 
 /** Airborne enemies spawn at hover height; the rest on the floor. */
@@ -142,7 +145,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
   const observe = config.observe ?? false;
   const kind: ArenaKind =
     config.kind ?? (stages.some((s) => s.enemies.length > 1) ? 'waves' : 'roster');
-  const world = arenaWorld(config.world);
+  const world = arenaWorld();
   const juice = createJuice(comfort);
   const edgeCarry = createEdgeCarry();
 

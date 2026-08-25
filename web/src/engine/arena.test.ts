@@ -548,7 +548,6 @@ describe('arena session (staged game)', () => {
     const s = createDodgeArenaSession({
       stages: rosterStages(),
       startIndex: 1,
-      world: 'colosseum',
       comfort: COMFORT,
       onStageCleared: (i) => cleared.push(i),
     });
@@ -580,7 +579,6 @@ describe('arena session (staged game)', () => {
     let all = 0;
     const s = createDodgeArenaSession({
       stages: quick(2),
-      world: 'flat',
       comfort: COMFORT,
       onStageCleared: (i) => cleared.push(i),
       onAllCleared: () => {
@@ -606,7 +604,7 @@ describe('arena session (staged game)', () => {
   it('the banner advances on its own after two seconds', () => {
     recorded.length = 0;
     const cleared: number[] = [];
-    const s = createDodgeArenaSession({ stages: quick(2), world: 'flat', comfort: COMFORT });
+    const s = createDodgeArenaSession({ stages: quick(2), comfort: COMFORT });
     s.step(press({ attackPressed: true }), FIXED_DT);
     for (let i = 0; i < 60 * 3; i++) s.step(IDLE, FIXED_DT); // 0.5 s clear + 2 s banner
     s.step(press({ attackPressed: true }), FIXED_DT); // starts stage 2
@@ -620,7 +618,6 @@ describe('arena session (staged game)', () => {
     const s = createDodgeArenaSession({
       stages: waveStages(),
       startIndex: 1,
-      world: 'flat',
       comfort: COMFORT,
     });
     s.step(press({ attackPressed: true }), FIXED_DT);
@@ -640,7 +637,6 @@ describe('arena session (staged game)', () => {
     const s = createDodgeArenaSession({
       stages: rosterStages(),
       startIndex: 1,
-      world: 'colosseum',
       comfort: COMFORT,
       onStageStarted: (i) => started.push(i),
       onStageFailed: (i) => failed.push(i),
@@ -696,7 +692,6 @@ describe('arena session (staged game)', () => {
     const s = createDodgeArenaSession({
       stages: quick(2),
       startIndex: 1,
-      world: 'flat',
       comfort: COMFORT,
       onStageStarted: (i) => started.push(i),
     });
@@ -712,7 +707,6 @@ describe('arena session (staged game)', () => {
     const failed: number[] = [];
     const s = createDodgeArenaSession({
       stages: rosterStages(),
-      world: 'colosseum',
       comfort: COMFORT,
       observe: true,
       onStageFailed: (i) => failed.push(i),
@@ -734,17 +728,15 @@ describe('arena session (staged game)', () => {
       width: KNIGHT.hurtboxWidth,
       height: apex,
     };
-    for (const kind of ['colosseum', 'flat'] as const) {
-      const overhead = arenaWorld(kind).solids.filter(
-        (b) =>
-          b.y + b.height <= FLOOR_Y &&
-          b.x < column.x + column.width &&
-          b.x + b.width > column.x &&
-          b.y < column.y + column.height &&
-          b.y + b.height > column.y,
-      );
-      expect(overhead).toEqual([]);
-    }
+    const overhead = arenaWorld().solids.filter(
+      (b) =>
+        b.y + b.height <= FLOOR_Y &&
+        b.x < column.x + column.width &&
+        b.x + b.width > column.x &&
+        b.y < column.y + column.height &&
+        b.y + b.height > column.y,
+    );
+    expect(overhead).toEqual([]);
     // And the enemies still spawn on the far side from her.
     expect(PLAYER_SPAWN_X).toBeLessThan(CANVAS.width / 2);
   });
@@ -754,7 +746,6 @@ describe('arena session (staged game)', () => {
     const cleared: number[] = [];
     const s = createDodgeArenaSession({
       stages: quick(1),
-      world: 'colosseum',
       comfort: COMFORT,
       observe: true,
       onStageCleared: (i) => cleared.push(i),

@@ -92,7 +92,6 @@ export function PlayDodge() {
       return createDodgeArenaSession({
         stages: stages.filter((s) => s.enemies[0] === freePlay),
         startIndex: 0,
-        world: 'colosseum',
         comfort,
         observe,
         kind: 'roster',
@@ -102,7 +101,6 @@ export function PlayDodge() {
     return createDodgeArenaSession({
       stages,
       startIndex,
-      world: 'colosseum',
       comfort,
       observe,
       kind: 'roster',

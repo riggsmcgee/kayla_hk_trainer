@@ -169,7 +169,6 @@ function WavesBeat({ progress, runs, comfort, jumpKey, refresh }: BeatProps) {
       createDodgeArenaSession({
         stages: waveStages(),
         startIndex: startWave,
-        world: 'flat',
         comfort,
         kind: 'waves',
         jumpKey,

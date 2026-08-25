@@ -134,14 +134,28 @@ function overlaps(a: AABB, b: AABB): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
-/** The Colosseum she actually plays in — the session's own geometry, not a mirror. */
-function colosseum(): World {
-  return arenaWorld('colosseum');
+/** The arena she actually plays in — the session's own geometry, not a mirror. */
+function flatArena(): World {
+  return arenaWorld();
 }
 
-/** The finale's flat arena: floor and walls, no ledges. */
-function flatArena(): World {
-  return arenaWorld('flat');
+/**
+ * The Colosseum's old two-ledge geometry, kept by hand.
+ *
+ * Playtest 3 note 7 deleted these ledges from the game, but the behaviour
+ * they provoke — the walker's edge turn, the flier's sidestep around a
+ * platform — is still in the enemies and still has to work the day someone
+ * builds a stage with a platform in it. Same coordinates as the shipped
+ * ledges were, so the tests below read as they always did: solids[3] is the
+ * left ledge, solids[4] the right.
+ */
+function platformArena(): World {
+  const w = arenaWorld();
+  w.solids.push(
+    { x: 190, y: FLOOR_Y - 130, width: 140, height: 18 },
+    { x: 838, y: FLOOR_Y - 130, width: 140, height: 18 },
+  );
+  return w;
 }
 
 const ROSTER: EnemyId[] = ['walker', 'flier', 'duelist', 'spitter', 'warden'];
@@ -152,11 +166,6 @@ const GROUND_SPOTS: Array<[number, number]> = [
   [CANVAS.width / 2, FLOOR_Y],
   [CANVAS.width - 30, FLOOR_Y],
 ];
-const LEDGE_SPOTS: Array<[number, number]> = [
-  [260, FLOOR_Y - 130],
-  [908, FLOOR_Y - 130],
-];
-
 /** Spawn where the session would: the far side of the arena at the enemy's normal height. */
 function spawnFarFrom(id: EnemyId, playerX: number): Enemy {
   return createEnemy(id, spawnX(0, playerX), AIRBORNE.has(id) ? 430 : FLOOR_Y);
@@ -210,36 +219,30 @@ function hunt(id: EnemyId, spot: [number, number], world: World, seconds = 10): 
 }
 
 describe('hunting — no safe corner (playtest 2)', () => {
+  // One arena now, so one pass: the Colosseum and the finale play on the
+  // same flat floor (playtest 3, note 7).
   describe.each(ROSTER)('%s', (id) => {
-    it.each(GROUND_SPOTS)(
-      'reaches a Knight standing still at (%i, %i) in the Colosseum within 10 s',
-      (x, y) => {
-        const h = hunt(id, [x, y], colosseum());
-        expect(h.stuckSteps).toBe(0);
-        expect(h.hitAt).toBeGreaterThanOrEqual(0);
-      },
-    );
-
-    it.each(GROUND_SPOTS)(
-      'reaches a Knight standing still at (%i, %i) in the flat finale arena within 10 s',
-      (x, y) => {
-        const h = hunt(id, [x, y], flatArena());
-        expect(h.stuckSteps).toBe(0);
-        expect(h.hitAt).toBeGreaterThanOrEqual(0);
-      },
-    );
-
-    // Ledges: the fliers reach her; the ground enemies can't climb, so they
-    // pace directly beneath her — a ledge is a pause, never a hiding place.
-    it.each(LEDGE_SPOTS)('hunts a Knight perched on the ledge at (%i, %i)', (x, y) => {
-      const h = hunt(id, [x, y], colosseum());
+    it.each(GROUND_SPOTS)('reaches a Knight standing still at (%i, %i) within 10 s', (x, y) => {
+      const h = hunt(id, [x, y], flatArena());
       expect(h.stuckSteps).toBe(0);
-      if (AIRBORNE.has(id)) {
-        expect(h.hitAt).toBeGreaterThanOrEqual(0);
-      } else {
-        expect(h.minAdx).toBeLessThanOrEqual(130);
-      }
+      expect(h.hitAt).toBeGreaterThanOrEqual(0);
     });
+
+    // And on a platform stage, should one ever exist: the fliers reach her;
+    // the ground enemies can't climb, so they pace directly beneath her.
+    it.each(GROUND_SPOTS)('hunts from a platform world at (%i, %i) too', (x, y) => {
+      const h = hunt(id, [x, y], platformArena());
+      expect(h.stuckSteps).toBe(0);
+      expect(h.hitAt).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
+
+describe('the arena floor (playtest 3, note 7)', () => {
+  it('is flat: a floor and two walls, and nothing to stand on', () => {
+    // Stated as a property, not as a deletion, so the ledges cannot come back
+    // by accident.
+    expect(arenaWorld().solids).toHaveLength(3);
   });
 });
 
@@ -267,7 +270,7 @@ describe('walker hunting', () => {
   });
 
   it('paces beneath a Knight standing on a platform above it', () => {
-    const world = colosseum();
+    const world = platformArena();
     const walker = createEnemy('walker', 700, FLOOR_Y);
     const t: Target = { position: { x: 260, y: FLOOR_Y - 130 }, grounded: true };
     for (let i = 0; i < 600; i++) stepEnemy(walker, world, FIXED_DT, t);
@@ -313,7 +316,7 @@ describe('flier hunting', () => {
   });
 
   it('is blocked by a ledge, not pinned: from above it, it still reaches a Knight beneath', () => {
-    const world = colosseum();
+    const world = platformArena();
     const flier = createEnemy('flier', 908, 430); // over the right ledge
     const player = createPlayer(908, FLOOR_Y); // standing right under it
     const t: Target = { position: player.position, grounded: true };
@@ -327,7 +330,7 @@ describe('flier hunting', () => {
   });
 
   it('goes around a ledge instead of waiting underneath a Knight standing on it', () => {
-    const world = colosseum();
+    const world = platformArena();
     const flier = createEnemy('flier', 260, FLOOR_Y - 10); // directly beneath the left ledge
     const player = createPlayer(260, FLOOR_Y - 130);
     const t: Target = { position: player.position, grounded: true };
@@ -339,4 +342,3 @@ describe('flier hunting', () => {
     expect(hit).toBe(true);
   });
 });
-
