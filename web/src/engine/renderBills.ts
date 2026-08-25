@@ -2,46 +2,82 @@
  * The boss pair's painting, kept in its own module.
  *
  * Every state read (`phase`, `attackKind`, `phaseTimer`, `facing`,
- * `lockedDir`, `hot`) stays inside these two functions, so the real painting
- * of Uncle Bill can be dropped in later without the fight's state machine
- * being touched. Placeholder geometry for now, at the ratified proportions:
- * Bill 68 x 160, the dog 64 x 58, both feet-anchored like every other enemy.
+ * `lockedDir`, `hot`) stays inside this file, so the art and the fight's state
+ * machine never learn about each other. That seam was built for a swap, and
+ * the swap has now happened: the placeholder ink geometry is gone and the two
+ * designs the user chose from the concept portfolio are in
+ * `renderBillMan.ts` and `renderBillDog.ts`. Those two modules know nothing
+ * about `Enemy`; this one is the whole translation layer.
+ *
+ * If the art is ever replaced again, this file is the only thing that has to
+ * agree with both sides.
  */
-
-import { COLORS } from './render';
 import type { Enemy } from './enemies';
-import { ENEMY_SIZES } from './enemies';
+import { paintBillDog, type BillDogPose } from './renderBillDog';
+import { paintBillMan, type BillPose } from './renderBillMan';
 import type { Vec2 } from './types';
 
-/** Bill the man. Placeholder: a correctly-sized block with a head on it. */
-export function drawBill(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy): void {
-  const { width, height } = ENEMY_SIZES.bill;
-  ctx.fillStyle = COLORS.enemyBody;
-  ctx.fillRect(feet.x - width / 2, feet.y - height, width, height);
-  // A head circle at the ratified 160 px proportion, so the silhouette reads
-  // as a person at the right scale before the painting arrives.
-  ctx.beginPath();
-  ctx.arc(feet.x, feet.y - height + 10, 17, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = COLORS.enemyDetail;
-  ctx.beginPath();
-  ctx.arc(feet.x + enemy.facing * 6, feet.y - height + 8, 3, 0, Math.PI * 2);
-  ctx.fill();
+/**
+ * Which pose Bill the man is in, from the fight's own state.
+ *
+ * The mapping is deliberately total — every combination lands somewhere real,
+ * because a boss that blanks for a frame is worse than one in a slightly
+ * wrong pose, and T11's state machine is not written yet. It reads:
+ *
+ * | attack  | phase       | pose        | why                                  |
+ * |---------|-------------|-------------|--------------------------------------|
+ * | lance   | telegraph   | `lanceTell` | the 0.6 s windup she reads           |
+ * | lance   | active      | `lanceDash` | crossing the arena                   |
+ * | lance   | recovery    | `stuck`     | he hit the wall; her punish window   |
+ * | swat    | telegraph   | `swatTell`  | the 0.4 s upward windup              |
+ * | swat    | active      | `swat`      | the strike                           |
+ * | swat    | recovery    | `idle`      | he recovers on his feet, not dazed   |
+ * | —       | idle        | `idle`      |                                      |
+ */
+export function billPose(enemy: Enemy): BillPose {
+  if (enemy.attackKind === 'lance') {
+    if (enemy.phase === 'telegraph') return 'lanceTell';
+    if (enemy.phase === 'active') return 'lanceDash';
+    // Only the lance ends against a wall, so only the lance is ever `stuck`.
+    if (enemy.phase === 'recovery') return 'stuck';
+  }
+  if (enemy.attackKind === 'swat') {
+    if (enemy.phase === 'telegraph') return 'swatTell';
+    if (enemy.phase === 'active') return 'swat';
+  }
+  return 'idle';
 }
 
-/** Bill the dog. Placeholder: a body block, or a ball while it is rolling. */
-export function drawBillDog(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy): void {
-  const { width, height } = ENEMY_SIZES.dog;
-  ctx.fillStyle = COLORS.enemyBody;
-  if (enemy.roll) {
-    ctx.beginPath();
-    ctx.arc(feet.x, feet.y - height / 2, 29, 0, Math.PI * 2);
-    ctx.fill();
-    return;
+/**
+ * Which pose the dog is in.
+ *
+ * `roll` is the one pose that can outlive its own phase: the ball bounces for
+ * about five seconds, so the `roll` flag on the enemy is authoritative and is
+ * checked before the phase is. Everything else follows the man's shape.
+ */
+export function billDogPose(enemy: Enemy): BillDogPose {
+  if (enemy.attackKind === 'roll') {
+    return enemy.phase === 'telegraph' ? 'rollTell' : 'roll';
   }
-  ctx.fillRect(feet.x - width / 2, feet.y - height, width, height);
-  ctx.fillStyle = COLORS.enemyDetail;
-  ctx.beginPath();
-  ctx.arc(feet.x + enemy.facing * 14, feet.y - height + 16, 3.5, 0, Math.PI * 2);
-  ctx.fill();
+  // The ball can still be in flight after the attack's phases have moved on.
+  if (enemy.roll) return 'roll';
+  if (enemy.attackKind === 'bones') {
+    return enemy.phase === 'telegraph' ? 'bonesTell' : 'bones';
+  }
+  return 'idle';
+}
+
+/** Bill the man: 68 x 160, feet-anchored. */
+export function drawBill(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, timeS = 0): void {
+  paintBillMan(ctx, feet, billPose(enemy), timeS, enemy.facing);
+}
+
+/** Bill the dog: 64 x 58, feet-anchored. */
+export function drawBillDog(
+  ctx: CanvasRenderingContext2D,
+  feet: Vec2,
+  enemy: Enemy,
+  timeS = 0,
+): void {
+  paintBillDog(ctx, feet, billDogPose(enemy), timeS, enemy.facing);
 }

@@ -335,10 +335,10 @@ export function drawEnemy(
       drawWarden(ctx, feet, enemy, body);
       break;
     case 'bill':
-      drawBill(ctx, feet, enemy);
+      drawBill(ctx, feet, enemy, timeS);
       break;
     case 'dog':
-      drawBillDog(ctx, feet, enemy);
+      drawBillDog(ctx, feet, enemy, timeS);
       break;
   }
 

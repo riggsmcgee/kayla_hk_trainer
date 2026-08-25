@@ -56,6 +56,7 @@ Every ratified decision with its rationale. These are settled.
 | **Waves cut to two, with reinforcements** *(Session 7)* | Three pair-waves were a lull before the boss. Two waves now, each reinforced on a fixed deterministic script at 0:30 and 0:45, capped at four alive. The added enemies are the difficulty: the hits requirement and the 60 s do not grow. |
 | **Z = forward, X = again** *(Session 7)* | One rule on every overlay in the game: jump advances (next level, next stage, next chapter), attack retries. No mouse trip to a DOM button in the middle of a run. |
 | **No platform an enemy cannot reach** *(Session 7)* | "It makes the challenge redundant." The Colosseum's two ledges let her wait out three of the five enemies, so both go: every arena is flat, and verticality comes from pogoing the enemies themselves. |
+| **The Bills are pixel art, and that is deliberate** *(Session 8)* | The boss pair is drawn as chunky 8 px pixel art — "Two-Bit Bill" and "Chunky Pixel Bill", chosen by the user from a nine-design concept portfolio. It does not match the flat vector ink the rest of the game is drawn in, and the user chose it anyway: *"I love the animations of the designs so much, I can honestly look past that."* A second round was tried — house-style Bills carrying this design’s exact motion doctrine, to test whether the charm was the timing rather than the blocks — and the user stopped it after six of the twelve: *"honestly, I still prefer the design of the first two."* So the question is answered by preference, not by proof. The clash is defensible — the boss is the one place §3 already lets the palette break, so "Uncle Bill is from a different game" reads as part of the joke. **What makes it work is the timing, and it must not be smoothed:** nothing in either module interpolates. Every offset is a whole 4 px step on a `Math.floor(t * hz)` clock, the idle is a two-frame loop and both tells are two-frame vibrations. That was the one axis separating the two designs the user picked from the seven they did not. |
 | **The next step is the loud thing** *(Session 7)* | The road map is orientation, not navigation: the chapter strip drops to the very bottom of the page, small, and each page ends with one big **"Next: {title}"** button. |
 
 ## 4. Architecture
@@ -166,7 +167,7 @@ The finale at the end of the road *(Session 6)*. Named by the map's own metaphor
    | 0:30 | Everything freezes, the arena dims, the dog walks in, card: **BILL THE DOG** (~2.5 s, any key skips, **the clock is paused**). ~56–60 px. **Bones** — a 3-shot spread like the spitter's, pokeable. **Roll** — curls up and bounces in parabolic arcs off floor and walls for ~5 s; **pogoable on top, damaging on the sides**, deliberately the red-orb vocabulary from level 2. |
    | 1:00 | Both speed up ~25 % with less gap between attacks — no announcement, no new character. The same speed-up turns the lance dash into two passes back-to-back. |
 
-   No extra roster enemies join the boss for now (crowd control is a later idea). Art: placeholder ink geometry at the right proportions; the user's painting of Bill swaps into the renderer without touching the state machine.
+   No extra roster enemies join the boss for now (crowd control is a later idea). **Art — settled** *(Session 8)*: chunky pixel art, in `renderBillMan.ts` and `renderBillDog.ts`, with `renderBills.ts` as the only place the art and the fight’s state have to agree. The seam did its job — the art landed without the state machine existing yet.
 
 ### Enemy roster (canonical ids in @dojo/shared)
 
@@ -231,7 +232,7 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 ### Planned, needs its own design conversation
 
 - **Crowd control during the boss** — extra roster enemies joining the Bills. Deferred: get the two Bills good first.
-- **A painted Bill** — the user is making a painting of Uncle Bill; the fight ships with placeholder ink geometry until it lands.
+- ~~**A painted Bill**~~ — **settled in Session 8.** The user picked "Two-Bit Bill" and "Chunky Pixel Bill" from a concept portfolio instead; both are built and in the renderer. A painting could still replace them later, and `renderBills.ts` is still the only file that would have to change.
 
 ### Explicitly NOT planned
 
