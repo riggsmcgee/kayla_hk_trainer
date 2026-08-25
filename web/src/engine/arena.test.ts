@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
 import { RESPAWN_DELAY, createArenaState, stepArena } from './arena';
 import { PLAYER_SPAWN_X, arenaWorld, createDodgeArenaSession } from './dodgeArenaSession';
+import { OVERLAY_LOCKOUT_SECONDS } from './session';
 import { createEnemy, enemyBox } from './enemies';
 import type { Enemy } from './enemies';
 import { createPlayer } from './player';
@@ -666,16 +667,32 @@ describe('arena session (staged game)', () => {
     return lines.join(' | ');
   }
 
-  it('a Z pressed inside the death hit-stop does not restart the stage', () => {
+  it('an X pressed inside the death hit-stop does not restart the stage', () => {
     const { s } = failOnce();
     expect(hudText(s)).toContain('Got you.');
     // FEEDBACK.playerHit.hitStop = 0.15 s = 9 frozen steps; press on the 2nd.
-    for (let i = 0; i < 9; i++) s.step(press({ jumpPressed: i === 1 }), FIXED_DT);
+    for (let i = 0; i < 9; i++) s.step(press({ attackPressed: i === 1 }), FIXED_DT);
     s.step(IDLE, FIXED_DT);
     expect(hudText(s)).toContain('Got you.');
     // A fresh press after the freeze restarts it.
-    s.step(press({ jumpPressed: true }), FIXED_DT);
+    s.step(press({ attackPressed: true }), FIXED_DT);
     expect(hudText(s)).not.toContain('Got you.');
+  });
+
+  it('retries a failed stage on either key — there is no forward from a fail', () => {
+    for (const key of ['attackPressed', 'jumpPressed'] as const) {
+      const { s } = failOnce();
+      for (let i = 0; i < 12; i++) s.step(IDLE, FIXED_DT); // out of the hit-stop
+      s.step(press({ [key]: true }), FIXED_DT);
+      expect(hudText(s)).not.toContain('Got you.');
+    }
+  });
+
+  it('the fail screen names the again key, and never a dead forward key', () => {
+    const { s } = failOnce();
+    const copy = hudText(s);
+    expect(copy).toContain('Press X to face');
+    expect(copy).not.toContain('Press Z');
   });
 
   it('tells the page every time a stage starts, and every time one is failed', () => {
@@ -687,7 +704,7 @@ describe('arena session (staged game)', () => {
     expect(started).toEqual([1, 1]); // the same stage again
   });
 
-  it('replaying from the top after the last clear tells the page it is on stage 0', () => {
+  it('X replays from the top after the last clear, and says so on stage 0', () => {
     const started: number[] = [];
     const s = createDodgeArenaSession({
       stages: quick(2),
@@ -698,8 +715,85 @@ describe('arena session (staged game)', () => {
     s.step(press({ attackPressed: true }), FIXED_DT);
     for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
     expect(started).toEqual([1]);
-    s.step(press({ jumpPressed: true }), FIXED_DT);
+    s.step(press({ attackPressed: true }), FIXED_DT);
     expect(started).toEqual([1, 0]);
+  });
+
+  it('Z off the all-cleared screen goes forward once, and does not replay', () => {
+    const started: number[] = [];
+    let forward = 0;
+    const s = createDodgeArenaSession({
+      stages: quick(2),
+      startIndex: 1,
+      comfort: COMFORT,
+      onNext: () => {
+        forward += 1;
+      },
+      nextLabel: 'Reading Enemies',
+      onStageStarted: (i) => started.push(i),
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    s.step(press({ jumpPressed: true }), FIXED_DT);
+    expect(forward).toBe(1);
+    expect(started).toEqual([1]); // forward, not a replay
+  });
+
+  it('with nowhere forward, Z is inert on the all-cleared screen and the copy offers X only', () => {
+    const s = createDodgeArenaSession({ stages: quick(2), startIndex: 1, comfort: COMFORT });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    const copy = hudText(s);
+    expect(copy).toContain('X to run it again');
+    expect(copy).not.toContain('Press Z');
+    s.step(press({ jumpPressed: true }), FIXED_DT);
+    expect(hudText(s)).toContain('cleared, Kayla!'); // still there
+  });
+
+  it('names her own keys on every overlay, not a hard-coded Z and X', () => {
+    const s = createDodgeArenaSession({
+      stages: quick(2),
+      startIndex: 1,
+      comfort: COMFORT,
+      jumpKey: 'Space',
+      attackKey: 'J',
+      onNext: () => {},
+      nextLabel: 'the waves',
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
+    const copy = hudText(s);
+    expect(copy).toContain('Press Space for the waves');
+    expect(copy).toContain('J to run it again');
+  });
+
+  it('an X pressed the instant the last stage clears does not skip the screen', () => {
+    // The clear screens have no hit-stop (FEEDBACK.courseClear.hitStop is 0),
+    // so OVERLAY_LOCKOUT_SECONDS is the only thing between her and a screen
+    // she never read.
+    const started: number[] = [];
+    const s = createDodgeArenaSession({
+      stages: quick(2),
+      startIndex: 1,
+      comfort: COMFORT,
+      onStageStarted: (i) => started.push(i),
+    });
+    // Run it until the screen is up, then hold X from the very first frame of
+    // it — the state she is actually in, mid-mash, when it appears.
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < 60 * 30 && !hudText(s).includes('cleared, Kayla!'); i++) {
+      s.step(IDLE, FIXED_DT);
+    }
+    expect(started).toEqual([1]);
+
+    const lockoutSteps = Math.ceil(OVERLAY_LOCKOUT_SECONDS / FIXED_DT);
+    for (let i = 0; i < lockoutSteps - 1; i++) {
+      s.step(press({ attackPressed: true }), FIXED_DT);
+    }
+    expect(started).toEqual([1]); // held down the whole way, still reading it
+
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    expect(started).toEqual([1, 0]); // and it answers the moment it is allowed to
   });
 
   it('observe mode never fails into the progression either', () => {

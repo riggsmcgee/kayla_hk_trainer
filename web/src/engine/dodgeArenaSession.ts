@@ -33,7 +33,8 @@ import { formatClock } from './clock';
 import { createStageState, startStage, stepStage } from './stages';
 import type { StageDef, StageState } from './stages';
 import { recordRun } from '../storage/recordRun';
-import type { GameSession } from './session';
+import type { GameSession, OverlayControls } from './session';
+import { OVERLAY_LOCKOUT_SECONDS, tickDown } from './session';
 import type { InputFrame, Vec2, World } from './types';
 
 /**
@@ -60,7 +61,7 @@ export const STAGE_CLEAR_BANNER_SECONDS = 2;
  */
 export type ArenaKind = 'roster' | 'waves';
 
-export interface ArenaSessionConfig {
+export interface ArenaSessionConfig extends OverlayControls {
   stages: readonly StageDef[];
   /** Stage to begin at (resume); clamped into range. Default 0. */
   startIndex?: number;
@@ -84,11 +85,6 @@ export interface ArenaSessionConfig {
   onStageStarted?: (index: number) => void;
   /** Fires once per touch (never in observe mode), after the run is recorded. */
   onStageFailed?: (index: number) => void;
-  /**
-   * What the overlays call the jump key ("Press Z …"). Keys are remappable
-   * in Settings; the page passes the friendly name. Default "Z".
-   */
-  jumpKey?: string;
 }
 
 /**
@@ -140,7 +136,7 @@ function describeTime(seconds: number): string {
 }
 
 export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession {
-  const { stages, comfort, jumpKey = 'Z' } = config;
+  const { stages, comfort, onNext, nextLabel, jumpKey = 'Z', attackKey = 'X' } = config;
   if (stages.length === 0) throw new Error('createDodgeArenaSession: no stages');
   const observe = config.observe ?? false;
   const kind: ArenaKind =
@@ -163,6 +159,8 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
   let hitFlash = 0;
   let landSquash = 0;
   let bannerTimer = 0;
+  /** Seconds a fail/all-cleared screen still ignores both keys. See OVERLAY_LOCKOUT_SECONDS. */
+  let overlayLockout = 0;
   let allCleared = false;
   let wasGrounded = false;
 
@@ -180,6 +178,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
     hitFlash = 0;
     landSquash = 0;
     bannerTimer = 0;
+    overlayLockout = 0;
     allCleared = false;
     wasGrounded = false;
     startedAtIso = '';
@@ -234,21 +233,40 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
       hitFlash = Math.max(0, hitFlash - dt);
       landSquash = Math.max(0, landSquash - dt);
 
-      // The overlays read the RAW press: a reflexive Z inside the death
-      // hit-stop must not be carried across the freeze and restart the stage
-      // before she has seen "Got you." (merge() above has drained the carry).
+      // The overlays read the RAW press for BOTH keys: a reflexive X inside
+      // the death hit-stop must not be carried across the freeze and restart
+      // the stage before she has seen "Got you." (merge() above has drained
+      // the carry, so reading rawInput here inherits that protection).
+      //
+      // Z = forward, X = again, on every screen (playtest 3, note 11).
       if (allCleared) {
-        // Replaying from the top is practice; the clears are already kept.
-        if (rawInput.jumpPressed) loadStage(0);
+        overlayLockout = tickDown(overlayLockout, dt);
+        if (overlayLockout <= 0) {
+          // Replaying from the top is practice; the clears are already kept.
+          if (rawInput.attackPressed) loadStage(0);
+          else if (rawInput.jumpPressed && onNext) onNext();
+        }
         return;
       }
       if (stage.status === 'cleared') {
+        // X is deliberately NOT "again" here: this banner expires on its own,
+        // and replaying the stage she just passed would fire onStageCleared
+        // twice for one index and record a second run. Z skips the wait.
         bannerTimer -= dt;
         if (rawInput.jumpPressed || bannerTimer <= 0) advance();
         return;
       }
       if (stage.status === 'failed') {
-        if (rawInput.jumpPressed) loadStage(stageIndex); // the same stage, never the first
+        // Both keys retry. There is no forward from a stage she just failed,
+        // and a dead Z would read as broken after two playtests of it
+        // restarting the stage.
+        //
+        // No lockout here: FEEDBACK.playerHit.hitStop is 0.15 s, and the
+        // frozen branch above already swallows a reflex press. The clear
+        // screens need one because their hit-stop is zero.
+        if (rawInput.attackPressed || rawInput.jumpPressed) {
+          loadStage(stageIndex); // the same stage, never the first
+        }
         return;
       }
 
@@ -333,6 +351,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
         if (!observe) config.onStageCleared?.(cleared);
         if (cleared + 1 >= stages.length) {
           allCleared = true;
+          overlayLockout = OVERLAY_LOCKOUT_SECONDS;
           if (!observe) config.onAllCleared?.();
         } else {
           bannerTimer = STAGE_CLEAR_BANNER_SECONDS;
@@ -421,7 +440,9 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
         );
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
-          `Press ${jumpKey} to run it again from the top — or take the next stop, just below.`,
+          onNext
+            ? `Press ${jumpKey} for ${nextLabel ?? 'the next stop'} · ${attackKey} to run it again from the top.`
+            : `Press ${attackKey} to run it again from the top.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );
@@ -439,7 +460,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
         ctx.font = '19px system-ui, sans-serif';
         ctx.fillStyle = COLORS.hudDim;
         ctx.fillText(
-          `${stage.hits} ${stage.hits === 1 ? 'hit' : 'hits'} · ${formatClock(stage.elapsed)} — next one stepping in.`,
+          `${stage.hits} ${stage.hits === 1 ? 'hit' : 'hits'} · ${formatClock(stage.elapsed)} — next one stepping in. Press ${jumpKey} to go now.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 8,
         );
@@ -461,7 +482,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
         );
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
-          `Press ${jumpKey} to face ${foe()} again.`,
+          `Press ${attackKey} to face ${foe()} again.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );

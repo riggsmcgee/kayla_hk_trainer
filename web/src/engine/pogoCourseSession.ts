@@ -34,7 +34,8 @@ import {
   lerpVec,
 } from './render';
 import { recordRun } from '../storage/recordRun';
-import type { GameSession } from './session';
+import type { GameSession, OverlayControls } from './session';
+import { OVERLAY_LOCKOUT_SECONDS, tickDown } from './session';
 import type { InputFrame, Vec2, World } from './types';
 
 export interface PogoClearInfo {
@@ -44,22 +45,12 @@ export interface PogoClearInfo {
   misses: number;
 }
 
-export interface PogoCourseOptions {
+export interface PogoCourseOptions extends OverlayControls {
   /** 1-based index into POGO_COURSES; out-of-range values clamp to the ends. */
   level: number;
   comfort: ComfortSettings;
   /** Fires once per finish, after the run is recorded. */
   onClear?: (info: PogoClearInfo) => void;
-  /**
-   * True when the page has a next level to offer under the canvas, so the
-   * finished overlay points at it as well as at "run it again".
-   */
-  hasNextLevel?: boolean;
-  /**
-   * What the finished overlay calls the jump key ("Press Z …"). Keys are
-   * remappable in Settings; the page passes the friendly name. Default "Z".
-   */
-  jumpKey?: string;
 }
 
 function formatTime(seconds: number): string {
@@ -86,7 +77,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
   const options: PogoCourseOptions = 'level' in arg ? arg : { level: 1, comfort: arg };
   const level = Math.min(Math.max(1, Math.floor(options.level)), POGO_COURSES.length);
   const course = POGO_COURSES[level - 1] ?? POGO_COURSE_1;
-  const { comfort, onClear, hasNextLevel = false, jumpKey = 'Z' } = options;
+  const { comfort, onClear, onNext, nextLabel, jumpKey = 'Z', attackKey = 'X' } = options;
 
   const world: World = {
     solids: course.solids,
@@ -107,6 +98,8 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
   let landSquash = 0;
   let wasGrounded = false;
   let recorded = false;
+  /** Seconds the clear screen still ignores both keys. See OVERLAY_LOCKOUT_SECONDS. */
+  let clearLockout = 0;
 
   function resetRun(): void {
     player = createPlayer(course.spawn.x, course.spawn.y);
@@ -119,6 +112,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
     landSquash = 0;
     wasGrounded = false;
     recorded = false;
+    clearLockout = 0;
   }
 
   return {
@@ -136,9 +130,16 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
       landSquash = Math.max(0, landSquash - dt);
 
       if (courseState.finished) {
-        // The raw press, not the carried one: a Z inside a hit-stop on the
-        // finishing step must not skip the clear screen.
-        if (rawInput.jumpPressed) resetRun();
+        // Both keys read the RAW press, not the carried one, so a reflex
+        // inside a hit-stop cannot skip a screen she has not read. The
+        // lockout is the other half of that: this session has no hit-stop on
+        // a clear at all and `finished` is set on the step the goal is
+        // touched, so she gets here with X still going from the pogo mash.
+        clearLockout = tickDown(clearLockout, dt);
+        if (clearLockout <= 0) {
+          if (rawInput.attackPressed) resetRun();
+          else if (rawInput.jumpPressed && onNext) onNext();
+        }
         return;
       }
 
@@ -181,6 +182,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
       if (events.checkpointReached !== null) {
         checkpointToast = 1.6;
       }
+      if (events.finishedNow) clearLockout = OVERLAY_LOCKOUT_SECONDS;
       if (events.finishedNow && !recorded) {
         recorded = true;
         juice.addTrauma(FEEDBACK.courseClear.trauma);
@@ -272,9 +274,9 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
         );
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
-          hasNextLevel
-            ? `Press ${jumpKey} to run it again — or take the next level, just below.`
-            : `Press ${jumpKey} to run it again.`,
+          onNext
+            ? `Press ${jumpKey} for ${nextLabel ?? 'the next one'} · ${attackKey} to run it again.`
+            : `Press ${attackKey} to run it again.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );

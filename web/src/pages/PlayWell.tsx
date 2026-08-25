@@ -20,7 +20,7 @@ import type { ComfortSettings } from '../engine/juice';
 import { createPogoCourseSession } from '../engine/pogoCourseSession';
 import { FINALE_LEVEL, FINALE_WAVE_COUNT } from '../engine/roster';
 import { waveStages } from '../engine/stages';
-import { jumpKeyName } from '../storage/keyNames';
+import { attackKeyName, jumpKeyName } from '../storage/keyNames';
 import { finaleCleared, finaleLevelSkipKey, waveLocked, waveSkipKey } from '../storage/progress';
 import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
@@ -65,8 +65,10 @@ interface BeatProps {
   progress: ProgressV1;
   runs: readonly PracticeRun[];
   comfort: ComfortSettings;
-  /** What the overlays call the jump key — from her bindings. */
+  /** What the overlays call the forward key (Z) — from her bindings. */
   jumpKey: string;
+  /** What the overlays call the again key (X) — from her bindings. */
+  attackKey: string;
   refresh: () => void;
 }
 
@@ -76,6 +78,7 @@ function LevelBeat({
   runs,
   comfort,
   jumpKey,
+  attackKey,
   refresh,
   onWaves,
 }: BeatProps & { onWaves: () => void }) {
@@ -87,13 +90,17 @@ function LevelBeat({
         level: FINALE_LEVEL,
         comfort,
         jumpKey,
+        attackKey,
+        // Z goes on to the waves, X runs the level again (playtest 3, note 11).
+        onNext: onWaves,
+        nextLabel: 'the waves',
         onClear: () => {
           progressStore.markFinaleLevelCleared();
           refresh();
           setJustCleared(true);
         },
       }),
-    [comfort, jumpKey, refresh],
+    [comfort, jumpKey, attackKey, onWaves, refresh],
   );
 
   const panel = justCleared ? afterLevel(progress) : null;
@@ -120,7 +127,15 @@ function LevelBeat({
 }
 
 /** Beat 2 — the roster in waves, on a flat floor. Checkpointed per wave. */
-function WavesBeat({ progress, runs, comfort, jumpKey, refresh }: BeatProps) {
+function WavesBeat({
+  progress,
+  runs,
+  comfort,
+  jumpKey,
+  attackKey,
+  refresh,
+  onBottom,
+}: BeatProps & { onBottom: () => void }) {
   // Fixed until she picks a wave, so recording a clear doesn't rebuild the session under her.
   const [startWave, setStartWave] = useState(() => firstUnclearedWave(progress));
   /**
@@ -172,12 +187,15 @@ function WavesBeat({ progress, runs, comfort, jumpKey, refresh }: BeatProps) {
         comfort,
         kind: 'waves',
         jumpKey,
+        attackKey,
+        onNext: onBottom,
+        nextLabel: 'the bottom',
         onStageStarted: setCurrent,
         onStageCleared,
         // A touch records a run, and the "longest survival" best comes from those.
         onStageFailed: refresh,
       }),
-    [startWave, comfort, jumpKey, onStageCleared, refresh],
+    [startWave, comfort, jumpKey, attackKey, onBottom, onStageCleared, refresh],
   );
 
   return (
@@ -266,6 +284,7 @@ export function PlayWell() {
   const [comfort] = useComfortSettings();
   const [bindings] = useBindings();
   const jumpKey = jumpKeyName(bindings);
+  const attackKey = attackKeyName(bindings);
   const [beat, setBeat] = useState<Beat>(() => nextBeat(progress));
   // The locked beat she last pressed; the gate shows while it stays locked.
   const [asked, setAsked] = useState<Beat | null>(null);
@@ -291,7 +310,8 @@ export function PlayWell() {
   };
 
   const toWaves = useCallback(() => selectBeat(2), [selectBeat]);
-  const beatProps: BeatProps = { progress, runs, comfort, jumpKey, refresh };
+  const toBottom = useCallback(() => selectBeat(3), [selectBeat]);
+  const beatProps: BeatProps = { progress, runs, comfort, jumpKey, attackKey, refresh };
 
   return (
     <ChapterGate current={CHAPTER_ID}>
@@ -355,7 +375,7 @@ export function PlayWell() {
       )}
 
       {beat === 1 && <LevelBeat {...beatProps} onWaves={toWaves} />}
-      {beat === 2 && <WavesBeat {...beatProps} />}
+      {beat === 2 && <WavesBeat {...beatProps} onBottom={toBottom} />}
       {beat === 3 && <BottomBeat />}
 
       {finaleCleared(progress) && (

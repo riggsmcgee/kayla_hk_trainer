@@ -7,7 +7,7 @@
  * the enemy she's on. Once all five are cleared, the road goes on.
  */
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { EnemyId, PracticeRun, ProgressV1 } from '@dojo/shared';
 import { chapterById, chapterIndex, countWordCap, nextChapter } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
@@ -18,7 +18,7 @@ import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
 import { ROSTER, rosterEntry } from '../engine/roster';
 import { rosterStages } from '../engine/stages';
 import { arenaBest } from '../storage/bests';
-import { jumpKeyName } from '../storage/keyNames';
+import { attackKeyName, jumpKeyName } from '../storage/keyNames';
 import { arenaCleared } from '../storage/progress';
 import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
@@ -60,6 +60,8 @@ export function PlayDodge() {
   const [comfort] = useComfortSettings();
   const [bindings] = useBindings();
   const jumpKey = jumpKeyName(bindings);
+  const attackKey = attackKeyName(bindings);
+  const navigate = useNavigate();
   // Fixed for this visit, so recording a clear doesn't rebuild the session under her.
   const [startIndex] = useState(() => firstUncleared(progress));
   /**
@@ -96,6 +98,7 @@ export function PlayDodge() {
         observe,
         kind: 'roster',
         jumpKey,
+        attackKey,
       });
     }
     return createDodgeArenaSession({
@@ -105,12 +108,28 @@ export function PlayDodge() {
       observe,
       kind: 'roster',
       jumpKey,
+      attackKey,
+      // Z off the all-cleared screen leaves the page for the next chapter
+      // (playtest 3, note 11); X replays the roster from the top.
+      onNext: next ? () => navigate(next.route) : undefined,
+      nextLabel: next?.title,
       onStageStarted: setCurrent,
       onStageCleared: observe ? undefined : onStageCleared,
       // A touch records a run, and the "longest survival" best comes from those.
       onStageFailed: observe ? undefined : refresh,
     });
-  }, [freePlay, observe, comfort, startIndex, onStageCleared, refresh, jumpKey]);
+  }, [
+    freePlay,
+    observe,
+    comfort,
+    startIndex,
+    onStageCleared,
+    refresh,
+    jumpKey,
+    attackKey,
+    next,
+    navigate,
+  ]);
 
   const shownEnemy = freePlay ?? ROSTER[current]?.id ?? 'walker';
   const allCleared = arenaCleared(progress);

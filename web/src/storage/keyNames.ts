@@ -7,7 +7,7 @@
  * enough for a trainer, and exactly what the browser gives us.
  */
 
-import type { Bindings } from '../engine/input';
+import type { Action, Bindings } from '../engine/input';
 
 const NAMED: Readonly<Record<string, string>> = {
   ArrowLeft: '←',
@@ -102,10 +102,20 @@ export function controlsCaption(bindings: Bindings): string {
 }
 
 /**
- * The key the in-canvas overlays tell her to press ("Press Z to run it
- * again"): her first jump key, by name. Falls back to Z if jump has no key.
+ * The name of the first key bound to `action`, for the in-canvas overlays
+ * ("Press Z for level 2"). Falls back when the action has no key bound.
  */
+export function actionKeyName(bindings: Bindings, action: Action, fallback: string): string {
+  const code = bindings[action][0];
+  return code === undefined || code.length === 0 ? fallback : friendlyKeyName(code);
+}
+
+/** The forward key on every overlay. Z unless she rebound jump. */
 export function jumpKeyName(bindings: Bindings): string {
-  const code = bindings.jump[0];
-  return code === undefined || code.length === 0 ? 'Z' : friendlyKeyName(code);
+  return actionKeyName(bindings, 'jump', 'Z');
+}
+
+/** The again key on every overlay. X unless she rebound attack. */
+export function attackKeyName(bindings: Bindings): string {
+  return actionKeyName(bindings, 'attack', 'X');
 }
