@@ -2,6 +2,8 @@
 // routing would 404 on refresh/deep links. Hash routes always resolve.
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router';
 import { chapterById } from './chapters';
+import { MAIN_ID } from './components/focus';
+import { ScrollToTop } from './components/ScrollToTop';
 import { Home } from './pages/Home';
 import { LessonPogo } from './pages/LessonPogo';
 import { LessonReadingEnemies } from './pages/LessonReadingEnemies';
@@ -14,6 +16,10 @@ import { Settings } from './pages/Settings';
 export function App() {
   return (
     <HashRouter>
+      {/* Above .shell so its layout effect commits before the page's own —
+          notably PracticeCanvas, which then takes the focus back on a
+          mini-game page. That ordering is deliberate; see ScrollToTop. */}
+      <ScrollToTop />
       <div className="shell">
         <header className="site-header">
           <NavLink to="/" className="site-title">
@@ -28,7 +34,7 @@ export function App() {
             <NavLink to="/settings">Settings</NavLink>
           </nav>
         </header>
-        <main className="site-main">
+        <main className="site-main" id={MAIN_ID} tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path={chapterById('setup').route} element={<LessonSetup />} />

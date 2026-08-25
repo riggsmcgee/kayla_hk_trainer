@@ -65,6 +65,13 @@ body {
   outline-offset: 3px;
 }
 
+/* <main> is focusable (tabindex=-1) only so ScrollToTop can move focus into
+   the page on a route change. That is a programmatic focus, not a deliberate
+   one, so it gets no ring. */
+.site-main:focus {
+  outline: none;
+}
+
 .shell {
   min-height: 100vh;
   display: flex;
