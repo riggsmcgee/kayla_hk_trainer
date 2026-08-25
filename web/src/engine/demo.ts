@@ -120,6 +120,14 @@ function attackTimeline(e: Enemy): { telegraph: number; active: number; recovery
         active: ATTACKS.warden.bashActive,
         recovery: ATTACKS.warden.bashRecovery,
       };
+    case 'leap':
+      return {
+        telegraph: 0.35,
+        // The active phase is rise + hang + the dive, and the dive's length
+        // depends on how far he has to fall — this is the nominal shape.
+        active: ATTACKS.duelist.leapRise + ATTACKS.duelist.leapHang,
+        recovery: ATTACKS.duelist.leapRecovery,
+      };
     case 'skyward':
       return {
         telegraph: ATTACKS.warden.skywardTell,

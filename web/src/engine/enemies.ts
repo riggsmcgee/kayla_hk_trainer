@@ -108,6 +108,34 @@ export const ATTACKS = {
     antiAirForward: 20,
     /** He carries the swipe forward at this speed while it is live. */
     antiAirDashSpeed: 260,
+    /**
+     * The gap-closer (playtest 3, note 3 — one attack per thing she can do:
+     * come in on the ground, come in from above, or stay away).
+     *
+     * Standing off beyond gapRange for gapDwell seconds provokes a leap: he
+     * rises to a perch, hangs there long enough to be read, then dives along
+     * the line he committed to at the end of the hang. The dive is the only
+     * part that hurts — he can even be pogoed at the perch.
+     *
+     * Aim is captured at the END of the hang, not at the start of the leap,
+     * so moving during the rise does not shake him; moving during the DIVE
+     * does. That is the read the attack is teaching.
+     */
+    gapRange: 260,
+    gapDwell: 0.8,
+    leapRise: 0.4,
+    leapHang: 0.2,
+    leapRecovery: 0.9,
+    /** How far in front of her he aims to land the perch, and how high it is. */
+    perchOffset: 210,
+    perchHeight: 200,
+    diveSpeed: 900,
+    /** The furthest the perch may be from where he started. */
+    leapMaxDx: 460,
+    /** The dive's hitbox: a box led slightly ahead of him along the aim. */
+    diveWidth: 60,
+    diveHeight: 70,
+    diveLead: 20,
     /** Pause after recovery before it can be provoked again. */
     cooldown: 0.6,
     /**
@@ -529,16 +557,113 @@ function faceTarget(e: Enemy, t: Target): void {
 }
 
 /** Horizontal drift with a wall probe so nothing walks into geometry. */
+/**
+ * Walk an enemy sideways, refusing any step that would put its body inside
+ * geometry.
+ *
+ * The look-ahead point is the cheap early-out. The body test after it is the
+ * one that actually holds: a probe point 21 px ahead can still be clear on
+ * the step that carries a 34 px-wide body five pixels into a wall, which is
+ * how a lunging duelist used to end up standing in the arena's left wall.
+ */
 function drift(e: Enemy, world: World, dir: 1 | -1, speed: number, dt: number): void {
   const size = ENEMY_SIZES[e.id];
   const aheadX = e.position.x + dir * (size.width / 2 + 4);
   if (solidAt(world, aheadX, e.position.y - size.height / 2)) return;
-  e.position.x += dir * speed * dt;
+  const nextX = e.position.x + dir * speed * dt;
+  if (insideSolid(world, bodyAt(e.id, nextX, e.position.y))) return;
+  e.position.x = nextX;
+}
+
+/**
+ * Commit to a leap: pick a perch in front of her, clamped so it is reachable
+ * and never inside geometry.
+ *
+ * The clamp is not optional. The rise and the dive set position directly and
+ * bypass drift()'s wall probe, so an unclamped perch would let him arrive
+ * inside a wall — which the hunting property test (stuckSteps === 0) catches,
+ * and which would look like a bug in play.
+ */
+function startLeap(e: Enemy, world: World, t: Target, dx: number): void {
+  const A = ATTACKS.duelist;
+  const dir = dx >= 0 ? 1 : -1;
+  e.attackKind = 'leap';
+  e.lockedDir = dir;
+  e.facing = dir;
+  e.leapStage = null;
+  e.leapGroundY = e.position.y;
+  e.leapFrom = { ...e.position };
+  e.awayTimer = 0;
+
+  // Aim to land short of her, and never further than leapMaxDx from here.
+  const wanted = t.position.x - dir * A.perchOffset;
+  const capped =
+    Math.abs(wanted - e.position.x) > A.leapMaxDx ? e.position.x + dir * A.leapMaxDx : wanted;
+  const perchY = e.position.y - A.perchHeight;
+
+  // Walk the perch back toward his start until the body is clear of geometry.
+  let x = capped;
+  for (let i = 0; i < 12 && insideSolid(world, bodyAt('duelist', x, perchY)); i++) {
+    x += (e.position.x - x) * 0.25;
+  }
+  e.leapTo = { x, y: perchY };
+}
+
+/**
+ * The leap's three beats, run inside the active phase: rise to the perch,
+ * hang there, then dive along the line committed to at the end of the hang.
+ */
+function stepLeap(e: Enemy, world: World, dt: number, t: Target | undefined): void {
+  const A = ATTACKS.duelist;
+  if (e.leapStage === 'rise') {
+    // Interpolate toward the perch over leapRise; phaseTimer counts it down.
+    const left = Math.max(0, e.phaseTimer);
+    const k = 1 - left / A.leapRise;
+    e.position.x = e.leapFrom.x + (e.leapTo.x - e.leapFrom.x) * k;
+    e.position.y = e.leapFrom.y + (e.leapTo.y - e.leapFrom.y) * k;
+    if (e.phaseTimer <= 0) {
+      e.position = { ...e.leapTo };
+      e.leapStage = 'hang';
+      e.phaseTimer = A.leapHang;
+    }
+    return;
+  }
+  if (e.leapStage === 'hang') {
+    if (e.phaseTimer <= 0) {
+      // Aim is captured HERE, at the end of the hang — moving during the rise
+      // does not shake him, moving during the dive does.
+      const tx = t ? t.position.x : e.position.x + e.lockedDir * A.perchOffset;
+      const ty = t ? t.position.y : e.leapGroundY;
+      const vx = tx - e.position.x;
+      const vy = Math.max(ty - e.position.y, 0.15); // never dive upward
+      const len = Math.hypot(vx, vy) || 1;
+      e.leapAim = { x: vx / len, y: vy / len };
+      e.facing = e.leapAim.x >= 0 ? 1 : -1;
+      e.leapStage = 'dive';
+    }
+    return;
+  }
+  // Diving.
+  const nextX = e.position.x + e.leapAim.x * A.diveSpeed * dt;
+  const nextY = e.position.y + e.leapAim.y * A.diveSpeed * dt;
+  const landed = nextY >= e.leapGroundY;
+  const blocked = insideSolid(world, bodyAt('duelist', nextX, Math.min(nextY, e.leapGroundY)));
+  if (landed || blocked) {
+    // End into recovery on the floor he left, never inside geometry.
+    e.position.y = e.leapGroundY;
+    if (!blocked) e.position.x = nextX;
+    e.leapStage = null;
+    setPhase(e, 'recovery', A.leapRecovery);
+    return;
+  }
+  e.position.x = nextX;
+  e.position.y = nextY;
 }
 
 /**
  * Reactive melee duelist: your approach picks its answer. Ground approach →
- * lunge; jumping in → rising swipe. Recovery is the punish window.
+ * lunge; jumping in → rising swipe; keeping your distance → the leap.
+ * Recovery is the punish window.
  */
 function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined): void {
   const A = ATTACKS.duelist;
@@ -552,6 +677,13 @@ function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined):
       const dx = t.position.x - e.position.x;
       const adx = Math.abs(dx);
       const airborneAbove = !t.grounded && t.position.y < e.position.y - 20;
+
+      // Standing off is its own answer. Tracked on a dwell clock so a Knight
+      // merely passing through the far half is not enough — she has to
+      // actually keep her distance.
+      if (adx > A.gapRange) e.awayTimer += dt;
+      else e.awayTimer = 0;
+
       if (e.cooldownTimer <= 0 && airborneAbove && adx < A.antiAirRange) {
         e.attackKind = 'antiair';
         e.lockedDir = e.facing;
@@ -567,6 +699,9 @@ function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined):
         e.attackKind = 'lunge';
         e.lockedDir = dx >= 0 ? 1 : -1;
         setPhase(e, 'telegraph', telegraph);
+      } else if (e.cooldownTimer <= 0 && e.awayTimer >= A.gapDwell - 1e-9) {
+        startLeap(e, world, t, dx);
+        setPhase(e, 'telegraph', telegraph);
       } else if (adx > A.standOff) {
         // Hunting: march from anywhere, stalk once near — cooldown or not.
         const speed = adx > A.stalkRange ? A.marchSpeed : A.approachSpeed;
@@ -576,24 +711,34 @@ function stepDuelist(e: Enemy, world: World, dt: number, t: Target | undefined):
     }
     case 'telegraph':
       if (e.phaseTimer <= 0) {
-        setPhase(e, 'active', e.attackKind === 'lunge' ? A.lungeTime : A.antiAirActive);
+        if (e.attackKind === 'leap') {
+          e.leapStage = 'rise';
+          // The active phase runs until the dive lands, so its timer is only
+          // there to drive the rise; stepLeap owns the transitions.
+          setPhase(e, 'active', A.leapRise);
+        } else {
+          setPhase(e, 'active', e.attackKind === 'lunge' ? A.lungeTime : A.antiAirActive);
+        }
       }
       break;
     case 'active':
       if (e.attackKind === 'lunge') {
         drift(e, world, e.lockedDir, A.lungeSpeed, dt);
+        if (e.phaseTimer <= 0) setPhase(e, 'recovery', A.lungeRecovery);
       } else if (e.attackKind === 'antiair') {
         // The column travels with him. Slow enough that running out of it
         // still works, fast enough that standing under it does not.
         drift(e, world, e.lockedDir, A.antiAirDashSpeed, dt);
-      }
-      if (e.phaseTimer <= 0) {
-        setPhase(e, 'recovery', e.attackKind === 'lunge' ? A.lungeRecovery : A.antiAirRecovery);
+        if (e.phaseTimer <= 0) setPhase(e, 'recovery', A.antiAirRecovery);
+      } else if (e.attackKind === 'leap') {
+        stepLeap(e, world, dt, t);
       }
       break;
     case 'recovery':
       if (e.phaseTimer <= 0) {
         e.attackKind = null;
+        e.leapStage = null;
+        e.awayTimer = 0;
         e.cooldownTimer = A.cooldown;
         setPhase(e, 'idle', 0);
       }
@@ -909,9 +1054,22 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
     }
     case 'volley':
       return null; // the projectiles carry the threat
+    case 'leap': {
+      // Only the dive hurts. Rising and hanging are free — she can even pogo
+      // him at the perch, which is the reward for reading it.
+      if (e.leapStage !== 'dive') return null;
+      const A = ATTACKS.duelist;
+      const cx = e.position.x + e.leapAim.x * A.diveLead;
+      const cy = e.position.y - size.height / 2 + e.leapAim.y * A.diveLead;
+      return {
+        x: cx - A.diveWidth / 2,
+        y: cy - A.diveHeight / 2,
+        width: A.diveWidth,
+        height: A.diveHeight,
+      };
+    }
     // Stubs. The attacks exist in the union so the switch stays exhaustive;
     // their boxes arrive with their state machines.
-    case 'leap':
     case 'lance':
     case 'swat':
     case 'bones':

@@ -22,6 +22,7 @@ import {
   type Target,
 } from './enemies';
 import { createPlayer } from './player';
+import { arenaWorld } from './dodgeArenaSession';
 import type { World } from './types';
 
 const FLOOR_Y = 600;
@@ -56,11 +57,18 @@ function run(e: ReturnType<typeof createEnemy>, w: World, n: number, t: Target):
 }
 
 describe('duelist', () => {
-  it('stays idle when the player keeps distance', () => {
+  it('holds for gapDwell against a distant Knight, then answers with the leap', () => {
     const w = world();
     const duelist = createEnemy('duelist', 600, FLOOR_Y);
-    run(duelist, w, 60, targetAt(100, FLOOR_Y));
+    const far = targetAt(100, FLOOR_Y);
+    // Just short of the dwell: still marching, no attack committed.
+    run(duelist, w, Math.floor((ATTACKS.duelist.gapDwell / FIXED_DT) as number) - 2, far);
     expect(duelist.phase).toBe('idle');
+    expect(duelist.attackKind).toBeNull();
+    // Past it: standing off is its own provocation now.
+    run(duelist, w, 4, far);
+    expect(duelist.attackKind).toBe('leap');
+    expect(duelist.phase).toBe('telegraph');
   });
 
   it('telegraphs, lunges, then recovers when approached on the ground', () => {
@@ -102,6 +110,127 @@ describe('duelist', () => {
     run(duelist, w, 2, targetAt(540, FLOOR_Y - 90, false)); // jumping in
     expect(duelist.phase).toBe('telegraph');
     expect(duelist.attackKind).toBe('antiair');
+  });
+
+  describe('the leap (playtest 3, note 3 — the answer to keeping your distance)', () => {
+    const A = ATTACKS.duelist;
+
+    /** Provoke a leap and step until `stop` says to stop. */
+    function leapUntil(
+      stop: (d: ReturnType<typeof createEnemy>, i: number) => boolean,
+      t: Target = targetAt(100, FLOOR_Y),
+      w: World = world(),
+      startX = 600,
+    ) {
+      const duelist = createEnemy('duelist', startX, FLOOR_Y);
+      for (let i = 0; i < 60 * 10; i++) {
+        stepEnemy(duelist, w, FIXED_DT, t);
+        if (stop(duelist, i)) break;
+      }
+      return duelist;
+    }
+
+    it('is not provoked by a Knight who walks straight in', () => {
+      const w = world();
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      // She closes from 900 px out, arriving well inside gapRange.
+      for (let i = 0; i < 60 * 2; i++) {
+        const x = Math.min(560, 100 + i * 6);
+        stepEnemy(duelist, w, FIXED_DT, targetAt(x, FLOOR_Y));
+      }
+      expect(duelist.attackKind).not.toBe('leap');
+    });
+
+    it('rises to a perch, hangs there, then dives', () => {
+      const seen: string[] = [];
+      leapUntil((d) => {
+        const stage = d.leapStage;
+        if (stage && seen[seen.length - 1] !== stage) seen.push(stage);
+        return d.phase === 'recovery' && seen.includes('dive');
+      });
+      expect(seen).toEqual(['rise', 'hang', 'dive']);
+    });
+
+    it('gets up to roughly the perch height before it hangs', () => {
+      const d = leapUntil((e) => e.leapStage === 'hang');
+      const risen = FLOOR_Y - d.position.y;
+      expect(risen).toBeGreaterThan(A.perchHeight * 0.9);
+      expect(risen).toBeLessThanOrEqual(A.perchHeight + 1);
+    });
+
+    it('shows no hitbox while it is rising or hanging — she may even pogo him', () => {
+      const w = world();
+      const t = targetAt(100, FLOOR_Y);
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      let sawAir = false;
+      for (let i = 0; i < 60 * 4; i++) {
+        stepEnemy(duelist, w, FIXED_DT, t);
+        if (duelist.leapStage === 'rise' || duelist.leapStage === 'hang') {
+          sawAir = true;
+          expect(enemyAttackHitbox(duelist)).toBeNull();
+        }
+        if (duelist.leapStage === 'dive') break;
+      }
+      expect(sawAir).toBe(true);
+    });
+
+    it('shows a hitbox once it is diving', () => {
+      const d = leapUntil((e) => e.leapStage === 'dive');
+      expect(enemyAttackHitbox(d)).not.toBeNull();
+    });
+
+    it('commits its aim at the END of the hang, so moving during the rise does not shake it', () => {
+      // She stands at 100 through the rise and the hang, then bolts right the
+      // instant the dive starts. The dive must still go where she WAS.
+      const w = world();
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      let target = targetAt(100, FLOOR_Y);
+      let aimAtDive: { x: number; y: number } | null = null;
+      for (let i = 0; i < 60 * 6; i++) {
+        stepEnemy(duelist, w, FIXED_DT, target);
+        if (duelist.leapStage === 'dive' && !aimAtDive) {
+          aimAtDive = { ...duelist.leapAim };
+          target = targetAt(1100, FLOOR_Y); // too late
+        }
+        // Stop at the landing: after that he is hunting again, and where he
+        // walks next says nothing about where the dive went.
+        if (aimAtDive && duelist.phase === 'recovery') break;
+      }
+      expect(aimAtDive).not.toBeNull();
+      expect(aimAtDive!.x).toBeLessThan(0); // still committed leftward
+      expect(duelist.position.x).toBeLessThan(600);
+    });
+
+    it('lands back on the floor it left, and recovers there', () => {
+      const d = leapUntil((e) => e.phase === 'recovery' && e.attackKind === 'leap');
+      expect(d.position.y).toBe(FLOOR_Y);
+      expect(enemyAttackHitbox(d)).toBeNull(); // recovery is the punish window
+    });
+
+    it('never leaps into geometry, from anywhere along the arena floor', () => {
+      // The rise and the dive set position directly and bypass drift's wall
+      // probe, so the perch clamp and the dive abort are the only things
+      // keeping him out of the walls.
+      const w = arenaWorld();
+      for (const startX of [40, 200, 584, 900, 1120]) {
+        for (const herX of [30, 300, 584, 900, 1138]) {
+          const t = targetAt(herX, FLOOR_Y);
+          const duelist = createEnemy('duelist', startX, FLOOR_Y);
+          for (let i = 0; i < 60 * 6; i++) {
+            stepEnemy(duelist, w, FIXED_DT, t);
+            const b = enemyBox(duelist);
+            const stuck = w.solids.some(
+              (s) =>
+                b.x < s.x + s.width &&
+                b.x + b.width > s.x &&
+                b.y < s.y + s.height &&
+                b.y + b.height > s.y,
+            );
+            expect(stuck).toBe(false);
+          }
+        }
+      }
+    });
   });
 
   describe('the anti-air column (playtest 3, note 6)', () => {
@@ -284,11 +413,18 @@ describe('duelist', () => {
       const w = world();
       const duelist = createEnemy('duelist', 1000, FLOOR_Y);
       const t = targetAt(100, FLOOR_Y); // 900 px away
+      // Measured over less than gapDwell, because past that the march is
+      // interrupted by the leap — which is the point of the leap.
+      const marchSteps = Math.floor(A.gapDwell / FIXED_DT) - 2;
       let x0 = duelist.position.x;
-      run(duelist, w, 60, t);
-      expect(x0 - duelist.position.x).toBeCloseTo(A.marchSpeed, 0);
+      run(duelist, w, marchSteps, t);
+      expect((x0 - duelist.position.x) / (marchSteps * FIXED_DT)).toBeCloseTo(A.marchSpeed, 0);
       expect(duelist.phase).toBe('idle');
+
+      // Inside stalkRange the dwell clock never starts, so the stalk is
+      // still measurable over a full second.
       duelist.position.x = 100 + A.stalkRange - 10;
+      duelist.awayTimer = 0;
       x0 = duelist.position.x;
       run(duelist, w, 60, t);
       expect(x0 - duelist.position.x).toBeCloseTo(A.approachSpeed, 0);
