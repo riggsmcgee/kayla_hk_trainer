@@ -65,8 +65,9 @@ export function LessonReadingEnemies() {
         label="Slow-motion demo: jumping at the duelist provokes its rising swipe, which clips the jumper"
       />
       <p>
-        Jump in: it leaps to meet you. <em>Your approach picks its attack</em> — so you already know
-        which answer is coming. Either way, the gold after is yours.
+        Jump in: it leaps to meet you, and the swipe reaches high.{' '}
+        <em>Your approach picks its attack</em> — so you can tell which answer is coming. Either
+        way, the gold after is yours.
       </p>
 
       <h2>The spitter’s attack is your stepping stone</h2>
@@ -93,9 +94,10 @@ export function LessonReadingEnemies() {
         label="Slow-motion demo: a blocked hit provokes the warden's riposte; its post-riposte recovery is wide open"
       />
       <p>
-        Swing into the shield and it answers. That can be the plan: poke, step out of the riposte,
+        Swing into the shield and it answers. That can be the plan: poke, step out of the answer,
         take the gold. This one enemy is the whole doctrine — attacking at the wrong time is
-        punished, and watching reveals the safe window.
+        punished, and watching reveals the safe window. It has more than one answer, and where you
+        hit it from decides which one you get.
       </p>
 
       <p className="thesis">
