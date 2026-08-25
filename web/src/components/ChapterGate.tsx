@@ -65,9 +65,10 @@ export function ChapterGate({ current, children }: ChapterGateProps) {
           </button>
         </div>
       </section>
-      {/* The strip stays visible behind a gate, so she can still see where she is on the
-          road — without the "Next stop" button, which would point her past the locked page. */}
-      <ChapterNav current={current} showNext={false} />
+      {/* The strip stays visible behind a gate, so she can still see where she is on
+          the road. A gated page must never render <ChapterNext />: the forward
+          button would point her past the very page she is locked out of. */}
+      <ChapterNav current={current} />
     </>
   );
 }

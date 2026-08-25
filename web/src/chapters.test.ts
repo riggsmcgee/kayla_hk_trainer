@@ -42,6 +42,16 @@ describe('chapters', () => {
     for (const c of CHAPTERS) expect(c.done.length).toBeGreaterThan(0);
   });
 
+  it('proving a lesson always means going to the very next stop', () => {
+    // This is what let the lesson's 'Prove it →' and the strip's 'Next stop →'
+    // collapse into one gold button (playtest 3, note 13). If a future
+    // reordering ever put a chapter between a lesson and its proof, that
+    // button would quietly start pointing somewhere else — so pin it.
+    for (const c of CHAPTERS) {
+      if (c.provesAt) expect(c.provesAt).toBe(nextChapter(c.id)?.id);
+    }
+  });
+
   it('the "done" copy counts what roster.ts counts, so the two can never drift', () => {
     expect(chapterById('pogo-course').done).toContain(
       `all ${countWord(COURSE_LEVEL_COUNT)} levels`,

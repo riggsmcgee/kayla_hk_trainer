@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { CHAPTERS, countWord, countWordCap } from '../chapters';
 import { DojoMap } from '../components/DojoMap';
+import { NextButton } from '../components/NextButton';
 import { mapProgress } from '../storage/progress';
 import { useProgress } from '../storage/useChapterProgress';
 import { bestLine } from './bestLine';
@@ -33,9 +34,7 @@ export function Home() {
                 <p className="next-done">To finish: {next.done}</p>
                 {best && <p className="next-best">{best}</p>}
               </div>
-              <Link className="button" to={next.route}>
-                Go
-              </Link>
+              <NextButton title={next.title} to={next.route} where={next.place} />
             </>
           ) : (
             <>

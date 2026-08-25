@@ -12,6 +12,7 @@ import type { EnemyId, PracticeRun, ProgressV1 } from '@dojo/shared';
 import { chapterById, chapterIndex, countWordCap, nextChapter } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
+import { ChapterNext } from '../components/ChapterNext';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { blurOnPointerClick } from '../components/focus';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
@@ -175,12 +176,9 @@ export function PlayDodge() {
         createSession={createSession}
       />
 
-      {allCleared && next && (
+      {allCleared && (
         <div className="arena-clear" role="status">
           <p className="arena-clear-title">Colosseum cleared, Kayla!</p>
-          <Link className="button" to={next.route}>
-            Next stop → {next.place}
-          </Link>
         </div>
       )}
 
@@ -230,6 +228,7 @@ export function PlayDodge() {
         </div>
       </details>
 
+      <ChapterNext current={CHAPTER_ID} />
       <ChapterNav current={CHAPTER_ID} />
     </ChapterGate>
   );

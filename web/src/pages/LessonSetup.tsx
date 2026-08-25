@@ -4,6 +4,7 @@ import type { ControllerChoice } from '@dojo/shared';
 import { chapterById, chapterIndex } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
+import { ChapterNext } from '../components/ChapterNext';
 import { JoyConDiagram, LeverlessDiagram } from '../components/ControllerDiagrams';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 
@@ -168,6 +169,7 @@ export function LessonSetup() {
 
       <ControllerQuestion controller={controller} onChoose={choose} />
 
+      <ChapterNext current="setup" />
       <ChapterNav current="setup" />
     </ChapterGate>
   );

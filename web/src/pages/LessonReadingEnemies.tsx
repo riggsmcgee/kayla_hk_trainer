@@ -2,7 +2,7 @@ import { chapterById, chapterIndex } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
-import { ProveIt } from '../components/ProveIt';
+import { ChapterNext } from '../components/ChapterNext';
 import {
   duelistAntiAirDemo,
   duelistLungeDemo,
@@ -103,7 +103,7 @@ export function LessonReadingEnemies() {
         Watch, dodge, then take it apart.
       </p>
 
-      <ProveIt current="reading-enemies" />
+      <ChapterNext current="reading-enemies" />
 
       <ChapterNav current="reading-enemies" />
     </ChapterGate>

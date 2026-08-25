@@ -13,6 +13,7 @@ import type { PracticeRun, ProgressV1 } from '@dojo/shared';
 import { chapterById, chapterIndex } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
+import { ChapterNext } from '../components/ChapterNext';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { blurOnPointerClick } from '../components/focus';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
@@ -391,6 +392,7 @@ export function PlayWell() {
         Screen shake and flashing can be turned down in <Link to="/settings">Settings</Link>.
       </p>
 
+      <ChapterNext current={CHAPTER_ID} />
       <ChapterNav current={CHAPTER_ID} />
     </ChapterGate>
   );

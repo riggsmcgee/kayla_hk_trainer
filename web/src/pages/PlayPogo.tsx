@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router';
 import { chapterById, chapterIndex, countWordCap, nextChapter } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
+import { ChapterNext } from '../components/ChapterNext';
 import { LevelPicker } from '../components/LevelPicker';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { createPogoCourseSession } from '../engine/pogoCourseSession';
@@ -107,16 +108,10 @@ export function PlayPogo() {
       {panel && (
         <div className="level-clear" role="status">
           <p className="level-clear-title">{panel.title}</p>
-          {panelNext !== null ? (
+          {panelNext !== null && (
             <button type="button" className="button" onClick={() => selectLevel(panelNext)}>
               {panel.label}
             </button>
-          ) : (
-            next && (
-              <Link className="button" to={next.route}>
-                Next stop → {next.place}
-              </Link>
-            )
           )}
         </div>
       )}
@@ -125,6 +120,7 @@ export function PlayPogo() {
         Screen shake and flashing can be turned down in <Link to="/settings">Settings</Link>.
       </p>
 
+      <ChapterNext current={CHAPTER_ID} />
       <ChapterNav current={CHAPTER_ID} />
     </ChapterGate>
   );

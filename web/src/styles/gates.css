@@ -56,38 +56,6 @@
 }
 
 /* ------------------------------------------------------------------ */
-/* "Prove it →" — the one big button a lesson ends on                   */
-/* ------------------------------------------------------------------ */
-
-.prove-it {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin: 2.25rem 0 0.5rem;
-}
-
-.prove-it .button {
-  font-size: 1.05rem;
-  padding: 0.7rem 1.8rem;
-  background: var(--gold);
-}
-
-.prove-it .button:hover {
-  background: #f3d98a;
-}
-
-.prove-it-where {
-  color: var(--text-dim);
-  font-size: 0.95rem;
-}
-
-.prove-it-where .prove-it-place {
-  font-family: var(--font-display);
-  letter-spacing: 0.06em;
-}
-
-/* ------------------------------------------------------------------ */
 /* Chapter strip: the same states the map draws                         */
 /* ------------------------------------------------------------------ */
 
@@ -126,19 +94,12 @@
   opacity: 1;
 }
 
-/* The title under the "Next stop →" button. */
-.chapter-next-title {
-  font-size: 0.95rem;
-}
-
-/* Six stops at 18 px never quite fit one row on a laptop, and a lone sixth
-   stop on its own line reads as an afterthought. Two rows of three instead. */
+/* Six stops fit one row now that the strip is small print (playtest 3, note
+   14) — at 14 px lanterns and .85rem titles the six sit comfortably across a
+   laptop, so the old two-rows-of-three grid is gone. */
 @media (min-width: 720px) {
   .chapter-strip {
-    display: grid;
-    grid-template-columns: repeat(3, auto);
-    justify-content: start;
-    column-gap: 2.5rem;
+    column-gap: 1.6rem;
   }
 }
 

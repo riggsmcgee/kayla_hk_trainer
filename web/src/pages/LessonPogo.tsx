@@ -2,7 +2,7 @@ import { chapterById, chapterIndex } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
-import { ProveIt } from '../components/ProveIt';
+import { ChapterNext } from '../components/ChapterNext';
 import { pogoRhythmDemo } from '../engine/demo';
 
 export function LessonPogo() {
@@ -64,7 +64,7 @@ export function LessonPogo() {
         </li>
       </ol>
 
-      <ProveIt current="pogo" />
+      <ChapterNext current="pogo" />
 
       <ChapterNav current="pogo" />
     </ChapterGate>
