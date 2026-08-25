@@ -7,8 +7,9 @@
  */
 import type { PracticeRun, ProgressV1 } from '@dojo/shared';
 import { FINALE_WAVES, FINALE_WAVE_COUNT, rosterEntry } from '../engine/roster';
-import { waveBest } from '../storage/bests';
-import { finaleLevelSkipKey, waveLocked } from '../storage/progress';
+import { BOSS } from '../engine/boss';
+import { bossBest, waveBest } from '../storage/bests';
+import { finaleLevelSkipKey, waveLocked, waveSkipKey } from '../storage/progress';
 import { formatClock } from './bestLine';
 
 /** The finale, in order: the level, the waves, and what waits below them. */
@@ -33,7 +34,7 @@ function allWavesCleared(progress: ProgressV1): boolean {
   return true;
 }
 
-/** Finished by its own rule. The third beat has nothing to finish yet. */
+/** Finished by its own rule. The bottom is finished at 1:30 (ratified). */
 export function beatDone(beat: Beat, progress: ProgressV1): boolean {
   switch (beat) {
     case 1:
@@ -41,25 +42,38 @@ export function beatDone(beat: Beat, progress: ProgressV1): boolean {
     case 2:
       return allWavesCleared(progress);
     case 3:
-      return false;
+      return progress.finaleBossCleared;
   }
 }
 
 /**
- * The waves wait for the level — cleared or skipped, like every gate on the
- * road. The level is never locked, and neither is the bottom: there is
- * nothing there to play.
+ * Each beat waits for the one above it — cleared or skipped, like every gate
+ * on the road. The level itself is never locked.
+ *
+ * The bottom mirrors the waves exactly one rung down: the Bills wait for
+ * every wave, and a skipped wave counts, because nothing on this road ever
+ * traps her.
  */
 export function beatLocked(beat: Beat, progress: ProgressV1): boolean {
-  if (beat !== 2) return false;
-  if (progress.finaleLevelCleared) return false;
-  return !progress.skipped.includes(finaleLevelSkipKey());
+  if (beat === 2) {
+    if (progress.finaleLevelCleared) return false;
+    return !progress.skipped.includes(finaleLevelSkipKey());
+  }
+  if (beat === 3) {
+    for (let wave = 1; wave <= FINALE_WAVE_COUNT; wave++) {
+      const passed =
+        progress.finaleWavesCleared.includes(wave) || progress.skipped.includes(waveSkipKey(wave));
+      if (!passed) return true;
+    }
+    return false;
+  }
+  return false;
 }
 
 /**
  * Where she resumes when the page opens: the first beat not finished — the
- * level, then the waves — and the bottom once both are done. A skipped
- * level is still unfinished, so it is where she lands.
+ * level, then the waves, then the Bills. A skipped level is still
+ * unfinished, so it is where she lands.
  */
 export function nextBeat(progress: ProgressV1): Beat {
   if (!beatDone(1, progress)) return 1;
@@ -95,6 +109,16 @@ export function waveBestLine(runs: readonly PracticeRun[], wave: number): string
   return best.cleared
     ? `Best: cleared wave ${wave} with ${hits}.`
     : `Best: ${formatClock(best.durationMs)} in wave ${wave}, ${hits}.`;
+}
+
+/** One line for the fight at the bottom, in her terms: the clock. */
+export function bossBestLine(runs: readonly PracticeRun[]): string {
+  const best = bossBest(runs);
+  if (!best) return 'You have not met them yet.';
+  const time = formatClock(best.durationMs);
+  return best.cleared
+    ? `Best: ${time} — past 1:30, and still going.`
+    : `Best: ${time} survived. ${formatClock(BOSS.targetSeconds * 1000)} is the mark.`;
 }
 
 export interface AfterLevel {

@@ -1,11 +1,11 @@
 /**
  * The Bottom of the Well — the finale (playtest 2 interview). Everything she
  * learned, at once, in three beats: pogo level 4 ("All of it at once"), then
- * the roster in waves on a flat floor, then the thing at the bottom — which
- * is not built yet. The page opens on the first beat not finished; the strip
- * above the canvas is the road between them (clear-to-unlock, skippable,
- * like everywhere else). Clears go through the shared progress store, and
- * once the level and every wave are cleared the road is walked.
+ * the roster in waves on a flat floor, then the Two Bills at the bottom. The
+ * page opens on the first beat not finished; the strip above the canvas is
+ * the road between them (clear-to-unlock, skippable, like everywhere else).
+ * Clears go through the shared progress store, and once the level, every
+ * wave and the Bills are done the road is walked.
  */
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
@@ -16,13 +16,20 @@ import { ChapterNav } from '../components/ChapterNav';
 import { ChapterNext } from '../components/ChapterNext';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { blurOnPointerClick } from '../components/focus';
+import { createBossSession } from '../engine/bossSession';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
 import type { ComfortSettings } from '../engine/juice';
 import { createPogoCourseSession } from '../engine/pogoCourseSession';
 import { FINALE_LEVEL, FINALE_WAVE_COUNT } from '../engine/roster';
 import { waveStages } from '../engine/stages';
 import { attackKeyName, jumpKeyName } from '../storage/keyNames';
-import { finaleCleared, finaleLevelSkipKey, waveLocked, waveSkipKey } from '../storage/progress';
+import {
+  bossSkipKey,
+  finaleCleared,
+  finaleLevelSkipKey,
+  waveLocked,
+  waveSkipKey,
+} from '../storage/progress';
 import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
@@ -32,6 +39,7 @@ import {
   afterLevel,
   beatDone,
   beatLocked,
+  bossBestLine,
   firstUnclearedWave,
   nextBeat,
   waveBestLine,
@@ -264,17 +272,34 @@ function WavesBeat({
 }
 
 /**
- * Beat 3 — the thing at the bottom. A quiet panel and nothing more: the boss
- * is PLANNED (PLAN.md §8) but must be designed in its own conversation with
- * the user before anyone builds or stubs it. Do not add art, copy or code
- * for it here without that conversation.
+ * Beat 3 — the Two Bills. The one beat with no target but the clock: nothing
+ * down here can be hurt, so the strip, the panel and the HUD all speak in
+ * time survived rather than hits landed.
  */
-function BottomBeat() {
+function BossBeat({ progress, runs, comfort, jumpKey, attackKey, refresh }: BeatProps) {
+  const onPassed = useCallback(() => {
+    progressStore.markFinaleBossCleared();
+    refresh();
+  }, [refresh]);
+
+  const createSession = useCallback(
+    () =>
+      createBossSession({
+        comfort,
+        jumpKey,
+        attackKey,
+        cleared: progress.finaleBossCleared,
+        onPassed,
+        // A touch records the run, and her best time comes from those.
+        onFailed: refresh,
+      }),
+    [comfort, jumpKey, attackKey, progress.finaleBossCleared, onPassed, refresh],
+  );
+
   return (
     <div className="well-beat-body">
-      <div className="well-quiet" role="status">
-        <p>Something is waiting down here. Not yet.</p>
-      </div>
+      <p className="level-best">{bossBestLine(runs)}</p>
+      <PracticeCanvas label="The thing at the bottom" createSession={createSession} />
     </div>
   );
 }
@@ -311,6 +336,18 @@ export function PlayWell() {
   };
 
   const toWaves = useCallback(() => selectBeat(2), [selectBeat]);
+  const skipToBottom = () => {
+    // Skipping the bottom means skipping every wave that still stands in the
+    // way — the same "nothing ever traps her" rule the level gate follows.
+    for (let wave = 1; wave <= FINALE_WAVE_COUNT; wave++) {
+      progressStore.markSkipped(waveSkipKey(wave));
+    }
+    progressStore.markSkipped(bossSkipKey());
+    refresh();
+    setAsked(null);
+    setBeat(3);
+  };
+
   const toBottom = useCallback(() => selectBeat(3), [selectBeat]);
   const beatProps: BeatProps = { progress, runs, comfort, jumpKey, attackKey, refresh };
 
@@ -363,13 +400,23 @@ export function PlayWell() {
 
       {gateBeat !== null && (
         <div className="level-gate" role="status">
-          <p className="level-gate-rule">Clear the level first.</p>
+          <p className="level-gate-rule">
+            {gateBeat === 3 ? 'Clear the waves first.' : 'Clear the level first.'}
+          </p>
           <div className="gate-actions">
-            <button type="button" className="button" onClick={() => selectBeat(1)}>
-              Play the level
+            <button
+              type="button"
+              className="button"
+              onClick={() => selectBeat(gateBeat === 3 ? 2 : 1)}
+            >
+              {gateBeat === 3 ? 'Play the waves' : 'Play the level'}
             </button>
-            <button type="button" className="text-button" onClick={skipLevel}>
-              Skip the level
+            <button
+              type="button"
+              className="text-button"
+              onClick={gateBeat === 3 ? skipToBottom : skipLevel}
+            >
+              {gateBeat === 3 ? 'Skip to the bottom' : 'Skip the level'}
             </button>
           </div>
         </div>
@@ -377,7 +424,7 @@ export function PlayWell() {
 
       {beat === 1 && <LevelBeat {...beatProps} onWaves={toWaves} />}
       {beat === 2 && <WavesBeat {...beatProps} onBottom={toBottom} />}
-      {beat === 3 && <BottomBeat />}
+      {beat === 3 && <BossBeat {...beatProps} />}
 
       {finaleCleared(progress) && (
         <div className="well-done" role="status">

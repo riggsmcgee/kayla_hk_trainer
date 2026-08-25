@@ -7,6 +7,7 @@ import {
   afterLevel,
   beatDone,
   beatLocked,
+  bossBestLine,
   firstUnclearedWave,
   nextBeat,
   waveBestLine,
@@ -73,6 +74,18 @@ describe('nextBeat', () => {
   });
 });
 
+function bossRun(over: Partial<PracticeRun>): PracticeRun {
+  return {
+    id: 'boss-run',
+    mode: 'dodge',
+    boss: true,
+    hitsLanded: 0,
+    durationMs: 0,
+    startedAt: '2026-08-25T00:00:00.000Z',
+    ...over,
+  };
+}
+
 describe('beatDone', () => {
   it('the level is done when it is cleared', () => {
     expect(beatDone(1, progress())).toBe(false);
@@ -102,8 +115,46 @@ describe('beatLocked', () => {
     expect(beatLocked(2, progress({ skipped: [finaleLevelSkipKey()] }))).toBe(false);
   });
 
-  it('the thing at the bottom is never locked — there is nothing to play', () => {
-    expect(beatLocked(3, progress())).toBe(false);
+  it('the bottom waits for every wave — cleared or skipped', () => {
+    const waves = [1, 2, 3].slice(0, FINALE_WAVE_COUNT);
+    expect(beatLocked(3, progress())).toBe(true);
+    expect(beatLocked(3, progress({ finaleWavesCleared: waves.slice(0, -1) }))).toBe(true);
+    expect(beatLocked(3, progress({ finaleWavesCleared: waves }))).toBe(false);
+    // A skipped wave counts as passed: nothing on this road ever traps her.
+    expect(beatLocked(3, progress({ skipped: waves.map(waveSkipKey) }))).toBe(false);
+  });
+});
+
+describe('the bottom is done at 1:30', () => {
+  it('follows finaleBossCleared, and nothing else', () => {
+    const waves = [1, 2, 3].slice(0, FINALE_WAVE_COUNT);
+    expect(beatDone(3, progress({ finaleWavesCleared: waves }))).toBe(false);
+    expect(beatDone(3, progress({ finaleBossCleared: true }))).toBe(true);
+  });
+
+  it('is where she resumes once the level and the waves are behind her', () => {
+    const waves = [1, 2, 3].slice(0, FINALE_WAVE_COUNT);
+    const atTheBottom = progress({ finaleLevelCleared: true, finaleWavesCleared: waves });
+    expect(nextBeat(atTheBottom)).toBe(3);
+    expect(nextBeat(progress({ ...atTheBottom, finaleBossCleared: true }))).toBe(3);
+  });
+});
+
+describe('bossBestLine', () => {
+  it('says she has not met them yet', () => {
+    expect(bossBestLine([])).toBe('You have not met them yet.');
+  });
+
+  it('reads an uncleared run as a time, with the mark to beat', () => {
+    const line = bossBestLine([bossRun({ cleared: false, durationMs: 82_400 })]);
+    expect(line).toContain('1:22');
+    expect(line).toContain('1:30');
+  });
+
+  it('reads a cleared run as past the mark', () => {
+    const line = bossBestLine([bossRun({ cleared: true, durationMs: 104_000 })]);
+    expect(line).toContain('1:44');
+    expect(line).toContain('past 1:30');
   });
 });
 
