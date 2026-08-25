@@ -16,9 +16,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createArenaState, stepArena } from './arena';
-import { ATTACKS, ENEMY_SIZES, createEnemy, stepEnemy } from './enemies';
+import { BOSS, createBossState, skipCard, startBoss, stepBoss } from './boss';
+import { ATTACKS, ENEMY_SIZES, createEnemy, stepEnemy, stepProjectile } from './enemies';
+import type { Projectile } from './enemies';
 import type { Enemy } from './enemies';
-import { FIXED_DT, KNIGHT } from './constants';
+import { CANVAS, FIXED_DT, KNIGHT } from './constants';
 import { arenaWorld, FLOOR_Y, PLAYER_SPAWN_X } from './dodgeArenaSession';
 import { createPlayer, stepPlayer } from './player';
 import type { Player } from './player';
@@ -191,5 +193,144 @@ describe('one hit, then get out', () => {
     // (ratified). The shake-off is the backstop for HOVERING, and its own
     // timing and reach are pinned in attackers.test.ts.
     expect(run.caughtBy).toBeNull();
+  });
+});
+
+/**
+ * The second half of the fight, run to the end.
+ *
+ * No bot survives to 0:30 yet (see PLAN.md §8), so nothing else in the suite
+ * ever sees the dog arrive, the pair go hot, or the 1:30 crossing happen in a
+ * live arena rather than on the clock alone. This harness runs the whole
+ * ninety seconds with touches COUNTED rather than fatal — it is a liveness
+ * test of the machinery, not a claim that anyone can survive it — and it
+ * mirrors `createBossSession`'s step order on purpose, because a bot has to
+ * see state the session deliberately hides.
+ */
+describe('the whole fight, with the touch disarmed', () => {
+  function runToTheEnd(seconds: number): {
+    touches: number;
+    dogArrivedAt: number;
+    dogBones: number;
+    dogRolls: number;
+    lances: number;
+    hotAt: number;
+    passedAt: number;
+    dogLeftTheArena: boolean;
+    billStuckInGeometry: boolean;
+  } {
+    const world = arenaWorld();
+    const player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
+    const bill = createEnemy('bill', 868, FLOOR_Y);
+    let dog: Enemy | null = null;
+    const arena = createArenaState(false);
+    arena.started = true;
+    const boss = createBossState();
+    startBoss(boss);
+    let projectiles: Projectile[] = [];
+
+    const out = {
+      touches: 0,
+      dogArrivedAt: -1,
+      dogBones: 0,
+      dogRolls: 0,
+      lances: 0,
+      hotAt: -1,
+      passedAt: -1,
+      dogLeftTheArena: false,
+      billStuckInGeometry: false,
+    };
+    let wasCharging = false;
+    let wasRolling = false;
+    let wasSpitting = false;
+
+    for (let i = 0; i < Math.round(seconds / FIXED_DT); i++) {
+      const elapsed = i * FIXED_DT;
+
+      if (boss.phase === 'card') {
+        skipCard(boss);
+        stepBoss(boss, { playerHit: false }, FIXED_DT);
+        continue;
+      }
+
+      stepPlayer(player, IDLE, world, FIXED_DT);
+      const target = { position: player.position, grounded: player.grounded };
+      const both = dog ? [bill, dog] : [bill];
+      for (const enemy of both) {
+        const shots = stepEnemy(enemy, world, FIXED_DT, target);
+        if (shots) projectiles.push(...shots);
+      }
+      for (const shot of projectiles) stepProjectile(shot, world, FIXED_DT);
+
+      // The touch is counted, not fatal: the arena state is rebuilt every
+      // step so one contact does not freeze the rest of the run.
+      const events = stepArena(createArenaState(false), player, both, FIXED_DT, projectiles);
+      projectiles = projectiles.filter((sh) => !sh.dead);
+      if (events.playerHit) out.touches += 1;
+
+      const charging = bill.attackKind === 'lance' && bill.phase === 'active';
+      if (charging && !wasCharging) out.lances += 1;
+      wasCharging = charging;
+      // Bill must never end a charge inside a wall.
+      const half = ENEMY_SIZES.bill.width / 2;
+      if (bill.position.x < half - 1 || bill.position.x > CANVAS.width - half + 1) {
+        out.billStuckInGeometry = true;
+      }
+
+      if (dog) {
+        if (dog.roll && !wasRolling) out.dogRolls += 1;
+        wasRolling = dog.roll;
+        const spitting = dog.attackKind === 'bones' && dog.phase === 'active';
+        if (spitting && !wasSpitting) out.dogBones += 1;
+        wasSpitting = spitting;
+        const dogHalf = ENEMY_SIZES.dog.width / 2;
+        if (dog.position.x < dogHalf - 1 || dog.position.x > CANVAS.width - dogHalf + 1) {
+          out.dogLeftTheArena = true;
+        }
+      }
+
+      switch (stepBoss(boss, { playerHit: false }, FIXED_DT)) {
+        case 'dog-arrives':
+          out.dogArrivedAt = elapsed;
+          // Where the session puts him: the far wall, then walked to his mark.
+          dog = createEnemy('dog', CANVAS.width - 200, FLOOR_Y);
+          break;
+        case 'heat':
+          out.hotAt = elapsed;
+          bill.hot = true;
+          if (dog) dog.hot = true;
+          break;
+        case 'passed':
+          out.passedAt = elapsed;
+          break;
+      }
+    }
+    return out;
+  }
+
+  it('brings the dog in on time and lets him fight', () => {
+    const run = runToTheEnd(BOSS.targetSeconds + 5);
+
+    expect(run.dogArrivedAt).toBeGreaterThanOrEqual(BOSS.dogAt);
+    expect(run.dogArrivedAt).toBeLessThan(BOSS.dogAt + 0.1);
+    // He is in for a full minute; both attacks must actually come out.
+    expect(run.dogBones).toBeGreaterThanOrEqual(5);
+    expect(run.dogRolls).toBeGreaterThanOrEqual(3);
+  });
+
+  it('escalates on the clock and never stops at 1:30', () => {
+    const run = runToTheEnd(BOSS.targetSeconds + 5);
+    expect(run.hotAt).toBeGreaterThanOrEqual(BOSS.heatAt);
+    expect(run.hotAt).toBeLessThan(BOSS.heatAt + 0.1);
+    expect(run.passedAt).toBeGreaterThanOrEqual(BOSS.targetSeconds);
+    expect(run.passedAt).toBeLessThan(BOSS.targetSeconds + 0.1);
+    // Bill keeps working the whole time rather than parking somewhere.
+    expect(run.lances).toBeGreaterThanOrEqual(10);
+  });
+
+  it('keeps both of them inside the arena for the whole ninety seconds', () => {
+    const run = runToTheEnd(BOSS.targetSeconds + 5);
+    expect(run.billStuckInGeometry).toBe(false);
+    expect(run.dogLeftTheArena).toBe(false);
   });
 });
