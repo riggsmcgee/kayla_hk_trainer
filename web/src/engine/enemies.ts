@@ -352,6 +352,8 @@ export interface Enemy extends EnemyState {
   sinceBounce: number;
   /** Dog: true while it is balled up and rolling. */
   roll: boolean;
+  /** Bill: lance passes still owed after the current one (1 while hot). */
+  lancePasses: number;
 }
 
 /** Visual/collision sizes per enemy (width × height, feet-anchored). */
@@ -366,6 +368,13 @@ export const ENEMY_SIZES: Record<EnemyId, { width: number; height: number }> = {
   /** The dog is a little larger than the Knight (48 px sprite, 18x47 hurtbox). */
   dog: { width: 64, height: 58 },
 };
+
+/**
+ * Seconds before an enemy's first attack can fire, so nothing opens with a
+ * live hitbox. The three that would: the spitter's volley, and both Bills,
+ * whose first move should be a walk she gets to read.
+ */
+const OPENING_BEAT: Partial<Record<EnemyId, number>> = { spitter: 1.0, bill: 1.2, dog: 1.0 };
 
 export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
   return {
@@ -383,8 +392,7 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     bobPhase: 0,
     attackKind: null,
     phaseTimer: 0,
-    // The spitter waits a beat before its first volley; others start ready.
-    cooldownTimer: id === 'spitter' ? 1.0 : 0,
+    cooldownTimer: OPENING_BEAT[id] ?? 0,
     lockedDir: -1,
     shieldDir: 'front',
     shieldReaimTimer: 0,
@@ -400,6 +408,7 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     hot: false,
     sinceBounce: 0,
     roll: false,
+    lancePasses: 0,
   };
 }
 
@@ -1044,6 +1053,129 @@ function stepWarden(e: Enemy, world: World, dt: number, t: Target | undefined): 
 }
 
 /**
+ * A safety cap on the lance's active phase.
+ *
+ * The pass is meant to end by ARRIVING at a wall, not by a clock — that is
+ * what makes "he crosses the whole arena" true of whatever arena he is in.
+ * The Colosseum is 1168 px wide and the hot charge covers it in 1.23 s, so
+ * this only ever fires in a test world that has no walls at all.
+ */
+const LANCE_MAX_SECONDS = 3;
+
+/**
+ * Carry Bill one step along the direction his lance committed to.
+ *
+ * Returns true when a wall stops him, having placed him flush against its
+ * surface rather than short of it — the picture and the stop have to agree,
+ * and the stuck second afterwards is her only rest in the whole fight.
+ */
+function chargeIntoWall(e: Enemy, world: World, dt: number): boolean {
+  const speed = e.hot ? ATTACKS.bill.lanceSpeedHot : ATTACKS.bill.lanceSpeed;
+  const nextX = e.position.x + e.lockedDir * speed * dt;
+  const wall = blockerOf(world, bodyAt(e.id, nextX, e.position.y));
+  if (!wall) {
+    e.position.x = nextX;
+    return false;
+  }
+  const half = ENEMY_SIZES[e.id].width / 2;
+  e.position.x = e.lockedDir === 1 ? wall.x - half : wall.x + wall.width + half;
+  return true;
+}
+
+/**
+ * Bill the man — Kayla's uncle, 160 px of him, and he cannot be hurt.
+ *
+ * Two attacks, and the answer to each is something she already owns.
+ *
+ * The LANCE is why there is no safe ground. He locks a direction, winds up
+ * for 0.6 s, then crosses the ENTIRE arena and stops dead against the far
+ * wall for a second. No corner is out of the pass, so standing still loses;
+ * his head sits 43 px inside a full jump, so pogoing him as he goes under is
+ * the answer, and the stuck second is when she gets to breathe.
+ *
+ * The SWAT is the shake-off, and it is why the first bounce is always free:
+ * `sinceBounce` is zeroed by every downslash that lands on him
+ * (resolveNailHit), so the clock cannot reach 0.5 s until she has already had
+ * one. Still over his head after that and the column goes up. One hit, then
+ * get out — the same rule the warden taught with his shield.
+ */
+function stepBill(e: Enemy, world: World, dt: number, t: Target | undefined): void {
+  const A = ATTACKS.bill;
+  const telegraph = ENEMIES.bill.telegraph ?? 0.6;
+  e.phaseTimer -= dt;
+  e.cooldownTimer = Math.max(0, e.cooldownTimer - dt);
+  e.sinceBounce += dt;
+
+  switch (e.phase) {
+    case 'idle': {
+      if (!t) return;
+      faceTarget(e, t);
+      const dx = t.position.x - e.position.x;
+      if (Math.abs(dx) > A.standOff) drift(e, world, dx >= 0 ? 1 : -1, A.marchSpeed, dt);
+      if (e.cooldownTimer > 0) return;
+
+      // While she is over his head he never lances. The lance answers a
+      // GROUND approach — starting one here would carry him out from under
+      // her and make the shake-off unreachable, which is the whole reason
+      // the first bounce is free. So he waits out her half second instead.
+      if (overheadOf(e, t, A.overheadHalfWidth)) {
+        if (e.sinceBounce >= A.swatAfterBounce) {
+          e.attackKind = 'swat';
+          e.lockedDir = e.facing;
+          setPhase(e, 'telegraph', A.swatTelegraph);
+        }
+        return;
+      }
+
+      e.attackKind = 'lance';
+      e.lockedDir = dx >= 0 ? 1 : -1;
+      e.facing = e.lockedDir;
+      e.lancePasses = e.hot ? 1 : 0;
+      setPhase(e, 'telegraph', telegraph);
+      break;
+    }
+    case 'telegraph':
+      if (e.phaseTimer <= 0) {
+        setPhase(e, 'active', e.attackKind === 'lance' ? LANCE_MAX_SECONDS : A.swatActive);
+      }
+      break;
+    case 'active':
+      if (e.attackKind === 'lance') {
+        if (chargeIntoWall(e, world, dt) || e.phaseTimer <= 0) {
+          setPhase(e, 'recovery', A.lanceStuck);
+        }
+      } else if (e.phaseTimer <= 0) {
+        setPhase(e, 'recovery', A.swatRecovery);
+      }
+      break;
+    case 'recovery': {
+      if (e.phaseTimer > 0) break;
+      if (e.attackKind === 'lance' && e.lancePasses > 0) {
+        // Hot: straight back the other way. He still winds up first — heat is
+        // speed and gaps, never a shorter tell (ratified).
+        e.lancePasses -= 1;
+        e.lockedDir = e.lockedDir === 1 ? -1 : 1;
+        e.facing = e.lockedDir;
+        setPhase(e, 'telegraph', telegraph);
+        break;
+      }
+      const lance = e.attackKind === 'lance';
+      e.cooldownTimer = lance
+        ? e.hot
+          ? A.lanceEveryHot
+          : A.lanceEvery
+        : e.hot
+          ? A.cooldownHot
+          : A.cooldown;
+      e.attackKind = null;
+      e.lancePasses = 0;
+      setPhase(e, 'idle', 0);
+      break;
+    }
+  }
+}
+
+/**
  * Advance one enemy by one step. Every enemy hunts the player (`target`)
  * when it can see one; without a target the dummies patrol and the
  * attackers hold still. Returns projectiles spawned this step, if any.
@@ -1073,6 +1205,8 @@ export function stepEnemy(
       stepWarden(e, world, dt, target);
       return null;
     case 'bill':
+      stepBill(e, world, dt, target);
+      return null;
     case 'dog':
       return null;
   }
@@ -1145,10 +1279,31 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
         height: A.diveHeight,
       };
     }
-    // Stubs. The attacks exist in the union so the switch stays exhaustive;
-    // their boxes arrive with their state machines.
-    case 'lance':
-    case 'swat':
+    case 'lance': {
+      // The foam finger, held out level. It only reaches lanceHeight up, so
+      // the pass sweeps the FLOOR — his 160 px body is what threatens the
+      // air, and clearing that is the whole read.
+      const A = ATTACKS.bill;
+      return {
+        x: e.lockedDir === 1 ? front : front - A.lanceReach,
+        y: e.position.y - A.lanceHeight,
+        width: A.lanceReach,
+        height: A.lanceHeight,
+      };
+    }
+    case 'swat': {
+      // A column standing on his shoulders — bottom at his head, top at
+      // y 290 on the Colosseum floor. Nothing at ground level is in it.
+      const A = ATTACKS.bill;
+      return {
+        x: e.position.x - A.swatWidth / 2,
+        y: e.position.y - size.height - A.swatHeight,
+        width: A.swatWidth,
+        height: A.swatHeight,
+      };
+    }
+    // Stubs. The dog's attacks exist in the union so the switch stays
+    // exhaustive; their boxes arrive with his state machine.
     case 'bones':
     case 'roll':
       return null;

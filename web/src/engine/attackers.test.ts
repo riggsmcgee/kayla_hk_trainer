@@ -8,7 +8,7 @@
  * everything outside post-counter recovery and ripostes when poked.
  */
 import { describe, expect, it } from 'vitest';
-import { ENEMIES, FIXED_DT, PHYSICS } from './constants';
+import { ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
 import {
   ATTACKS,
   ENEMY_SIZES,
@@ -18,6 +18,7 @@ import {
   resolveNailHit,
   stepEnemy,
   stepProjectile,
+  type Enemy,
   type Projectile,
   type Target,
 } from './enemies';
@@ -896,5 +897,180 @@ describe('warden', () => {
     player.swingId = 2;
     expect(resolveNailHit(player, warden, false)).toBe('hit'); // "would have landed"
     expect(warden.hp).toBe(ENEMIES.warden.hp); // but no damage in observe
+  });
+});
+
+/**
+ * Bill the man. The fight is a survival clock, so every assertion here is
+ * about REACH — what the pass covers, what it cannot, and what a bounce buys.
+ */
+describe('Bill the man', () => {
+  /** Her hurtbox, feet-anchored like everything else in this engine. */
+  function knightBox(x: number, feetY: number): Box {
+    return {
+      x: x - KNIGHT.hurtboxWidth / 2,
+      y: feetY - KNIGHT.hurtboxHeight,
+      width: KNIGHT.hurtboxWidth,
+      height: KNIGHT.hurtboxHeight,
+    };
+  }
+
+  /** Does anything of his — body or foam finger — touch her right now? */
+  function touching(bill: Enemy, box: Box): boolean {
+    const attack = enemyAttackHitbox(bill);
+    return boxesOverlap(box, enemyBox(bill)) || (attack !== null && boxesOverlap(box, attack));
+  }
+
+  /**
+   * Run one whole lance: wait for it to be committed, then step until he is
+   * stuck against the wall. Reports whether she was ever touched on the way.
+   */
+  function lancePass(bill: Enemy, w: World, t: Target, knight: Box): boolean {
+    let hit = false;
+    for (let i = 0; i < 60 * 12; i++) {
+      stepEnemy(bill, w, FIXED_DT, t);
+      if (touching(bill, knight)) hit = true;
+      if (bill.attackKind === 'lance' && bill.phase === 'recovery') return hit;
+    }
+    throw new Error('the lance never finished');
+  }
+
+  it('marches at her and stops a body length short', () => {
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 900, FLOOR_Y);
+    // Held in his cooldown so the march is the only thing being measured.
+    bill.cooldownTimer = 10;
+    run(bill, w, 60 * 8, targetAt(200, FLOOR_Y));
+    const gap = bill.position.x - 200;
+    expect(gap).toBeLessThanOrEqual(ATTACKS.bill.standOff);
+    expect(gap).toBeGreaterThan(ATTACKS.bill.standOff - ATTACKS.bill.marchSpeed * FIXED_DT);
+    expect(bill.facing).toBe(-1);
+  });
+
+  it('crosses the arena and is stopped by the wall, not by a timer', () => {
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 900, FLOOR_Y);
+    const leftWall = w.solids[1]!;
+    lancePass(bill, w, targetAt(100, FLOOR_Y), knightBox(100, FLOOR_Y));
+    // Flush against the left wall's inner face, not short of it.
+    expect(bill.position.x).toBe(leftWall.x + leftWall.width + ENEMY_SIZES.bill.width / 2);
+    expect(bill.phaseTimer).toBeCloseTo(ATTACKS.bill.lanceStuck, 5);
+  });
+
+  it('leaves no safe ground — every corner of the floor is inside the pass', () => {
+    for (const x of [30, 584, 1138]) {
+      const w = arenaWorld();
+      const bill = createEnemy('bill', 900, FLOOR_Y);
+      const t = targetAt(x, FLOOR_Y);
+      expect(lancePass(bill, w, t, knightBox(x, FLOOR_Y))).toBe(true);
+    }
+  });
+
+  it('misses a Knight who is above his head for the whole pass', () => {
+    // 370 is the window the tuning was derived for: her down-nail reaches his
+    // head at 440 and his body cannot reach her. Being airborne is the answer.
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 900, FLOOR_Y);
+    const t = targetAt(584, 370, false);
+    expect(lancePass(bill, w, t, knightBox(584, 370))).toBe(false);
+  });
+
+  it('gives her the first head bounce free, then shakes her off', () => {
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.cooldownTimer = 0;
+    const overhead = targetAt(600, 370, false);
+
+    // A downslash just landed on his head.
+    const player = createPlayer(600, 370);
+    player.nailDir = 'down';
+    player.swingId += 1;
+    expect(resolveNailHit(player, bill, true)).toBe('blocked');
+    expect(bill.sinceBounce).toBe(0);
+
+    // The half second she was promised.
+    run(bill, w, Math.floor(ATTACKS.bill.swatAfterBounce / FIXED_DT) - 1, overhead);
+    expect(bill.attackKind).not.toBe('swat');
+
+    // And then the arm comes up — with its full tell still ahead of it.
+    for (let i = 0; i < 5 && bill.attackKind !== 'swat'; i++)
+      stepEnemy(bill, w, FIXED_DT, overhead);
+    expect(bill.attackKind).toBe('swat');
+    expect(bill.phase).toBe('telegraph');
+    expect(bill.phaseTimer).toBe(ATTACKS.bill.swatTelegraph);
+  });
+
+  it('does not swat at a Knight who left, even inside the window', () => {
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.cooldownTimer = 0;
+    bill.sinceBounce = 0;
+    // 100 px out is past overheadHalfWidth (90) — she got clear in time.
+    run(
+      bill,
+      w,
+      Math.floor(ATTACKS.bill.swatAfterBounce / FIXED_DT) + 5,
+      targetAt(700, 370, false),
+    );
+    expect(bill.attackKind).not.toBe('swat');
+  });
+
+  it('swats a column that stands on his shoulders, out of reach of the floor', () => {
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.cooldownTimer = 0;
+    bill.sinceBounce = ATTACKS.bill.swatAfterBounce;
+    const overhead = targetAt(600, 370, false);
+    run(bill, w, Math.ceil(ATTACKS.bill.swatTelegraph / FIXED_DT) + 2, overhead);
+    expect(bill.phase).toBe('active');
+
+    const box = enemyAttackHitbox(bill);
+    expect(box).not.toBeNull();
+    // Bottom at his head (600 - 160), top 150 higher: y 290 on this floor.
+    expect(box!.y).toBe(FLOOR_Y - ENEMY_SIZES.bill.height - ATTACKS.bill.swatHeight);
+    expect(box!.y + box!.height).toBe(FLOOR_Y - ENEMY_SIZES.bill.height);
+    // A Knight standing at his feet is not in it — only being above him is.
+    expect(boxesOverlap(box!, knightBox(600, FLOOR_Y))).toBe(false);
+  });
+
+  it('past 1:00 he comes straight back for a second pass, faster', () => {
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 900, FLOOR_Y);
+    bill.hot = true;
+    const t = targetAt(100, FLOOR_Y);
+
+    lancePass(bill, w, t, knightBox(100, FLOOR_Y));
+    expect(bill.lancePasses).toBe(1);
+    const firstEnd = bill.position.x;
+
+    // The stuck second, then he turns around rather than standing down.
+    run(bill, w, Math.ceil(ATTACKS.bill.lanceStuck / FIXED_DT), t);
+    expect(bill.attackKind).toBe('lance');
+    expect(bill.phase).toBe('telegraph');
+    // The tell is the fairness contract: heat never shortens it.
+    expect(bill.phaseTimer).toBeCloseTo(ENEMIES.bill.telegraph!, 2);
+    expect(bill.lockedDir).toBe(1);
+
+    lancePass(bill, w, t, knightBox(100, FLOOR_Y));
+    expect(bill.position.x).toBeGreaterThan(firstEnd);
+    expect(bill.lancePasses).toBe(0);
+  });
+
+  it('charges a quarter faster while hot', () => {
+    const w = { solids: [{ x: -2000, y: FLOOR_Y, width: 6000, height: 200 }] };
+    const distance = (hot: boolean): number => {
+      const bill = createEnemy('bill', 600, FLOOR_Y);
+      bill.hot = hot;
+      const t = targetAt(2000, FLOOR_Y);
+      // Into the charge, then exactly one second of it.
+      for (let i = 0; i < 60 * 30 && bill.phase !== 'active'; i++) stepEnemy(bill, w, FIXED_DT, t);
+      const from = bill.position.x;
+      run(bill, w, 60, t);
+      return bill.position.x - from;
+    };
+    expect(distance(true) / distance(false)).toBeCloseTo(
+      ATTACKS.bill.lanceSpeedHot / ATTACKS.bill.lanceSpeed,
+      2,
+    );
   });
 });
