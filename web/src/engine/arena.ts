@@ -118,6 +118,13 @@ export function stepArena(
   }
 
   enemies.forEach((enemy, i) => {
+    // The run is over the moment anything touches her, and the rest of this
+    // frame must not keep scoring. Without this, an enemy later in the list
+    // could still land a nail hit into state.hitsLanded on the frame she
+    // died — harmless with one enemy, three extra chances to mutate a dead
+    // frame once a wave has four.
+    if (state.over) return;
+
     // Respawn countdown after a kill — each slot on its own clock.
     if (enemy.dead) {
       const left = (state.respawnTimers[i] ?? 0) - dt;

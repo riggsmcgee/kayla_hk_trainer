@@ -524,6 +524,47 @@ describe('multi-enemy arena', () => {
  * → record → onStageCleared → banner → next stage; last clear → onAllCleared.
  * Wave runs carry the wave number; observe mode never clears or reports.
  */
+describe('the frame the run ends on', () => {
+  /**
+   * A Knight mid-swing, with one enemy touching her from behind (outside the
+   * nail's reach) and another in front of her, inside it.
+   *
+   * stepArena already refuses whole frames once state.over is set, so the
+   * only window left is WITHIN one frame: the toucher comes first in the
+   * list and ends the run, and the enemy after it used to keep scoring.
+   */
+  function fatalFrameParts() {
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    armSwingOver(player, 400, FLOOR_Y); // player lands at 340, nail forward
+    const behind = createEnemy('walker', 310, FLOOR_Y); // touching, out of reach
+    const inFront = createEnemy('walker', 400, FLOOR_Y); // inside the nail
+    return { state, player, behind, inFront };
+  }
+
+  it('is set up so the toucher is out of the nail and the other is in it', () => {
+    // Guard the fixture itself: if the geometry drifts, the test below would
+    // silently stop testing anything.
+    const { state, player, behind, inFront } = fatalFrameParts();
+    expect(stepArena(state, player, [behind], FIXED_DT).hits).toBe(0);
+    const fresh = createArenaState(false);
+    fresh.started = true;
+    expect(stepArena(fresh, player, [inFront], FIXED_DT).hits).toBe(1);
+  });
+
+  it('stops scoring at the enemy that got her, not at the end of the list', () => {
+    const { state, player, behind, inFront } = fatalFrameParts();
+    const events = stepArena(state, player, [behind, inFront], FIXED_DT);
+    expect(events.playerHit).toBe(true);
+    expect(state.over).toBe(true);
+    // The enemy after the fatal touch scores nothing on a dead frame.
+    expect(events.hits).toBe(0);
+    expect(state.hitsLanded).toBe(0);
+    expect(inFront.hp).toBe(ENEMIES.walker.hp);
+  });
+});
+
 describe('arena session (staged game)', () => {
   const IDLE: InputFrame = {
     left: false,
