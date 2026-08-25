@@ -12,10 +12,47 @@
  * If the art is ever replaced again, this file is the only thing that has to
  * agree with both sides.
  */
-import type { Enemy } from './enemies';
+import { ATTACKS, ENEMY_SIZES, type Enemy } from './enemies';
 import { paintBillDog, type BillDogPose } from './renderBillDog';
 import { paintBillMan, type BillPose } from './renderBillMan';
 import type { Vec2 } from './types';
+
+/**
+ * The pale band on top of the rolling ball: the pogo-safe cap, drawn.
+ *
+ * The rule it shows is real — `enemyHurtsBox` (arena.ts) removes exactly
+ * these pixels from the damage box, so the top of the ball can be ridden and
+ * the sides cannot. Both read `ATTACKS.dog.rollSafeCap`, so the picture and
+ * the hitbox cannot drift apart.
+ *
+ * It is drawn HERE rather than in `renderBillDog`, on top of whatever the
+ * art painted, for the reason the plan gives: the marker has to survive the
+ * painting being replaced, including by a single static image.
+ *
+ * Precedent, and the reason it looks like this: the red hazard orb's thin
+ * dark ring (`drawHazardOrbs`). A rule the simulation enforces but the
+ * picture never mentions is the exact bug that shipped the warden's
+ * invisible telegraph.
+ */
+function drawRollSafeCap(ctx: CanvasRenderingContext2D, feet: Vec2): void {
+  const size = ENEMY_SIZES.dog;
+  const cap = ATTACKS.dog.rollSafeCap;
+  const cx = feet.x;
+  const top = feet.y - size.height;
+  const radius = size.height / 2;
+
+  ctx.save();
+  // Clip to the top band, then fill the ball's own circle through it, so the
+  // cap follows the silhouette instead of sitting on it as a rectangle.
+  ctx.beginPath();
+  ctx.rect(cx - size.width / 2, top, size.width, cap);
+  ctx.clip();
+  ctx.fillStyle = 'rgba(233, 228, 213, 0.5)';
+  ctx.beginPath();
+  ctx.arc(cx, top + radius, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
 
 /**
  * Which pose Bill the man is in, from the fight's own state.
@@ -80,4 +117,6 @@ export function drawBillDog(
   timeS = 0,
 ): void {
   paintBillDog(ctx, feet, billDogPose(enemy), timeS, enemy.facing);
+  // Only while he is actually a ball — a standing dog hurts everywhere.
+  if (enemy.roll) drawRollSafeCap(ctx, feet);
 }

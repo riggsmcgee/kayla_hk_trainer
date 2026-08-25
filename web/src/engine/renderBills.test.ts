@@ -15,7 +15,7 @@
  * another design, so it is worth a test rather than an eyeball.
  */
 import { describe, expect, it } from 'vitest';
-import { createEnemy, type AttackKind, type Enemy } from './enemies';
+import { ATTACKS, ENEMY_SIZES, createEnemy, type AttackKind, type Enemy } from './enemies';
 import { drawBill, drawBillDog, billDogPose, billPose } from './renderBills';
 
 /**
@@ -180,5 +180,35 @@ describe('every boss pose draws its own picture', () => {
       for (let i = 0; i < 12; i++) seen.add(frame(i * 0.05));
       expect(seen.size).toBeGreaterThan(1);
     }
+  });
+});
+
+describe('the rolling ball shows its own rule', () => {
+  /** Paint one dog and hand back what the canvas was asked to do. */
+  function paintDog(rolling: boolean): string[] {
+    const { ops, ctx } = recordingCtx();
+    drawBillDog(ctx, { x: 400, y: 600 }, dog('roll', 'active', rolling), 0);
+    return ops;
+  }
+
+  it('caps exactly the pixels enemyHurtsBox takes out of the damage box', () => {
+    const size = ENEMY_SIZES.dog;
+    const top = 600 - size.height;
+    // The clip is the cap: the same rollSafeCap the arena removes.
+    const expected = `rect(${400 - size.width / 2},${top},${size.width},${ATTACKS.dog.rollSafeCap})`;
+    expect(paintDog(true)).toContain(expected);
+  });
+
+  it('does not cap a dog who is standing — he hurts everywhere', () => {
+    expect(paintDog(false).some((op) => op.startsWith('rect('))).toBe(false);
+  });
+
+  it('draws the cap ON TOP, so a replacement painting cannot bury it', () => {
+    const ops = paintDog(true);
+    const clip = ops.findIndex((op) => op === 'clip()');
+    expect(clip).toBeGreaterThan(0);
+    // Everything the art drew came first; the marker is the last thing said.
+    expect(ops.slice(clip).some((op) => op.startsWith('rect('))).toBe(false);
+    expect(ops[ops.length - 1]).toBe('restore()');
   });
 });
