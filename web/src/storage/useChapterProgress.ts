@@ -85,4 +85,3 @@ export function useMapProgress(): MapProgress & { refresh(): void } {
   const { progress, visited, refresh } = useProgress();
   return { ...mapProgress(progress, visited), refresh };
 }
-

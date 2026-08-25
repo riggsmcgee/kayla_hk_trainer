@@ -86,9 +86,7 @@ export function arenaCleared(progress: ProgressV1): boolean {
 
 /** The finale's level and every wave. */
 export function finaleCleared(progress: ProgressV1): boolean {
-  return (
-    progress.finaleLevelCleared && allCleared(progress.finaleWavesCleared, FINALE_WAVE_COUNT)
-  );
+  return progress.finaleLevelCleared && allCleared(progress.finaleWavesCleared, FINALE_WAVE_COUNT);
 }
 
 /** Is this stop finished, by its own rule (see Chapter.done)? */

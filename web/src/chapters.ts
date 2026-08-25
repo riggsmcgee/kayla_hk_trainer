@@ -20,12 +20,7 @@
 import { COURSE_LEVEL_COUNT, FINALE_WAVE_COUNT, ROSTER } from './engine/roster';
 
 export type ChapterId =
-  | 'setup'
-  | 'pogo'
-  | 'pogo-course'
-  | 'reading-enemies'
-  | 'dodge-arena'
-  | 'finale';
+  'setup' | 'pogo' | 'pogo-course' | 'reading-enemies' | 'dodge-arena' | 'finale';
 
 export type ChapterKind = 'lesson' | 'mini-game';
 
@@ -49,7 +44,18 @@ export interface Chapter {
 }
 
 /** Small counts as words, so the copy reads "all three levels", not "all 3 levels". */
-const COUNT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+const COUNT_WORDS = [
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+];
 export function countWord(n: number): string {
   return COUNT_WORDS[n] ?? String(n);
 }

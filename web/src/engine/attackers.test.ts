@@ -196,7 +196,9 @@ describe('spitter', () => {
       run(spitter, w, Math.ceil(20 / FIXED_DT), t);
       const A = ATTACKS.spitter;
       expect(A.preferredRange).toBeLessThanOrEqual(240);
-      expect(Math.abs(spitter.position.x - 100)).toBeLessThanOrEqual(A.preferredRange + A.rangeSlack);
+      expect(Math.abs(spitter.position.x - 100)).toBeLessThanOrEqual(
+        A.preferredRange + A.rangeSlack,
+      );
     });
 
     it('backs off slower than it closes in, so the net motion is inward', () => {

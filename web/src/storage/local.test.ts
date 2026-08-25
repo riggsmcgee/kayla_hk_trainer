@@ -43,9 +43,23 @@ describe('run history cap', () => {
   it('evicts uncleared runs first, so a grind of checkpoint deaths never erases a best', () => {
     const store = createLocalStore(createMemoryStorage());
     const death = { ...sampleRun, observeMode: undefined, cleared: false, durationMs: 3_000 };
-    store.addRun({ ...sampleRun, id: 'pogo-1', mode: 'pogo', level: 1, cleared: true, durationMs: 14_300 });
+    store.addRun({
+      ...sampleRun,
+      id: 'pogo-1',
+      mode: 'pogo',
+      level: 1,
+      cleared: true,
+      durationMs: 14_300,
+    });
     store.addRun({ ...sampleRun, id: 'legacy-pogo', mode: 'pogo', durationMs: 20_000 }); // before `cleared` existed
-    store.addRun({ ...sampleRun, id: 'walker-1', enemyId: 'walker', observeMode: undefined, cleared: true, hitsLanded: 7 });
+    store.addRun({
+      ...sampleRun,
+      id: 'walker-1',
+      enemyId: 'walker',
+      observeMode: undefined,
+      cleared: true,
+      hitsLanded: 7,
+    });
     for (let i = 0; i < 600; i++) store.addRun({ ...death, id: `death-${i}` });
     const runs = store.listRuns();
     expect(runs.length).toBe(500);

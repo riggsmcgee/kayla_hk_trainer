@@ -17,7 +17,12 @@ const QUIET = { playerHit: false, nailLanded: false };
 const HIT = { playerHit: false, nailLanded: true };
 const TOUCHED = { playerHit: true, nailLanded: false };
 
-const SHORT: StageDef = { enemies: ['walker'], surviveSeconds: 1, hitsRequired: 2, label: 'Walker' };
+const SHORT: StageDef = {
+  enemies: ['walker'],
+  surviveSeconds: 1,
+  hitsRequired: 2,
+  label: 'Walker',
+};
 
 function running() {
   const state = createStageState();
@@ -42,9 +47,7 @@ describe('stage definitions', () => {
     for (const [i, s] of stages.entries()) {
       const pair = FINALE_WAVES[i]!;
       expect(s.surviveSeconds).toBe(STAGE_SURVIVE_SECONDS);
-      expect(s.hitsRequired).toBe(
-        pair.reduce((sum, id) => sum + rosterEntry(id).hitsToPass, 0),
-      );
+      expect(s.hitsRequired).toBe(pair.reduce((sum, id) => sum + rosterEntry(id).hitsToPass, 0));
     }
     expect(stages[0]!.label).toBe('walker + flier');
     expect(stages[2]!.label).toBe('spitter + warden');

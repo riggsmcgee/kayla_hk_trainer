@@ -232,7 +232,10 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
     getProgress: readProgress,
     saveProgress: (progress) => write(KEYS.progress, PROGRESS_VERSION, progress),
     markLevelCleared: (level) =>
-      updateProgress((p) => ({ ...p, courseLevelsCleared: addUnique(p.courseLevelsCleared, level) })),
+      updateProgress((p) => ({
+        ...p,
+        courseLevelsCleared: addUnique(p.courseLevelsCleared, level),
+      })),
     markEnemyCleared: (enemyId) =>
       updateProgress((p) => ({
         ...p,

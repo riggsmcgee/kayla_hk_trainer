@@ -43,7 +43,9 @@ describe('chapters', () => {
   });
 
   it('the "done" copy counts what roster.ts counts, so the two can never drift', () => {
-    expect(chapterById('pogo-course').done).toContain(`all ${countWord(COURSE_LEVEL_COUNT)} levels`);
+    expect(chapterById('pogo-course').done).toContain(
+      `all ${countWord(COURSE_LEVEL_COUNT)} levels`,
+    );
     expect(chapterById('dodge-arena').done).toContain(`all ${countWord(ROSTER.length)} enemies`);
     expect(chapterById('finale').done).toContain(`all ${countWord(FINALE_WAVE_COUNT)} waves`);
     expect(countWord(3)).toBe('three');
