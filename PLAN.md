@@ -51,6 +51,12 @@ Every ratified decision with its rationale. These are settled.
 | **Death = checkpoint** *(Session 6)* | Getting hit restarts the current enemy / level / wave — never the whole roster. The trainer exists to skip the real game's punishment loop. |
 | **Gates are clear-to-unlock and always skippable** *(Session 6)* | A stop opens when its predecessor is cleared. A locked stop shows the rule, the obvious button back to the challenge, and "Skip this challenge" in small text. Skipped counts for unlocking but is drawn as unfinished. Nothing ever traps her. |
 | **Dev tools stay until the final build, then go** *(Session 6)* | The arena enemy picker and the observe toggle are useful while building, so they stay — collapsed and clearly labelled — and are removed in the final build. Observe mode is outside the progression. |
+| **The boss is a survival tool, not a kill** *(Session 7, from playtest 3)* | The capstone is "survive as long as you can", not a damage race. The boss takes **no damage at all** — moving furniture the nail bounces off — and one touch ends the run. The score is time survived; the finale counts as done at **1:30** and keeps escalating after, so the best time is what she chases. Full notes: `docs/feedback/2026-08-22-playtest-3.md`. |
+| **The Two Bills** *(Session 7)* | The boss is an affectionate family joke: Kayla's uncle **Bill the man** (OSU foam finger as a weapon), joined at 0:30 by **Bill the dog** (the family's other Bill). Named cards announce each. Their attacks reuse tells she already knows; nothing new is taught at the end of the road. |
+| **Waves cut to two, with reinforcements** *(Session 7)* | Three pair-waves were a lull before the boss. Two waves now, each reinforced on a fixed deterministic script at 0:30 and 0:45, capped at four alive. The added enemies are the difficulty: the hits requirement and the 60 s do not grow. |
+| **Z = forward, X = again** *(Session 7)* | One rule on every overlay in the game: jump advances (next level, next stage, next chapter), attack retries. No mouse trip to a DOM button in the middle of a run. |
+| **No platform an enemy cannot reach** *(Session 7)* | "It makes the challenge redundant." The Colosseum's two ledges let her wait out three of the five enemies, so both go: every arena is flat, and verticality comes from pogoing the enemies themselves. |
+| **The next step is the loud thing** *(Session 7)* | The road map is orientation, not navigation: the chapter strip drops to the very bottom of the page, small, and each page ends with one big **"Next: {title}"** button. |
 
 ## 4. Architecture
 
@@ -127,12 +133,16 @@ Cross a spike/bounce-target obstacle course by chaining downslash pogos. Checkpo
 |---|---|---|
 | 1 | Unchanged from M2 — the user's "perfect level 1". | The bounce rhythm. |
 | 2 | **Red hazard orbs.** Body contact counts like spikes (back to the last lantern); nail contact bounces exactly as strongly as a blue orb. The only difference is how low you're allowed to get. | Bouncing early. |
-| 3 | **Drifting orbs.** Blue orbs on fixed paths — horizontal, vertical, circles — deterministic, no RNG. | Timing on a moving target. |
-| 4 | "Put it all together" — red + drifting + longer gaps. **Lives in the finale (Mode 3), not the Bounce Bog.** | Everything at once. |
+| 3 | **Drifting orbs** — blue orbs on fixed paths (horizontal, vertical, circles), deterministic, no RNG — **plus red hazard orbs** *(Session 7)*. | Timing on a moving target, with the old hazard still live. |
+| 4 | "Put it all together" — red + drifting + longer gaps, **plus spike walls to bounce over and a spike ceiling section that forces low bounces** *(Session 7)*. **Lives in the finale (Mode 3), not the Bounce Bog.** | Everything at once, plus vertical coordination. |
+
+**Spikes** *(Session 7)*: floor spikes stay **pogoable** — nail-bouncing off spikes is a real Hollow Knight skill and level 1's fourth drill teaches it. The new **walls and ceilings are not pogoable**; they are pure hazards, and they appear in level 4 only. Levels 1–3 keep teaching one thing each.
+
+**Intro demos** *(Session 7)*: each level opens with a short engine-driven demo on the course canvas, in the style of the lesson demos — L1 bounce the blue orbs · L2 red hurts and sends you back to the checkpoint · L3 the orbs move · L4 walls and ceiling. Any input skips it, and it never replays on a retry.
 
 ### Mode 2: Dodge Arena
 
-A **staged game** *(Session 6; previously a single-enemy test bench)*. The roster in teaching order — walker → flier → duelist → spitter → warden — one enemy at a time in a small arena. Every enemy **hunts the Knight**: closes in steadily, so there is no safe corner. A stage is passed by **surviving 60 s AND landing clean hits** (5 on a dummy, 3 on an attacker); passing auto-advances to the next enemy. Getting hit restarts the current enemy (checkpoint per enemy, never back to the walker). Reopening the page resumes at the first enemy not yet cleared. Teaches "hit them more than they hit you" — both halves of it.
+A **staged game** *(Session 6; previously a single-enemy test bench)*. The roster in teaching order — walker → flier → duelist → spitter → warden — one enemy at a time in a small, **flat** arena *(Session 7: the two ledges are gone — she could wait out three of the five enemies up there)*. Every enemy **hunts the Knight**: closes in steadily, so there is no safe corner. A stage is passed by **surviving 60 s AND landing clean hits** (5 on a dummy, 3 on an attacker); passing auto-advances to the next enemy. Getting hit restarts the current enemy (checkpoint per enemy, never back to the walker). Reopening the page resumes at the first enemy not yet cleared. Teaches "hit them more than they hit you" — both halves of it.
 
 **Observe mode** — the nail does no damage; score = survival time — is the "spend a whole life just dodging" doctrine made into a mode. *(Session 6: demoted to a dev toggle next to the enemy picker, outside the progression; both go in the final build.)*
 
@@ -141,8 +151,22 @@ A **staged game** *(Session 6; previously a single-enemy test bench)*. The roste
 The finale at the end of the road *(Session 6)*. Named by the map's own metaphor — it pays off "Kayla, it starts at the well" — not a real place, so spoiler-free. In order:
 
 1. **Pogo level 4** — "put it all together".
-2. **Waves** on a flat, platform-less arena: walker + flier → duelist + spitter → spitter + warden. Each wave is survive 60 s + the hits, checkpointed per wave. The only place several enemies share the arena.
-3. **The boss** — planned, not designed; see §8.
+2. **Two waves** on a flat, platform-less arena *(Session 7: cut from three)* — survive 60 s + the hits, checkpointed per wave, with **reinforcements on a fixed deterministic script, capped at four alive**. The hits requirement and the clock do not grow when reinforcements land; the extra bodies are the difficulty.
+
+   | Wave | Starts with | 0:30 | 0:45 | Teaches |
+   |---|---|---|---|---|
+   | 1 — "the pests" | walker + flier | + walker | + flier | Moving in a crowd. |
+   | 2 — "the real ones" | duelist + spitter | + **warden** | + duelist | Reading tells under pressure. |
+
+3. **The boss: The Two Bills** *(Session 7 — designed in the playtest 3 interview; full spec in `docs/feedback/2026-08-22-playtest-3.md`)*. A pure survival test: **neither Bill can be damaged** — the nail bounces off them and nothing else happens, there is no hit counter — and **one touch ends the run**. Score is time survived; **1:30 marks the stop done**, and the fight keeps escalating after that for her best time. The beat stays mysterious until she starts it ("The thing at the bottom").
+
+   | Clock | What happens |
+   |---|---|
+   | 0:00 | Card: **BILL THE MAN**. 160 px tall. **Lance dash** — 0.6 s tell, crosses the whole arena, no safe ground anywhere including the corners; she must be airborne, and pogoing his head as he passes is the answer. He stops hard at the far wall and is stuck ~1 s. **Shake-off** — the first bounce is free; still above him ~0.5 s later and he swats upward (0.4 s tell). *One hit, then get out.* |
+   | 0:30 | Everything freezes, the arena dims, the dog walks in, card: **BILL THE DOG** (~2.5 s, any key skips, **the clock is paused**). ~56–60 px. **Bones** — a 3-shot spread like the spitter's, pokeable. **Roll** — curls up and bounces in parabolic arcs off floor and walls for ~5 s; **pogoable on top, damaging on the sides**, deliberately the red-orb vocabulary from level 2. |
+   | 1:00 | Both speed up ~25 % with less gap between attacks — no announcement, no new character. The same speed-up turns the lance dash into two passes back-to-back. |
+
+   No extra roster enemies join the boss for now (crowd control is a later idea). Art: placeholder ink geometry at the right proportions; the user's painting of Bill swaps into the renderer without touching the state machine.
 
 ### Enemy roster (canonical ids in @dojo/shared)
 
@@ -152,9 +176,9 @@ Each enemy exists to teach one thing. The three attackers get full **telegraph �
 |---|---|---|---|
 | `walker` | Crawlid | Ground pacer, turns at edges, contact damage only. No attacks. *Hunts the Knight (Session 6): walks toward her instead of pacing blind.* | Spacing, first pogo target, safe nail timing on a moving target. |
 | `flier` | Vengefly | Drifting/bobbing dummy, contact damage only. *Hunts the Knight (Session 6): drifts toward her.* | Aerial spacing, up-slash and pogo on an airborne target. |
-| `duelist` | Mantis | Reactive melee: **lunge slash** if you approach on the ground; **rising anti-air swipe** if you jump in. Punishable in recovery. *Hunts the Knight (Session 6): closes in between attacks.* | Reading which attack *you* provoked; patience; punishing recovery instead of trading. |
+| `duelist` | Mantis | Reactive **fencing** — advances when she gives ground, gives ground when she advances *(Session 7)*. **Three attacks, one per thing she can do:** **lunge** if she walks in; **forward dash-upward swipe** if she jumps in *(Session 7: much bigger, reaching above his head)* — **there is no free bounce on the duelist**: the way onto his head is to bait an attack and punish its recovery, never to jump straight in; **leap, hang, then a diagonal dash** at where she was at the pause if she stands off or runs — his longest reach and his biggest recovery. Punishable in recovery. | Reading which attack *you* provoked; patience; punishing recovery instead of trading. |
 | `spitter` | Aspid | Ranged: wind-up, then a 3-shot fan. **Projectiles can be nail-poked to destroy them.** Punish by closing distance during recovery. *Hunts the Knight (Session 6): keeps closing range rather than camping.* | Projectile nullification (attacks are pokeable); using the enemy's commitment window to close. |
-| `warden` | shield/counter (Shielded Fool-ish) | Shield covers **one direction at a time** — front, or overhead when the Knight is above — re-aiming after a short delay. A hit into the shield is blocked and triggers a telegraphed riposte; a hit into the open side lands. Lingering in front draws a telegraphed **shield bash**. Recovery after either attack is open from every side. *(Session 5 redesign; previously blocked everything and never attacked first.)* *Hunts the Knight (Session 6): advances behind the shield.* | The full doctrine: attacking into the shield is punished; watching reveals where it isn't — and standing still is never safe. |
+| `warden` | shield/counter (Shielded Fool-ish) | Shield covers **one direction at a time** — front, or overhead when the Knight is above — re-aiming after a short delay. A hit into the shield is blocked and triggers a telegraphed riposte; a hit into the open side lands. Lingering in front draws a telegraphed **shield bash**. A blocked **overhead** hit draws a **massive slow upward strike** *(Session 7)* — 0.5 s telegraph, a tall column above him, then ~1 s with the front wide open: hit the shield, move away, drift back in while falling, land the hit before the shield re-aims. Recovery after any attack is open from every side. *(Session 5 redesign; previously blocked everything and never attacked first.)* *Hunts the Knight (Session 6): advances behind the shield.* | The full doctrine: attacking into the shield is punished; watching reveals where it isn't — and standing still is never safe. |
 
 ## 6. Lessons spec
 
@@ -196,6 +220,7 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 - **M6 — Art & juice pass + accessibility (Session 3, juice+accessibility DONE; art direction OPEN):** hit-stop/shake/squash-stretch via the `game-feel` skill's models; reduce-shake and reduce-flashing toggles wired to SettingsV1 on both practice pages. The `frontend-design` art-direction pass was deliberately left for a session with the user — visual taste calls deserve their input. **Session 5 received that input (playtest 1)** — see M6.5.
 - **M6.5 — Playtest 1 response (Session 5, DONE):** the user's six annotated notes (`docs/feedback/2026-08-21-playtest-1.md`). Engine: continuous jump release; warden positional shield + bash; duelist anti-air that reads as a counter. Site: map-based Home, "mini-games" naming with `/play/*` routes, Setup lesson first, Lessons index removed, controller diagrams, copy trimmed. A 37-agent adversarial review confirmed 27 findings (two real warden holes — hopping in place was never bashed; the re-aim clock hard-reset — plus demo drift and a11y/responsive polish), all fixed; 130 tests.
 - **M6.6 — Playtest 2 response (Session 6, DONE — awaiting playtest 3):** the user's eight annotated notes plus a three-round interview (`docs/feedback/2026-08-22-playtest-2.md`). **Fixes:** pogo bounce on a killing blow (one nail contact deals the damage and the bounce); Joy-Con diagram highlights the stick; 18 px type scale with a fine-print floor; "Next stop" is a real button. **Road + gates:** the six-stop road with done/skipped/locked states, clear-to-unlock skippable gates, "Prove it →", the controller question in Setup, personal bests on the sign and the mini-game pages. **Arena game:** the Dodge Arena as a staged game — hunting enemies, 60 s + required hits, checkpoint per enemy. **Levels:** Pogo Course levels 2–3 (red hazard orbs, drifting orbs) with clear-to-unlock. **Settings page:** keyboard remap, the comfort toggles, reset progress. **The finale page:** The Bottom of the Well — level 4 + the three waves. *Standing note: the arena enemy picker and the observe toggle are dev tools — remove them in the final build.* A 6-lens adversarial review (32 agents) confirmed 23 of 25 findings, all fixed before the commit; 385 tests. Hunting speeds, levels 2–4 and the waves are tuned by simulation only — playtest 3 starts there. Bests are shown one line per stop rather than per cleared level/enemy (display only).
+- **M6.7 — Playtest 3 response (Session 7, PLANNED):** the user's fourteen annotated notes plus a four-round interview (`docs/feedback/2026-08-22-playtest-3.md`); build plan in `docs/plans/2026-08-24-playtest-3-build.md`. In ratified priority order: **fixes** (the dash trail that follows her forever, scroll-to-top on every route change, Z/X on every overlay, the "Next: {title}" button system, the chapter strip demoted to the page bottom) → **the duelist's three attacks** (including the anti-air that finally punishes a pogo chain) → **the warden's upward strike** → **the flat Colosseum** → **the course** (red orbs in level 3, spike walls and a ceiling in level 4, per-level intro demos) → **two reinforced waves** → **The Two Bills**.
 - **M7 — Gamepad source + verify-and-remap flow on top of the Settings page:** Gamepad API as an input source, a verify-and-remap flow for real controllers, bindings stored in SettingsV1; test with Switch Pro and the leverless. (Needs the controllers in hand.)
 - **M8 — Backend practice + ship:** sync adapter live against the Express server; GitHub repo + Pages deploy; audits (`vercel-react-best-practices`, `web-design-guidelines`, browser E2E); then the backend shutdown checklist (confirm site fully functional with server gone, stop server, keep code). (Repo creation/push is outward-facing — waits for the user.)
 
@@ -203,7 +228,9 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ### Planned, needs its own design conversation
 
-- **The boss** at the end of The Bottom of the Well *(Session 6 — moved here from "not planned")*. A capstone that combines the roster's mechanics. The waves must exist first; then the boss is designed in its own conversation with the user. **Nobody designs or stubs it without that conversation.**
+- ~~**The boss**~~ — **designed in the playtest 3 interview (Session 7)** and specified in §5 Mode 3. Not yet built.
+- **Crowd control during the boss** — extra roster enemies joining the Bills. Deferred: get the two Bills good first.
+- **A painted Bill** — the user is making a painting of Uncle Bill; the fight ships with placeholder ink geometry until it lands.
 
 ### Explicitly NOT planned
 
