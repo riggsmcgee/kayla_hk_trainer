@@ -83,3 +83,14 @@ Observations (Session 6b):
 
 - **An interview can feel finished and not be.** The frontier was empty by my reckoning after four rounds; the code scouts then surfaced seven genuine open questions (Z on a fail screen, level-4 bests becoming incomparable, whether the duelist can be pogoed at all). Interviewing the user and interviewing the codebase are different activities and both are needed before a build.
 - **Backticks inside a Workflow script's template literals are a parse error.** Build long agent prompts with string concatenation instead. Cost: one failed launch.
+
+## Session 7 — 2026-08-24 → 25 (unattended sprint against the playtest-3 build plan)
+
+| # | Skill | Trigger | What it was used for | Verdict | Notes |
+|---|-------|---------|----------------------|---------|-------|
+| 17 | `proactive` | User invoked `/proactive 4 hours` before leaving | Unattended sprint draining `docs/plans/2026-08-24-playtest-3-build.md` in its ratified order onto a sprint branch; 13 commits, 385 → 430 tests | ✅ | The clock discipline is the value: it forced honest slicing (T6 shipped as two independently-shippable slices rather than one unfinished one) and forced a stop for verification rather than piling on more unverified work. The handoff-as-you-go rule paid for itself when the laptop slept and ate ~90 of the 240 minutes. **Its guardrail against committing the user’s pre-existing dirty files was correct but expensive**: it blocked T13’s `PLAN.md` sweep and these very rows, because both files were dirty at sprint start. Worth starting future sprints from a clean tree. |
+| 18 | `agent-browser` | Verifying four user-visible changes that have no test seam (`vite.config.ts` pins `environment: 'node'` and collects only `src/**/*.test.ts`, so `.tsx` is never tested) | Computed-style and DOM assertions rather than eyeballing screenshots; canvas pixel-sampling to catch a 0.25 s attack window deterministically | ✅ | Reading `getComputedStyle` back beat screenshots for the things that mattered (the gold, the 15.3 px floor). For the canvas, sampling `getImageData` for a wide contiguous run and then returning `toDataURL` at that exact frame is far more reliable than screenshotting on a timer. |
+
+Observations (Session 7):
+
+- **A test that only asserts geometry cannot see a missing tell.** The warden’s skyward column shipped with its hitbox asserted exactly and its drawing derived from the same constants — and was still wrong, because the 0.5 s telegraph drew the shield in the *identical* place the idle pose does. The suite was green; the attack was unreadable. Playtest 3’s follow-up note found it in one play. **The sprint’s own handoff had flagged this as the one change it had not seen with its own eyes, and it was the one change that was wrong** — that instinct is worth trusting as a hard rule: ship nothing user-visible you have not watched.
