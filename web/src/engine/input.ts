@@ -179,7 +179,7 @@ export function createKeyboardInput(bindings: Bindings = DEFAULT_BINDINGS): Keyb
 
 /**
  * Did the player touch anything at all this frame? Used by the overlays that
- * say "press any key" — a ready screen, a demo skip, a boss card.
+ * say "press any key" — a ready screen, a demo skip, an end screen.
  *
  * Deliberately broader than the pogo course's start-the-clock check, which
  * excludes up/down/jumpHeld so holding DOWN cannot start a run. Do not unify

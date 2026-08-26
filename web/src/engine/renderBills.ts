@@ -112,6 +112,10 @@ export function billPose(enemy: Enemy): BillPose {
  * the man's shape.
  */
 export function billDogPose(enemy: Enemy): BillDogPose {
+  // Trotting in on his card. Checked first because he is carrying no attack
+  // and no phase during it, so every branch below would fall through to
+  // `idle` and his entrance would be a standing dog on a conveyor belt.
+  if (enemy.walkingIn) return 'walkIn';
   // Coming out of the ball. `walkIn` is the trot the renderer already draws
   // and nothing else could reach — a dog finding its feet again is exactly
   // what it looks like.

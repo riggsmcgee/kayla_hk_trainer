@@ -14,7 +14,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBossSession } from './bossSession';
 import { BILL_ENTRANCE, entranceSeconds } from './entrance';
-import { FIXED_DT } from './constants';
+import { CANVAS, FIXED_DT } from './constants';
+import { BOSS } from './boss';
 import type { InputFrame } from './types';
 
 const recorded: Record<string, unknown>[] = [];
@@ -194,5 +195,109 @@ describe('the Bills, over a long run', () => {
       expect(run.hitsLanded).toBe(0);
       expect(run.cleared).toBe(false);
     }
+  });
+});
+
+/**
+ * A canvas stand-in that keeps where each body was drawn. Every painter in
+ * the fight puts its rig down with one `translate`, so the x values are the
+ * positions on screen.
+ */
+function placeRecorder(): { ctx: CanvasRenderingContext2D; xs: number[] } {
+  const xs: number[] = [];
+  const ctx = new Proxy(
+    {
+      translate: (x: number) => {
+        xs.push(x);
+      },
+    },
+    {
+      get: (target: Record<string, unknown>, key: string) =>
+        key in target ? target[key] : () => undefined,
+      set: () => true,
+    },
+  ) as unknown as CanvasRenderingContext2D;
+  return { ctx, xs };
+}
+
+/**
+ * Where the dog is drawn this frame: the rightmost body on screen. He comes
+ * in through the far wall at x 1248 and stops at 968, and Bill's mark is 868,
+ * so the dog is the right-hand extreme for the whole of his entrance.
+ */
+function dogDrawnAt(session: Session, alpha: number): number {
+  const { ctx, xs } = placeRecorder();
+  session.render(ctx, alpha);
+  return Math.max(...xs);
+}
+
+describe("Bill the dog's entrance (playtest 6, note 5)", () => {
+  /**
+   * God mode is the only way a test can reach 0:30 today: an idle Knight is
+   * caught at about two seconds, and the survival bot is still M6.7's last
+   * piece. It changes nothing about the card, which is pure theatre.
+   */
+  function atTheCard(): Session {
+    const session = afterEntrance({ comfort: COMFORT, godMode: true });
+    // "Move to begin" — nothing moves, including the clock, until she does.
+    session.step(press({ right: true }), FIXED_DT);
+    hold(session, BOSS.dogAt + 0.1);
+    return session;
+  }
+
+  it('raises his card when he is due', () => {
+    expect(drawn(atTheCard())).toContain('BILL THE DOG');
+  });
+
+  it('cannot be cut short by anything she is holding', () => {
+    // Every input at once — more than a pair of hands can do. The skip used
+    // to read held direction keys as level state, so the step after the card
+    // went up saw the key she was already holding and dismissed it: 16.7 ms
+    // of a 2.5 s card, which is why she had never seen the dog arrive.
+    const everything = press({
+      left: true,
+      right: true,
+      up: true,
+      down: true,
+      jumpHeld: true,
+      jumpPressed: true,
+      attackPressed: true,
+      dashPressed: true,
+    });
+    const session = atTheCard();
+    hold(session, BOSS.cardSeconds - 0.5, everything);
+    expect(drawn(session)).toContain('BILL THE DOG');
+  });
+
+  it('ends itself once it has run its full length', () => {
+    const session = atTheCard();
+    hold(session, BOSS.cardSeconds + 0.1, press({ jumpHeld: true }));
+    expect(drawn(session)).not.toContain('BILL THE DOG');
+  });
+
+  it('keeps the promise that makes an unskippable card bearable', () => {
+    const copy = drawn(atTheCard()).join(' ');
+    // The reassurance survives; the two mechanisms it used to advertise do not.
+    expect(copy).toContain('your clock is paused');
+    expect(copy).not.toMatch(/skip|hurry/i);
+  });
+
+  it('draws him where he actually is, not pinned to his off-screen start', () => {
+    const session = atTheCard();
+    // Most of the way through the card, so he is well inside the arena.
+    hold(session, 1.8);
+    // Render lerps from his PREVIOUS position, and the card branch returns
+    // before the fighting path takes that snapshot — so it stayed at the
+    // off-screen start he was pinned to, and on a 60 Hz display (alpha 0) he
+    // was never drawn on the card at all. Nobody had ever seen the card, so
+    // nobody had seen this either.
+    expect(dogDrawnAt(session, 0)).toBeLessThan(CANVAS.width);
+  });
+
+  it('walks him toward his mark while the card is up', () => {
+    const session = atTheCard();
+    const start = dogDrawnAt(session, 0);
+    hold(session, 1);
+    expect(dogDrawnAt(session, 0)).toBeLessThan(start);
   });
 });

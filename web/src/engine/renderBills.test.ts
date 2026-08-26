@@ -65,6 +65,18 @@ function dog(attackKind: AttackKind | null, phase: Enemy['phase'], rolling = fal
   return e;
 }
 
+describe('billDogPose', () => {
+  it('trots while he is walking in on his card', () => {
+    // He carries no attack and no phase during his entrance, so this flag is
+    // the only thing standing between the card and a standing dog sliding
+    // 280 px across the arena. Checked before every other branch.
+    const walkingIn = dog(null, 'idle');
+    walkingIn.walkingIn = true;
+    expect(billDogPose(walkingIn)).toBe('walkIn');
+    expect(billDogPose(dog(null, 'idle'))).toBe('idle');
+  });
+});
+
 describe('billPose', () => {
   it('gives the lance its three beats', () => {
     expect(billPose(bill('lance', 'telegraph'))).toBe('lanceTell');
@@ -127,6 +139,7 @@ const BILL_STATES: [AttackKind | null, Enemy['phase']][] = [
 const DOG_STATES: [AttackKind | null, Enemy['phase'], boolean][] = [
   [null, 'idle', false],
   ['walk' as AttackKind, 'idle', false],
+  ['uncurl', 'idle', false],
   ['bones', 'telegraph', false],
   ['bones', 'active', false],
   ['roll', 'telegraph', false],
@@ -153,8 +166,11 @@ describe('every boss pose draws its own picture', () => {
       return ops.join('\n');
     });
     // 'walk' is not a real AttackKind for the dog, so it maps to idle like
-    // the null case — five distinct pictures from six states.
-    expect(new Set(drawn).size).toBe(5);
+    // the null case — six distinct pictures from seven states. 'uncurl' is
+    // the trot, and it went uncovered here for a whole round after playtest
+    // 5 made it reachable: this table is literal, so a new pose adds no row
+    // and nothing goes red on its own.
+    expect(new Set(drawn).size).toBe(6);
   });
 
   it('leaves the canvas state balanced', () => {

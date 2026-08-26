@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOSS, createBossState, skipCard, startBoss, stepBoss, stepIntro } from './boss';
+import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
 import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import type { BossEvent, BossState } from './boss';
 import { FIXED_DT } from './constants';
@@ -47,10 +47,9 @@ function started(): BossState {
   return s;
 }
 
-/** Press "any key" on the card and let the one step it costs go by. */
+/** Sit through the dog's card, which is the only way past it. */
 function dismissCard(s: BossState): void {
-  skipCard(s);
-  stepBoss(s, CALM, FIXED_DT);
+  while (s.phase === 'card') stepBoss(s, CALM, FIXED_DT);
 }
 
 /** A fight underway with the dog already in and his card behind us. */
@@ -143,22 +142,6 @@ describe('the card is a pause, not a penalty', () => {
     fight(s, BOSS.dogAt + 1);
     run(s, BOSS.cardSeconds);
     expect(s.phase).toBe('fighting');
-  });
-
-  it('resumes on the step AFTER the skip, never on the skip itself', () => {
-    const s = started();
-    fight(s, BOSS.dogAt + 1);
-    const frozen = s.elapsed;
-
-    skipCard(s);
-    // The step that consumes the skip is still a card step: her "any key"
-    // press must not also be the fight's first frame.
-    expect(stepBoss(s, CALM, FIXED_DT)).toBe(null);
-    expect(s.elapsed).toBeCloseTo(frozen, 10);
-    expect(s.phase).toBe('fighting');
-
-    stepBoss(s, CALM, FIXED_DT);
-    expect(s.elapsed).toBeCloseTo(frozen + FIXED_DT, 10);
   });
 });
 

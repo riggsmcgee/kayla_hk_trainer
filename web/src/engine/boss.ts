@@ -95,17 +95,6 @@ export function stepIntro(s: BossState, seconds: number, dt: number): void {
 }
 
 /**
- * "Any key" on the dog's card.
- *
- * It only arms the skip; the next `stepBoss` is still a card step and the one
- * after it is the fight's first frame. That gap is deliberate — the press that
- * dismisses the card must never also be the press that jumps the Knight.
- */
-export function skipCard(s: BossState): void {
-  if (s.phase === 'card') s.cardTimer = 0;
-}
-
-/**
  * Advance the fight by one step and report the one thing that changed, if
  * anything. `ev.playerHit` is whatever the arena saw touch her this step.
  *

@@ -571,6 +571,12 @@ export interface Enemy extends EnemyState {
   sinceBounce: number;
   /** Dog: true while it is balled up and rolling. */
   roll: boolean;
+  /**
+   * Dog: true while he is trotting in on his card at 0:30, before the fight
+   * has him. He has no attack and no phase yet, so without this flag the
+   * only pose left for him is `idle` — a standing dog sliding 280 px.
+   */
+  walkingIn: boolean;
   /** Dog: which of ROLL_VARIANTS this dog rolls with. The user picks it. */
   rollVariantIndex: number;
   /** Dog: floor bounces so far this roll — the cursor into the variant’s pattern. */
@@ -640,6 +646,7 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     hot: false,
     sinceBounce: 0,
     roll: false,
+    walkingIn: false,
     rollVariantIndex: 0,
     rollBounces: 0,
     rallies: 0,

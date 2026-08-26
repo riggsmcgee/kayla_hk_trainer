@@ -13,7 +13,7 @@
  * its three thresholds live in engine/boss.ts; this file is the wiring.
  */
 
-import { BOSS, createBossState, skipCard, startBoss, stepBoss, stepIntro } from './boss';
+import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
 import {
   INTRO_FAST_FORWARD,
   arrivalX,
@@ -174,6 +174,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     dogWalkFrom = startX;
     dogWalkT = 0;
     dog = createEnemy('dog', startX, FLOOR_Y);
+    dog.walkingIn = true;
     dog.rollVariantIndex = config.rollVariant ?? 0;
     dog.facing = fromRight ? -1 : 1;
     prevDogFeet.x = startX;
@@ -182,6 +183,13 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
   function walkTheDogIn(dt: number): void {
     if (!dog) return;
+    // The card branch returns before the fighting path takes its snapshot,
+    // so this is the only place his previous position can be advanced.
+    // Without it render lerps from the off-screen start he was pinned to and
+    // he is not drawn on the card at all — invisible on a 60 Hz display,
+    // oscillating on a faster one.
+    prevDogFeet.x = dog.position.x;
+    prevDogFeet.y = dog.position.y;
     dogWalkT = Math.min(1, dogWalkT + dt / BOSS.cardSeconds);
     // Stepped like everything else the Bills do: the curve shapes the pace,
     // and the result lands on a whole 4 px step from his mark.
@@ -243,21 +251,30 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         return;
       }
 
-      // The card. Everything holds, including the clock, and any key skips.
+      // The card. Everything holds, including the clock, and NOTHING she
+      // can press shortens it (playtest 6, note 5).
       //
-      // The raw frame is read and the carry is NEITHER absorbed nor merged:
-      // the press that dismisses the card must not also arrive as a jump on
-      // the fight's first frame. That is verbatim the bug playtest 2 fixed.
+      // It used to take any key as a skip. `pressedAnything` reads held
+      // direction keys as level state, so the step after the card went up saw
+      // the key she was already holding and dismissed it: the card was on
+      // screen for one simulation step, 16.7 ms of its 2.5 s, and she had
+      // never once seen the dog arrive. Bill the man's entrance is already
+      // unskippable at 2.8 s — 139% of the length of the fight, about 114
+      // times per ten minutes of grinding — so an unskippable beat here is
+      // affordable, and this one costs her nothing at all because the clock
+      // is paused for it.
+      //
+      // The raw frame is still read and the carry is NEITHER absorbed nor
+      // merged: whatever she is holding while she watches must not arrive as
+      // a jump on the fight's first frame. That is verbatim the bug playtest
+      // 2 fixed.
       if (boss.phase === 'card') {
-        if (pressedAnything(rawInput)) skipCard(boss);
-        // It also fast-forwards, like Bill's entrance. Two mechanisms on one
-        // overlay is untidy, and the tidy version costs her a fight: this one
-        // interrupts a run already in progress and she may be mid-panic, so
-        // the instant out stays.
-        const cardDt = rawInput.jumpHeld ? dt * INTRO_FAST_FORWARD : dt;
-        walkTheDogIn(cardDt);
-        stepBoss(boss, { playerHit: false }, cardDt);
-        if (boss.phase !== 'card' && dog) dog.position.x = dogWalkTo;
+        walkTheDogIn(dt);
+        stepBoss(boss, { playerHit: false }, dt);
+        if (boss.phase !== 'card' && dog) {
+          dog.position.x = dogWalkTo;
+          dog.walkingIn = false;
+        }
         return;
       }
 
@@ -437,7 +454,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         drawCard(
           ctx,
           'BILL THE DOG',
-          `The family had two. Any key to skip, hold ${jumpKey} to hurry — your clock is paused.`,
+          'The family had two. Watch him come in — your clock is paused.',
           0.7,
         );
       } else if (boss.phase === 'over') {

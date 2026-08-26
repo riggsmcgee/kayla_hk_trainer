@@ -16,7 +16,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createArenaState, stepArena } from './arena';
-import { BOSS, createBossState, skipCard, startBoss, stepBoss, stepIntro } from './boss';
+import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
 import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import { ATTACKS, ENEMY_SIZES, createEnemy, stepEnemy, stepProjectile } from './enemies';
 import type { Projectile } from './enemies';
@@ -236,6 +236,7 @@ describe('one hit, then get out', () => {
 describe('the whole fight, with the touch disarmed', () => {
   function runToTheEnd(seconds: number): {
     touches: number;
+    /** All three clocks below are the FIGHT's, not the loop's: the dog's card pauses one and not the other. */
     dogArrivedAt: number;
     dogBones: number;
     dogRolls: number;
@@ -275,10 +276,9 @@ describe('the whole fight, with the touch disarmed', () => {
     let wasSpitting = false;
 
     for (let i = 0; i < Math.round(seconds / FIXED_DT); i++) {
-      const elapsed = i * FIXED_DT;
-
+      // Nothing skips the card any more, so the bot sits through it like
+      // she does. The clock is paused, so it costs the measurement nothing.
       if (boss.phase === 'card') {
-        skipCard(boss);
         stepBoss(boss, { playerHit: false }, FIXED_DT);
         continue;
       }
@@ -321,17 +321,17 @@ describe('the whole fight, with the touch disarmed', () => {
 
       switch (stepBoss(boss, { playerHit: false }, FIXED_DT)) {
         case 'dog-arrives':
-          out.dogArrivedAt = elapsed;
+          out.dogArrivedAt = boss.elapsed;
           // Where the session puts him: the far wall, then walked to his mark.
           dog = createEnemy('dog', CANVAS.width - 200, FLOOR_Y);
           break;
         case 'heat':
-          out.hotAt = elapsed;
+          out.hotAt = boss.elapsed;
           bill.hot = true;
           if (dog) dog.hot = true;
           break;
         case 'passed':
-          out.passedAt = elapsed;
+          out.passedAt = boss.elapsed;
           break;
       }
     }
