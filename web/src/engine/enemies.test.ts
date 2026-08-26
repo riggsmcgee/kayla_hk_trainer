@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EnemyId } from '@dojo/shared';
 import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
+import { enemyHurtsBox } from './arena';
 import { arenaWorld, bossWorld, spawnX } from './dodgeArenaSession';
 import {
   ATTACKS,
@@ -576,5 +577,94 @@ describe('the five roll behaviours', () => {
   it('falls back to the first variant for an index that does not exist', () => {
     expect(rollVariant(99)).toBe(ROLL_VARIANTS[0]);
     expect(rollVariant(-1)).toBe(ROLL_VARIANTS[0]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 5, note 2 — the dog stops teleporting out of the ball.
+//
+// "Bill the dog needs an animation whenever he comes out of the bouncing ball
+// phase. Right now, one of the times he just sort of teleports to the ground."
+//
+// The mechanism is one change, and its ORDER matters: the drop is 12.5 px on
+// Loper today and would be ~223 px once every bounce is a full-height arc, so
+// the landing rule has to exist before the arc gets taller.
+// ---------------------------------------------------------------------------
+describe('the uncurl', () => {
+  const A = ATTACKS.dog;
+
+  /** A dog mid-roll, one step past its telegraph, on flat ground. */
+  function rollingDog(variantIndex = 0) {
+    const dog = createEnemy('dog', 600, FLOOR_Y);
+    dog.rollVariantIndex = variantIndex;
+    dog.attackKind = 'roll';
+    dog.phase = 'telegraph';
+    dog.phaseTimer = 0;
+    dog.lockedDir = -1;
+    dog.leapGroundY = FLOOR_Y;
+    const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+    stepEnemy(dog, arenaWorld(), FIXED_DT, target); // telegraph → the launch
+    return { dog, target };
+  }
+
+  /** Steps until the ball stops being a ball, keeping the last airborne frame. */
+  function rollUntilUncurl(variantIndex = 0) {
+    const { dog, target } = rollingDog(variantIndex);
+    let yBefore = dog.position.y;
+    let vyBefore = dog.velocity.y;
+    let airborneAfterTheTimer = false;
+    for (let i = 0; i < 3000 && dog.roll; i++) {
+      if (dog.phaseTimer <= 0 && dog.position.y < FLOOR_Y - 1) airborneAfterTheTimer = true;
+      yBefore = dog.position.y;
+      vyBefore = dog.velocity.y;
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    }
+    return { dog, yBefore, vyBefore, airborneAfterTheTimer };
+  }
+
+  it('keeps bouncing after rollTime elapses instead of stopping in mid-air', () => {
+    const { airborneAfterTheTimer } = rollUntilUncurl();
+    expect(airborneAfterTheTimer).toBe(true);
+  });
+
+  it('never drops him to the floor — he uncurls on the floor he touched', () => {
+    for (const [index] of ROLL_VARIANTS.entries()) {
+      const { dog, yBefore, vyBefore } = rollUntilUncurl(index);
+      expect(dog.roll).toBe(false);
+      expect(dog.position.y).toBe(FLOOR_Y);
+      // The exact statement of "he landed": replay the one step that ended the
+      // roll and check it genuinely crossed the floor. Anything else means the
+      // clock stopped him where he happened to be and the floor came to him.
+      const reached = yBefore + (vyBefore + A.rollGravity * FIXED_DT) * FIXED_DT;
+      expect(reached).toBeGreaterThanOrEqual(FLOOR_Y);
+    }
+  });
+
+  it('holds the landing pose for uncurlTime, then goes back to idle', () => {
+    const { dog } = rollUntilUncurl();
+    const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+    expect(dog.attackKind).toBe('uncurl');
+
+    const steps = Math.round(A.uncurlTime / FIXED_DT);
+    for (let i = 0; i < steps - 1; i++) {
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+      expect(dog.attackKind).toBe('uncurl');
+    }
+    stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    expect(dog.attackKind).toBeNull();
+    expect(dog.phase).toBe('idle');
+  });
+
+  it('is lethal for every frame of it — there is no punish window', () => {
+    // Ratified against a proposed harmless window: "make his hitbox active so
+    // that she can't just walk into the dog. He should be lethal at this
+    // point." A regression here would be an exception carved into the hurt box.
+    const { dog } = rollUntilUncurl();
+    const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < Math.round(A.uncurlTime / FIXED_DT); i++) {
+      expect(enemyHurtsBox(dog)).toEqual(enemyBox(dog));
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    }
   });
 });

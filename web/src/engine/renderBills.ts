@@ -106,11 +106,16 @@ export function billPose(enemy: Enemy): BillPose {
 /**
  * Which pose the dog is in.
  *
- * `roll` is the one pose that can outlive its own phase: the ball bounces for
- * about five seconds, so the `roll` flag on the enemy is authoritative and is
- * checked before the phase is. Everything else follows the man's shape.
+ * `roll` is the one pose that can outlive its own phase: the ball bounces
+ * until it next touches the floor, so the `roll` flag on the enemy is
+ * authoritative and is checked before the phase is. Everything else follows
+ * the man's shape.
  */
 export function billDogPose(enemy: Enemy): BillDogPose {
+  // Coming out of the ball. `walkIn` is the trot the renderer already draws
+  // and nothing else could reach — a dog finding its feet again is exactly
+  // what it looks like.
+  if (enemy.attackKind === 'uncurl') return 'walkIn';
   if (enemy.attackKind === 'roll') {
     return enemy.phase === 'telegraph' ? 'rollTell' : 'roll';
   }

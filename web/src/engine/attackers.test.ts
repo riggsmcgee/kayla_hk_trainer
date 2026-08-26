@@ -1163,13 +1163,21 @@ describe('Bill the dog', () => {
     expect(directions).toEqual(new Set([1, -1]));
   });
 
-  it('uncurls back onto the floor when the roll runs out', () => {
+  it('uncurls onto the floor, through the landing animation, when the roll runs out', () => {
     const { dog, w, t } = rolling();
-    for (let i = 0; i < 60 * 8 && dog.roll; i++) stepEnemy(dog, w, FIXED_DT, t);
+    for (let i = 0; i < 60 * 12 && dog.roll; i++) stepEnemy(dog, w, FIXED_DT, t);
     expect(dog.roll).toBe(false);
     expect(dog.position.y).toBe(FLOOR_Y);
-    expect(dog.attackKind).toBeNull();
     expect(dog.velocity.y).toBe(0);
+    // Playtest 5: he is committed to the landing for uncurlTime before the
+    // fight hands him back to idle. He used to be idle on the same frame.
+    expect(dog.attackKind).toBe('uncurl');
+    for (let i = 0; i < Math.round(ATTACKS.dog.uncurlTime / FIXED_DT) + 2; i++) {
+      stepEnemy(dog, w, FIXED_DT, t);
+    }
+    // Out of the landing and back into the fight — his bones clock is due, so
+    // he is already telegraphing rather than standing idle.
+    expect(dog.attackKind).not.toBe('uncurl');
   });
 
   it('carries the ball a quarter further per second while hot', () => {
@@ -1260,10 +1268,15 @@ describe('every roll variant is survivable without the volley', () => {
   }
 
   it('lets a Knight who backs off and ducks under live through all five', () => {
-    // Measured, at 20 s of ball-only arena:
+    // Measured, at 20 s of ball-only arena. Playtest 5's lethal uncurl moved
+    // three of these; the before/after is the point of keeping the numbers:
     //
-    //   Metronome  survives      Loper      survives
-    //   Stutter    caught 12.5s  Terrier    caught 5.5s   Hunter  caught 2.4s
+    //              before playtest 5   after
+    //   Metronome  survives            caught 17.1s
+    //   Loper      survives            survives
+    //   Stutter    caught 12.5s        caught 13.4s
+    //   Terrier    caught  5.5s        caught  5.7s
+    //   Hunter     caught  2.4s        caught  2.4s
     //
     // Those numbers are NOT a claim about how hard each variant is for a
     // person — this dodger only backs off and ducks, it never jumps, dashes,
@@ -1272,11 +1285,14 @@ describe('every roll variant is survivable without the volley', () => {
     // possible policy is worth, which is the closest thing available to
     // “how forgiving is this to someone who has not worked it out yet”.
     //
-    // The invariant: the menu must always contain a forgiving option. She is
-    // twelve, she is never told about the volley, and a picker where every
-    // choice punishes the naive answer would be five ways to lose.
+    // THE INVARIANT WEAKENED FROM TWO TO ONE, DELIBERATELY. Playtest 5 made
+    // the landing a half-second of lethal dog — "make his hitbox active so
+    // that she can't just walk into the dog" — and backing-off-and-ducking is
+    // exactly the policy that used to walk into it. What must still hold is
+    // that the picker keeps a gentle option to compare against, because the
+    // pickers exist for one more round and she is twelve.
     const forgiving = ROLL_VARIANTS.filter((_, i) => dodge(i).survived);
-    expect(forgiving.length).toBeGreaterThanOrEqual(2);
+    expect(forgiving.length).toBeGreaterThanOrEqual(1);
   });
   it('and the high phase really does leave room to walk under', () => {
     // The other half of "survivable by position": not just outrunning it,

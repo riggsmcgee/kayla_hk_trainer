@@ -58,7 +58,8 @@ export type AttackKind =
   | 'lance'
   | 'swat'
   | 'bones'
-  | 'roll';
+  | 'roll'
+  | 'uncurl';
 
 /** Where the warden's shield is held: across its front, or overhead. */
 export type ShieldDir = 'front' | 'up';
@@ -315,8 +316,20 @@ export const ATTACKS = {
     rollEvery: 6.5,
     rollEveryHot: 4.5,
     rollTelegraph: 0.45,
-    /** Seconds the ball bounces before it uncurls. */
+    /**
+     * How long the ball bounces before he WANTS to land — a soft threshold,
+     * not a stop (playtest 5, note 2). When it elapses mid-arc he keeps
+     * bouncing; the roll ends on the next floor contact, so he never
+     * uncurls in mid-air and the floor never moves up to meet him.
+     *
+     */
     rollTime: 5.0,
+    /**
+     * The landing animation, from ball to four feet. He is LETHAL for every
+     * frame of it — playtest 5 rejected a harmless punish window outright:
+     * "make his hitbox active so that she can't just walk into the dog."
+     */
+    uncurlTime: 0.5,
     /**
      * The Metronome variant’s numbers, kept as the family’s baseline: the
      * rally escalation is measured against rollLaunch/rollGravity, and every
@@ -1372,11 +1385,19 @@ function stepRoll(e: Enemy, world: World, dt: number): void {
   e.velocity.y += A.rollGravity * dt;
   e.position.y += e.velocity.y * dt;
   if (e.position.y >= e.leapGroundY) {
+    e.position.y = e.leapGroundY;
+    // THE ONLY PLACE THE ROLL ENDS. Once `rollTime` has elapsed he is looking
+    // to land, and this is the floor contact he lands on. Before playtest 5
+    // the roll stopped wherever the clock ran out and snapped him down to the
+    // floor from there — 12.5 px on Loper, and far worse on a taller arc.
+    if (e.phaseTimer <= 0) {
+      beginUncurl(e);
+      return;
+    }
     // Each floor bounce takes the next launch in the variant’s pattern, so a
     // two-entry pattern alternates high, low, high, low without a timer.
     const launches = rollVariant(e.rollVariantIndex).launches;
     e.rollBounces += 1;
-    e.position.y = e.leapGroundY;
     e.velocity.y = -launches[e.rollBounces % launches.length]!;
   }
 
@@ -1389,16 +1410,21 @@ function stepRoll(e: Enemy, world: World, dt: number): void {
     e.position.x = nextX;
   }
   e.facing = e.velocity.x >= 0 ? 1 : -1;
+}
 
-  if (e.phaseTimer > 0) return;
-  // Uncurl where he lands, not in mid-air.
+/**
+ * Ball to dog, on the floor he actually touched. He keeps his hitbox and his
+ * commitment for `uncurlTime` — this is an animation she has to respect, not
+ * a gap she can walk into.
+ */
+function beginUncurl(e: Enemy): void {
+  const A = ATTACKS.dog;
   e.roll = false;
-  e.position.y = e.leapGroundY;
   e.velocity.x = 0;
   e.velocity.y = 0;
-  e.attackKind = null;
+  e.attackKind = 'uncurl';
   e.rollTimer = e.hot ? A.rollEveryHot : A.rollEvery;
-  setPhase(e, 'idle', 0);
+  setPhase(e, 'active', A.uncurlTime);
 }
 
 /**
@@ -1425,6 +1451,16 @@ function stepDog(e: Enemy, world: World, dt: number, t: Target | undefined): Pro
   // While he is balled up the roll owns the body outright.
   if (e.roll) {
     stepRoll(e, world, dt);
+    return null;
+  }
+
+  // ...and the uncurl owns it on the way out, so the bones' phase machine
+  // below never sees a landing it would mistake for a recovery.
+  if (e.attackKind === 'uncurl') {
+    if (e.phaseTimer <= 0) {
+      e.attackKind = null;
+      setPhase(e, 'idle', 0);
+    }
     return null;
   }
 

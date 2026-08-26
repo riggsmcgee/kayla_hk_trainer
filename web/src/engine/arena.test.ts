@@ -1453,28 +1453,58 @@ describe('the volley', () => {
   });
 });
 
-describe('a rally delays where the dog lands, but can never stall the fight', () => {
-  it('does not extend the 5 s roll', () => {
-    const world = arenaWorld();
-    const ball = createEnemy('dog', 600, FLOOR_Y);
-    ball.attackKind = 'roll';
-    ball.roll = true;
-    ball.leapGroundY = FLOOR_Y;
-    ball.phase = 'active';
-    ball.phaseTimer = ATTACKS.dog.rollTime;
-    ball.velocity.x = ATTACKS.dog.rollSpeedX;
-    ball.velocity.y = -ATTACKS.dog.rollLaunch;
+/**
+ * Playtest 5 STRIKES playtest 4's line "the 5 s roll timer keeps running
+ * during a rally, so it delays where he lands but can never become a stall".
+ *
+ * > "Let's let him be indefinitely viable as a fun Easter egg because you
+ * > have to remember, Bill the man is also attacking her this whole time.
+ * > The odds of her being able to hold on to an infinite volley are very slim."
+ *
+ * The reasoning that replaces it: the fight does not pause while she juggles,
+ * so an infinite volley is a thing she is SURVIVING, not a thing she is
+ * hiding behind.
+ */
+describe('a rally can keep the dog in the air indefinitely', () => {
+  /** A ball at the top of its first arc, mid-roll, on flat ground. */
+  function ball() {
+    const b = createEnemy('dog', 600, FLOOR_Y);
+    b.attackKind = 'roll';
+    b.roll = true;
+    b.leapGroundY = FLOOR_Y;
+    b.phase = 'active';
+    b.phaseTimer = ATTACKS.dog.rollTime;
+    b.velocity.x = ATTACKS.dog.rollSpeedX;
+    b.velocity.y = -ATTACKS.dog.rollLaunch;
+    return b;
+  }
+  const target = { position: { x: 100, y: FLOOR_Y }, grounded: true };
 
-    const target = { position: { x: 100, y: FLOOR_Y }, grounded: true };
-    let steps = 0;
-    // Volley it every half second for the whole roll; it must still uncurl
-    // on schedule. The rally moves where he lands, never whether he lands.
-    while (ball.roll && steps < Math.round(12 / FIXED_DT)) {
-      if (steps % 30 === 0) rallyBall(ball, steps);
-      stepEnemy(ball, world, FIXED_DT, target);
-      steps += 1;
+  it('holds him up well past rollTime while she keeps connecting', () => {
+    const world = arenaWorld();
+    const b = ball();
+    // Four times the roll's own length, volleyed every half second.
+    const steps = Math.round((ATTACKS.dog.rollTime * 4) / FIXED_DT);
+    for (let i = 0; i < steps; i++) {
+      if (i % 30 === 0) rallyBall(b, i);
+      stepEnemy(b, world, FIXED_DT, target);
     }
-    expect(ball.roll).toBe(false);
-    expect(steps * FIXED_DT).toBeLessThanOrEqual(ATTACKS.dog.rollTime + 0.1);
+    expect(b.roll).toBe(true);
+  });
+
+  it('lands him on the next floor contact the moment she stops', () => {
+    const world = arenaWorld();
+    const b = ball();
+    // Rally past the timer, then stop. One arc later he is on his feet.
+    for (let i = 0; i < Math.round((ATTACKS.dog.rollTime + 2) / FIXED_DT); i++) {
+      if (i % 30 === 0) rallyBall(b, i);
+      stepEnemy(b, world, FIXED_DT, target);
+    }
+    expect(b.roll).toBe(true);
+    for (let i = 0; i < Math.round(3 / FIXED_DT) && b.roll; i++) {
+      stepEnemy(b, world, FIXED_DT, target);
+    }
+    expect(b.roll).toBe(false);
+    expect(b.position.y).toBe(FLOOR_Y);
   });
 });

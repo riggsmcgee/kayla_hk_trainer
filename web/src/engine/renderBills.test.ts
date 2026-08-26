@@ -103,6 +103,12 @@ describe('billDogPose', () => {
     expect(billDogPose(dog('bones', 'telegraph', true))).toBe('roll');
   });
 
+  it('trots out of the ball instead of blinking back onto four feet', () => {
+    // Playtest 5, note 2. `walkIn` was fully drawn and unreachable — nothing in
+    // the fight could ever put him in it, so it is the pose the uncurl gets.
+    expect(billDogPose(dog('uncurl', 'active'))).toBe('walkIn');
+  });
+
   it('stands still when nothing is happening', () => {
     expect(billDogPose(dog(null, 'idle'))).toBe('idle');
   });
