@@ -43,6 +43,10 @@ previous session's word.
 | # | Change | Commit | How to check it | Risk |
 |---|---|---|---|---|
 | 0 | Committed the finished god-mode feature (see "Needs you" #1) | `5073c4a` | Settings → "Dev tools" drawer | see above |
+| 1 | **The waves.** Two waves, not three; both double from 2 bodies to 4 at 0:30. Hits stay 10 / 6. Respawn bug fixed, `joinX` placement, twins de-synced. | `fc6d087` | Well → the waves. Survive to 0:30 and count the bodies. | Medium — new bodies mid-stage; every path is tested |
+| 2 | **The roll has no safe face.** Pogo cap struck; ball always lethal; a downslash on it does not bounce. Pale cap → the hazard orbs’ dark ring. | `1bef570` | Boss → wait for the ball. Try to pogo it: you die. Try running under the high phase: you live. | Medium — it is a strike of a ratified line, on purpose |
+| 3 | **The volley.** Up-slash the ball from below and it goes back up, keeping its horizontal speed, escalating and then capping at one nail window. | `ebdaf9e` | Boss → stand under the ball’s high phase and press up+attack. | Low — additive; she can clear the fight never finding it |
+| 4 | **The bones are thrown.** Rebound off any surface, budget of 3, tumbling silhouette. Boss-only ceiling via `bossWorld()`. | `15c5e3f` | Boss → let the dog throw. Watch one hit a wall. | Low — shared `arenaWorld()` is pinned at 3 solids by test |
 
 ---
 
@@ -51,7 +55,7 @@ previous session's word.
 | Check | Result |
 |---|---|
 | `npm test` | **green** — exit 0, 534 web + 1 server |
-| lint / typecheck / build | pending — run at Phase 1 close |
+| lint / typecheck | **green** |
 | End-to-end | not yet |
 
 ---
