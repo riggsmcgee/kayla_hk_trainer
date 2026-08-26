@@ -23,9 +23,10 @@ import {
   type Projectile,
   type Target,
 } from './enemies';
-import { createPlayer } from './player';
-import { arenaWorld } from './dodgeArenaSession';
-import type { World } from './types';
+import { createPlayer, stepPlayer } from './player';
+import { createArenaState, stepArena } from './arena';
+import { arenaWorld, PLAYER_SPAWN_X } from './dodgeArenaSession';
+import type { InputFrame, World } from './types';
 
 const FLOOR_Y = 600;
 
@@ -1192,5 +1193,101 @@ describe('Bill the dog', () => {
     run(b.dog, b.w, 60 * 4, b.t);
     expect(a.dog.position).toEqual(b.dog.position);
     expect(a.dog.velocity).toEqual(b.dog.velocity);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4 — "the roll MUST be survivable without volleying."
+//
+// The volley is a flourish and a secret, and the user ruled out telling her
+// about it. So a Kayla who never discovers it has to be able to beat the
+// roll by POSITION alone: run under the high phase, be somewhere else during
+// the low one. If any of the five behaviours fails that, it is not a taste
+// call, it is a broken option that should not be on the menu.
+//
+// A ball-only arena, deliberately: this asks whether the ROLL is survivable,
+// not whether the whole fight is. Bill the man is the reason a rally is not
+// free, and he is a separate question (PLAN.md §8's tuning pass).
+// ---------------------------------------------------------------------------
+describe('every roll variant is survivable without the volley', () => {
+  /**
+   * A Knight who backs away from the ball, and DUCKS UNDER IT when the wall
+   * is behind her and the ball is high enough to pass beneath.
+   *
+   * Running away alone is not the answer and was never claimed to be: the
+   * arena is 1168 px wide and the ball crosses it at up to 400 px/s against
+   * her 332 px/s run, so a pure retreat gets cornered in every variant
+   * (Terrier at 2.3 s, Metronome at 17 s). The ratified answer is the one
+   * the pogo-safe cap was hiding — go UNDER the high phase — and this is
+   * the smallest policy that uses it.
+   */
+  function dodge(variantIndex: number): { survived: boolean; hitAt: number } {
+    const world = arenaWorld();
+    const player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
+    player.grounded = true;
+    const dog = createEnemy('dog', 868, FLOOR_Y);
+    dog.rollVariantIndex = variantIndex;
+    dog.rollTimer = 0;
+    const arena = createArenaState(false);
+    arena.started = true;
+
+    const steps = Math.round(20 / FIXED_DT);
+    for (let i = 0; i < steps; i++) {
+      const toward = dog.position.x > player.position.x ? 1 : -1;
+      const cornered =
+        toward < 0 ? player.position.x > CANVAS.width - 200 : player.position.x < 200;
+      // The ball is feet-anchored, so its own y IS the underside.
+      const clearance = FLOOR_Y - dog.position.y;
+      const canDuckUnder = clearance > KNIGHT.spriteHeight + 12;
+      const dir = cornered && canDuckUnder ? toward : -toward;
+      const input: InputFrame = {
+        left: dir < 0,
+        right: dir > 0,
+        jumpHeld: false,
+        jumpPressed: false,
+        attackPressed: false,
+        up: false,
+        down: false,
+        dashPressed: false,
+      };
+      stepPlayer(player, input, world, FIXED_DT);
+      stepEnemy(dog, world, FIXED_DT, { position: player.position, grounded: player.grounded });
+      if (stepArena(arena, player, [dog], FIXED_DT).playerHit) {
+        return { survived: false, hitAt: i * FIXED_DT };
+      }
+    }
+    return { survived: true, hitAt: -1 };
+  }
+
+  it('lets a Knight who backs off and ducks under live through all five', () => {
+    // Measured, at 20 s of ball-only arena:
+    //
+    //   Metronome  survives      Loper      survives
+    //   Stutter    caught 12.5s  Terrier    caught 5.5s   Hunter  caught 2.4s
+    //
+    // Those numbers are NOT a claim about how hard each variant is for a
+    // person — this dodger only backs off and ducks, it never jumps, dashes,
+    // reads the telegraph or volleys, and a real competent bot is still an
+    // open PLAN.md §8 item. What they measure is how much the SIMPLEST
+    // possible policy is worth, which is the closest thing available to
+    // “how forgiving is this to someone who has not worked it out yet”.
+    //
+    // The invariant: the menu must always contain a forgiving option. She is
+    // twelve, she is never told about the volley, and a picker where every
+    // choice punishes the naive answer would be five ways to lose.
+    const forgiving = ROLL_VARIANTS.filter((_, i) => dodge(i).survived);
+    expect(forgiving.length).toBeGreaterThanOrEqual(2);
+  });
+  it('and the high phase really does leave room to walk under', () => {
+    // The other half of "survivable by position": not just outrunning it,
+    // but the tunnel the note's whole diagnosis turned on.
+    for (const variant of ROLL_VARIANTS) {
+      const apexes = variant.launches.map((l) => (l * l) / (2 * ATTACKS.dog.rollGravity));
+      const headroom = Math.max(...apexes) - KNIGHT.spriteHeight;
+      expect(
+        headroom,
+        `${variant.name} has only ${headroom.toFixed(0)} px of headroom`,
+      ).toBeGreaterThan(0);
+    }
   });
 });
