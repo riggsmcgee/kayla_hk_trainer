@@ -4,6 +4,7 @@ import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
 import { ChapterNext } from '../components/ChapterNext';
 import { pogoRhythmDemo } from '../engine/demo';
+import { DASH_NUMBERS, ESCAPE_WINDOW } from './lessonPogo.helpers';
 
 export function LessonPogo() {
   const chapter = chapterById('pogo');
@@ -40,6 +41,44 @@ export function LessonPogo() {
         Slash, bounce, breathe, slash — about two a second. If you’re hammering the button, land and
         start again slower: a swing that misses its moment leaves you falling with your nail on
         cooldown.
+      </p>
+
+      <h2>Hit, then leave</h2>
+      <p>
+        The dash isn’t really for crossing rooms, Kayla. It’s for the moment right after you land a
+        hit: slash, dash out, and watch the answer arrive where you were standing.
+      </p>
+      <ul className="plain-list">
+        <li>
+          <strong>Running buys you {ESCAPE_WINDOW.running} s.</strong> Turn and go any later than
+          that after your hit and the duelist’s swipe catches you on the way out — it travels
+          forward with him, so running only just outpaces it. Dash and you have{' '}
+          {ESCAPE_WINDOW.dashing} s.
+        </li>
+        <li>
+          <strong>
+            {DASH_NUMBERS.distancePx} px in a quarter second, against {DASH_NUMBERS.runDistancePx}{' '}
+            running.
+          </strong>{' '}
+          That’s {DASH_NUMBERS.headStartPx} px of daylight, at {DASH_NUMBERS.timesRunSpeed}× your
+          run speed.
+        </li>
+        <li>
+          <strong>The rhythm is the dash, not the nail.</strong> Your nail is ready again after{' '}
+          {DASH_NUMBERS.nailReadySeconds} s but your dash takes {DASH_NUMBERS.dashReadySeconds} s,
+          so hit-and-away is paced by your legs. Bounce off something and the dash comes straight
+          back — that’s the secret from up the page, doing real work.
+        </li>
+      </ul>
+      <p className="thesis">
+        The dash doubles the time you have to change your mind — from a tenth of a second to two
+        tenths. That’s all it buys, and it’s enough.
+      </p>
+      <p>
+        One exception, and it’s the one waiting at the bottom of the well: <strong>never</strong>{' '}
+        dash away from Bill the man’s lance. Once he’s hot it travels at{' '}
+        {DASH_NUMBERS.hotLancePxPerSecond} px/s and your dash is {DASH_NUMBERS.dashPxPerSecond}. You
+        cannot outrun it along the floor. Get in the air instead.
       </p>
 
       <h2>Drills, in order</h2>
