@@ -8,6 +8,8 @@
  */
 
 import type { Action, Bindings } from '../engine/input';
+import { buttonName, type GamepadBindings } from '../engine/gamepad';
+import type { InputSource } from '../engine/inputSource';
 
 const NAMED: Readonly<Record<string, string>> = {
   ArrowLeft: '←',
@@ -90,8 +92,46 @@ function movePhrase(left: readonly string[], right: readonly string[]): string {
   return `${joinKeyNames(left)} (left) and ${joinKeyNames(right)} (right)`;
 }
 
-/** The one-line controls caption under every practice canvas. */
-export function controlsCaption(bindings: Bindings): string {
+/**
+ * "the bottom button" — pad buttons named by POSITION, joined for a sentence.
+ *
+ * Positions and not letters, which is ratified: browsers report a pad through
+ * the standard mapping, which knows index 0 is the bottom face button and has
+ * no idea what letter is printed on it. The Setup lesson also tells her to
+ * remap once, so any letter this printed would be wrong immediately after she
+ * follows the site's own advice.
+ */
+export function joinButtonNames(indices: readonly number[]): string {
+  const names = [...new Set(indices.map(buttonName))];
+  if (names.length === 0) return 'nothing';
+  if (names.length === 1) return `the ${names[0]}`;
+  return `the ${names.slice(0, -1).join(', the ')} or the ${names[names.length - 1]}`;
+}
+
+/**
+ * The one-line controls caption under every practice canvas, in the terms of
+ * whichever board she last touched.
+ *
+ * This string is on screen the entire time she plays, on all three mini-game
+ * pages, and until now it only ever spoke about keys — so a whole playtest on
+ * the pad was spent being told to press X (playtest 6, note 1).
+ */
+export function controlsCaption(
+  bindings: Bindings,
+  padBindings: GamepadBindings,
+  source: InputSource = 'keyboard',
+): string {
+  if (source === 'gamepad') {
+    // Movement answers to the stick as well as the d-pad, and that is not in
+    // the bindings table — it is wired in gamepad.ts — so it is said here.
+    return (
+      `Move with ${joinButtonNames(padBindings.left)}/${joinButtonNames(padBindings.right)} or the left stick · ` +
+      `jump with ${joinButtonNames(padBindings.jump)} (hold for height, tap for a hop) · ` +
+      `slash with ${joinButtonNames(padBindings.attack)} ` +
+      `(hold ${joinButtonNames(padBindings.down)} in the air to pogo) · ` +
+      `dash with ${joinButtonNames(padBindings.dash)}.`
+    );
+  }
   const down = friendlyKeyName(bindings.down[0] ?? '');
   return (
     `Move with ${movePhrase(bindings.left, bindings.right)} · ` +

@@ -15,6 +15,8 @@ import { useEffect, useRef } from 'react';
 import { CANVAS } from '../engine/constants';
 import { attachKeyboard, createKeyboardInput } from '../engine/input';
 import { createGamepadInput, mergeInput, readGamepads } from '../engine/gamepad';
+import { noteInputSource } from '../engine/inputSource';
+import { useInputSource } from '../storage/useInputSource';
 import { useGamepadBindings } from '../storage/useGamepadBindings';
 import { createGameLoop } from '../engine/loop';
 import type { GameSession } from '../engine/session';
@@ -32,6 +34,7 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bindings] = useBindings();
   const [padBindings] = useGamepadBindings();
+  const source = useInputSource();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -48,8 +51,15 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
     canvas.focus({ preventScroll: true });
 
     const loop = createGameLoop({
-      simulate: (dt) =>
-        session.step(mergeInput(keyboard.sample(), gamepad.sample(readGamepads())), dt),
+      simulate: (dt) => {
+        const fromKeys = keyboard.sample();
+        const fromPad = gamepad.sample(readGamepads());
+        // The last point in the whole pipeline where the two frames are still
+        // told apart: mergeInput ORs them and the session cannot ask. Recorded
+        // here so the copy on screen can name the button she just pressed.
+        noteInputSource(fromKeys, fromPad);
+        session.step(mergeInput(fromKeys, fromPad), dt);
+      },
       render: (alpha) => session.render(ctx, alpha),
     });
     loop.start();
@@ -71,7 +81,9 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
       >
         {label} — this mini-game needs a browser with canvas support.
       </canvas>
-      <figcaption className="canvas-note">{controlsCaption(bindings)}</figcaption>
+      <figcaption className="canvas-note">
+        {controlsCaption(bindings, padBindings, source)}
+      </figcaption>
     </figure>
   );
 }

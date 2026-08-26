@@ -229,7 +229,7 @@ export function rebindButton(
 
 /**
  * What to call a button she has never seen a number for. Positions, again:
- * "bottom face button" is true on every pad, and "A" is true on some of them.
+ * "bottom button" is true on every pad, and "A" is true on some of them.
  */
 export function buttonName(index: number): string {
   const names: Record<number, string> = {
