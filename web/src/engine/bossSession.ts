@@ -15,9 +15,9 @@
 
 import { BOSS, createBossState, skipCard, startBoss, stepBoss, stepIntro } from './boss';
 import {
-  BILL_ENTRANCE,
   INTRO_FAST_FORWARD,
   arrivalX,
+  billEntrance,
   entranceSeconds,
   stepEntrance,
 } from './entrance';
@@ -59,8 +59,6 @@ const BILL_SPAWN_X = CANVAS.width - 300;
  */
 const BILL_OFFSTAGE_X = CANVAS.width + 80;
 
-/** How long Bill’s whole entrance runs at normal speed. */
-const INTRO_SECONDS = entranceSeconds(BILL_ENTRANCE);
 /** Where the dog stops after walking in, measured from the wall he came through. */
 const DOG_WALK_IN_INSET = 200;
 
@@ -82,6 +80,11 @@ export interface BossSessionConfig extends OverlayControls {
    * rolls with. Defaults to the first.
    */
   rollVariant?: number;
+  /**
+   * DEV TOOL: remove in the final build. Which of BILL_ENTRANCES plays
+   * before the fight. Defaults to the first.
+   */
+  entranceVariant?: number;
   /** Fires live at the 1:30 crossing, not at the end of the run. */
   onPassed?: () => void;
   /** Fires once per touch, after the run is recorded. */
@@ -96,6 +99,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   const { comfort, jumpKey = 'Z', attackKey = 'X', onNext, nextLabel } = config;
   const godMode = config.godMode ?? false;
   const world = bossWorld();
+  /** Which entrance plays, and how long it runs at normal speed. */
+  const entrance = billEntrance(config.entranceVariant ?? 0);
+  const INTRO_SECONDS = entranceSeconds(entrance);
   const juice = createJuice(comfort);
   const edgeCarry = createEdgeCarry();
 
@@ -203,12 +209,17 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         const rate = rawInput.jumpHeld || rawInput.jumpPressed ? INTRO_FAST_FORWARD : 1;
         const before = boss.introElapsed;
         stepIntro(boss, INTRO_SECONDS, dt * rate);
-        const beat = stepEntrance(BILL_ENTRANCE, before, boss.introElapsed);
+        const beat = stepEntrance(entrance, before, boss.introElapsed);
         if (beat.thumped) juice.addTrauma(FEEDBACK.enemyDeath.trauma);
         bill.position.x =
           beat.beat === 'thumps'
             ? BILL_OFFSTAGE_X
-            : arrivalX(BILL_OFFSTAGE_X, BILL_SPAWN_X, beat.beat === 'arrival' ? beat.progress : 1);
+            : arrivalX(
+                BILL_OFFSTAGE_X,
+                BILL_SPAWN_X,
+                beat.beat === 'arrival' ? beat.progress : 1,
+                entrance.style,
+              );
         return;
       }
 
@@ -359,7 +370,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       }
 
       if (boss.phase === 'intro') {
-        const beat = stepEntrance(BILL_ENTRANCE, boss.introElapsed, boss.introElapsed);
+        const beat = stepEntrance(entrance, boss.introElapsed, boss.introElapsed);
         if (beat.beat === 'thumps') {
           // Nothing but the Knight and a floor that will not stop moving.
           // The line is deliberately not his name: she should be looking at

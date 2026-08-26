@@ -150,4 +150,11 @@ export interface SettingsV1 {
    * blob written before it existed reads as the first variant.
    */
   rollVariant?: number;
+  /**
+   * DEV TOOL: remove in the final build. Which of Bill's three entrances
+   * (engine/entrance.ts BILL_ENTRANCES) plays before the fight. Same reason
+   * as `rollVariant`: playtest 4 ratified that artistic decisions ship as a
+   * portfolio to choose from rather than as a pick.
+   */
+  entranceVariant?: number;
 }

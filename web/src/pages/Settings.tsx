@@ -18,7 +18,9 @@ import { notifyProgressChanged, progressStore } from '../storage/useChapterProgr
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
+import { useEntranceVariant } from '../storage/useEntranceVariant';
 import { ROLL_VARIANTS } from '../engine/enemies';
+import { BILL_ENTRANCES } from '../engine/entrance';
 import { captureVerdict } from './settings.helpers';
 import '../styles/settings.css';
 
@@ -41,6 +43,7 @@ export function Settings() {
   const [comfort, setComfort] = useComfortSettings();
   const [godMode, setGodMode] = useGodMode();
   const [rollVariant, setRollVariant] = useRollVariant();
+  const [entranceVariant, setEntranceVariant] = useEntranceVariant();
   const [capturing, setCapturing] = useState<Action | null>(null);
   const [resetStage, setResetStage] = useState<ResetStage>('idle');
 
@@ -236,6 +239,29 @@ export function Settings() {
             Fight the Two Bills with each one and pick a favourite. They all alternate between a hop
             you can run under and a skitter you cannot — what changes is the pace, the rhythm and
             how long you get to decide.
+          </p>
+
+          <fieldset className="roll-variants">
+            <legend>Bill’s entrance — three to try</legend>
+            {BILL_ENTRANCES.map((variant, i) => (
+              <label key={variant.name} className="roll-variant">
+                <input
+                  type="radio"
+                  name="entrance-variant"
+                  checked={entranceVariant === i}
+                  onChange={() => setEntranceVariant(i)}
+                />
+                <span>
+                  <strong>{variant.name}</strong>
+                  <span className="fine-print">{variant.feel}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <p className="fine-print settings-note">
+            All three open on an empty arena and bring him in from the right; what changes is how
+            many footfalls you hear coming and how he crosses the ground. Hold jump during any of
+            them to run it at 2.5×.
           </p>
         </div>
       </details>

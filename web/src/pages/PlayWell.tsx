@@ -35,6 +35,7 @@ import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
+import { useEntranceVariant } from '../storage/useEntranceVariant';
 import { levelBestLine } from './playPogo.helpers';
 import {
   BEATS,
@@ -289,6 +290,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
   // the dog uses — read here rather than threaded through BeatProps, because
   // the boss is the only beat with a dog in it.
   const [rollVariant] = useRollVariant();
+  const [entranceVariant] = useEntranceVariant();
   /**
    * DEV TOOL: remove in the final build. God mode makes the fight unlosable,
    * and the only way out of the canvas is the fail screen (bossSession's
@@ -309,6 +311,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
         comfort,
         godMode,
         rollVariant,
+        entranceVariant,
         jumpKey,
         attackKey,
         cleared: progress.finaleBossCleared,
@@ -320,6 +323,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
       comfort,
       godMode,
       rollVariant,
+      entranceVariant,
       jumpKey,
       attackKey,
       progress.finaleBossCleared,

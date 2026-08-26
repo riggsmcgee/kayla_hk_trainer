@@ -59,7 +59,26 @@ export interface EntranceStep {
   thumped: number;
 }
 
+/**
+ * How he crosses the ground between the frame edge and his mark.
+ *
+ * - `steady` — one pace the whole way. He is not hurrying, because he does
+ *   not need to.
+ * - `stomp`  — most of the distance in the first third, then he plants. He
+ *   arrives before you have finished reading that he is arriving.
+ * - `loom`   — slow at first and slower still at the end, easing onto the
+ *   mark. The walk you notice rather than the walk you see finish.
+ *
+ * The curve is applied to progress and THEN stepped to whole 4 px, so no
+ * style can smuggle in interpolation.
+ */
+export type ArrivalStyle = 'steady' | 'stomp' | 'loom';
+
 export interface EntranceShape {
+  /** What the picker calls it. */
+  name: string;
+  /** One line: what this entrance feels like to sit through. */
+  feel: string;
   /** Seconds of off-screen footfalls before he appears. */
   thumps: number;
   /** How many footfalls fit in that time, evenly spaced. */
@@ -67,25 +86,67 @@ export interface EntranceShape {
   /** Seconds he spends walking from the frame edge to his mark. */
   arrival: number;
   /** Seconds the name card holds afterwards. */
-  name: number;
+  card: number;
+  style: ArrivalStyle;
 }
 
 /**
- * Bill the man's entrance: 2.8 s.
+ * THREE ENTRANCES for Bill the man, for the user to choose between.
+ *
+ * Playtest 4 ratified that every artistic decision this round ships as a
+ * PORTFOLIO rather than a pick: _"have multiple different variations for
+ * different possibilities of directions we can go, and then I'll pick my
+ * favorite from the options."_ These are the directions.
+ *
+ * All three keep what the interview settled and vary only what it left
+ * open: he is always off-frame when the beat opens, always enters from the
+ * right, always lands inside the 2–3 s the note asked for, and always moves
+ * in whole 4 px steps.
  *
  * Four thumps at 0.3 s apart is a walking pace for something 160 px tall,
  * and four is the count that reads as "footsteps" rather than as "a noise" —
- * three can pass for a stumble and five starts to feel like a machine.
+ * three can pass for a stumble and five starts to feel like a machine. The
+ * other two variants push deliberately either side of that.
  */
-export const BILL_ENTRANCE: EntranceShape = {
-  thumps: 1.2,
-  thumpCount: 4,
-  arrival: 0.9,
-  name: 0.7,
-};
+export const BILL_ENTRANCES: readonly EntranceShape[] = [
+  {
+    name: 'Heavy',
+    feel: 'Four even footfalls, then he walks in at his own pace. Unhurried, because he does not need to hurry.',
+    thumps: 1.2,
+    thumpCount: 4,
+    arrival: 0.9,
+    card: 0.7,
+    style: 'steady',
+  },
+  {
+    name: 'Sudden',
+    feel: 'Two thumps, a pause long enough to wonder, and then he is just THERE.',
+    thumps: 1.0,
+    thumpCount: 2,
+    arrival: 0.5,
+    card: 0.9,
+    style: 'stomp',
+  },
+  {
+    name: 'Looming',
+    feel: 'Six footfalls closing in, and a long slow walk that takes its time settling onto the mark.',
+    thumps: 1.5,
+    thumpCount: 6,
+    arrival: 1.1,
+    card: 0.4,
+    style: 'loom',
+  },
+];
+
+export function billEntrance(index: number): EntranceShape {
+  return BILL_ENTRANCES[index] ?? BILL_ENTRANCES[0]!;
+}
+
+/** The default, and what every test that does not care about the choice uses. */
+export const BILL_ENTRANCE: EntranceShape = BILL_ENTRANCES[0]!;
 
 export function entranceSeconds(shape: EntranceShape): number {
-  return shape.thumps + shape.arrival + shape.name;
+  return shape.thumps + shape.arrival + shape.card;
 }
 
 /**
@@ -117,8 +178,8 @@ export function stepEntrance(
     return { beat: 'arrival', progress: afterThumps / shape.arrival, thumped };
   }
   const afterArrival = afterThumps - shape.arrival;
-  if (afterArrival < shape.name - TIME_EPS) {
-    return { beat: 'name', progress: afterArrival / shape.name, thumped };
+  if (afterArrival < shape.card - TIME_EPS) {
+    return { beat: 'name', progress: afterArrival / shape.card, thumped };
   }
   return { beat: 'done', progress: 1, thumped };
 }
@@ -135,8 +196,27 @@ export function stepEntrance(
  */
 export const ENTRANCE_STEP_PX = 4;
 
-export function arrivalX(from: number, to: number, progress: number): number {
-  const eased = Math.min(1, Math.max(0, progress));
+/** The arrival curves. Each maps 0→0 and 1→1; everything between is taste. */
+function curve(style: ArrivalStyle, t: number): number {
+  switch (style) {
+    case 'steady':
+      return t;
+    // Most of the ground in the first third, then he plants.
+    case 'stomp':
+      return 1 - (1 - t) ** 3;
+    // Slow, and slower still at the end.
+    case 'loom':
+      return t * t;
+  }
+}
+
+export function arrivalX(
+  from: number,
+  to: number,
+  progress: number,
+  style: ArrivalStyle = 'steady',
+): number {
+  const eased = curve(style, Math.min(1, Math.max(0, progress)));
   const raw = from + (to - from) * eased;
   return to + Math.round((raw - to) / ENTRANCE_STEP_PX) * ENTRANCE_STEP_PX;
 }

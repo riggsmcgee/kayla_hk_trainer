@@ -9,9 +9,11 @@ import { describe, expect, it } from 'vitest';
 import { FIXED_DT } from './constants';
 import {
   BILL_ENTRANCE,
+  BILL_ENTRANCES,
   ENTRANCE_STEP_PX,
   INTRO_FAST_FORWARD,
   arrivalX,
+  billEntrance,
   entranceSeconds,
   stepEntrance,
 } from './entrance';
@@ -114,5 +116,91 @@ describe('the arrival walk is stepped, not glided', () => {
       expect(x).toBeLessThanOrEqual(last);
       last = x;
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4 — every artistic decision this round ships as a PORTFOLIO.
+//
+// "Have multiple different variations for different possibilities of
+// directions we can go, and then I'll pick my favorite from the options."
+//
+// The choice is the user's. What is NOT theirs to break is the set of things
+// the interview already settled, and all three variants have to keep every
+// one of them.
+// ---------------------------------------------------------------------------
+describe('the three entrances to choose between', () => {
+  it('offers three, each named and described', () => {
+    expect(BILL_ENTRANCES).toHaveLength(3);
+    expect(new Set(BILL_ENTRANCES.map((e) => e.name)).size).toBe(3);
+    for (const e of BILL_ENTRANCES) expect(e.feel.length).toBeGreaterThan(20);
+  });
+
+  it('all land inside the 2–3 seconds the note asked for', () => {
+    for (const e of BILL_ENTRANCES) {
+      const total = entranceSeconds(e);
+      expect(total).toBeGreaterThanOrEqual(2);
+      expect(total).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('all open off-frame, run all four beats, and land every footfall once', () => {
+    for (const shape of BILL_ENTRANCES) {
+      const beats: string[] = [];
+      const thumps: number[] = [];
+      let elapsed = 0;
+      let last: string | null = null;
+      for (let i = 0; i < Math.round(10 / FIXED_DT); i++) {
+        const prev = elapsed;
+        elapsed += FIXED_DT;
+        const step = stepEntrance(shape, prev, elapsed);
+        if (step.thumped) thumps.push(step.thumped);
+        if (step.beat !== last) {
+          beats.push(step.beat);
+          last = step.beat;
+        }
+        if (step.beat === 'done') break;
+      }
+      expect(beats).toEqual(['thumps', 'arrival', 'name', 'done']);
+      expect(thumps).toEqual(Array.from({ length: shape.thumpCount }, (_, i) => i + 1));
+    }
+  });
+
+  it('no arrival style smuggles in interpolation', () => {
+    // PLAN.md §3 again: the curve shapes the PACE, and the result is then
+    // stepped. A style that glided would be the one place in the fight where
+    // Bill stops being the thing the user picked.
+    for (const shape of BILL_ENTRANCES) {
+      for (let i = 0; i <= 120; i++) {
+        const x = arrivalX(1248, 868, i / 120, shape.style);
+        expect((x - 868) % ENTRANCE_STEP_PX).toBe(0);
+      }
+    }
+  });
+
+  it('every style starts off-frame, ends on the mark, and only moves inward', () => {
+    for (const shape of BILL_ENTRANCES) {
+      expect(arrivalX(1248, 868, 0, shape.style)).toBe(1248);
+      expect(arrivalX(1248, 868, 1, shape.style)).toBe(868);
+      let last = Number.POSITIVE_INFINITY;
+      for (let i = 0; i <= 80; i++) {
+        const x = arrivalX(1248, 868, i / 80, shape.style);
+        expect(x).toBeLessThanOrEqual(last);
+        last = x;
+      }
+    }
+  });
+
+  it('the styles are actually different from each other', () => {
+    // Half way through the walk, each style is somewhere else. Without this,
+    // a portfolio of three is a portfolio of one with three names on it.
+    const midpoints = BILL_ENTRANCES.map((s) => arrivalX(1248, 868, 0.5, s.style));
+    expect(new Set(midpoints).size).toBe(3);
+  });
+
+  it('falls back to the first for an index that does not exist', () => {
+    expect(billEntrance(99)).toBe(BILL_ENTRANCES[0]);
+    expect(billEntrance(-1)).toBe(BILL_ENTRANCES[0]);
+    expect(BILL_ENTRANCE).toBe(BILL_ENTRANCES[0]);
   });
 });
