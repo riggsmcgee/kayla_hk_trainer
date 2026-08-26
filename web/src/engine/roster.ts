@@ -41,12 +41,60 @@ export const COURSE_LEVEL_COUNT = 3;
 /** The finale's "put it all together" pogo level. */
 export const FINALE_LEVEL = 4;
 
-/** Finale arena waves (1..FINALE_WAVE_COUNT). */
-export const FINALE_WAVE_COUNT = 3;
+/** One enemy arriving mid-wave: who, and how many seconds in. */
+export interface WaveJoin {
+  /** Seconds of stage time survived before this one walks in. */
+  at: number;
+  id: EnemyId;
+}
 
-/** Who shows up in each finale wave, index 0 = wave 1. */
-export const FINALE_WAVES: readonly (readonly EnemyId[])[] = [
-  ['walker', 'flier'],
-  ['duelist', 'spitter'],
-  ['spitter', 'warden'],
+export interface FinaleWave {
+  /** What the HUD calls it — "wave 1 of 2 — The pests". */
+  name: string;
+  /** Who is on screen when the wave opens. */
+  enemies: readonly EnemyId[];
+  /** Who arrives later. Ascending by `at`; the schedule reads it as a cursor. */
+  reinforcements: readonly WaveJoin[];
+}
+
+/**
+ * The finale's waves (playtest 4, note 3).
+ *
+ * Two waves, each opening with a pair and doubling to four at thirty
+ * seconds. The hits required do NOT grow with the reinforcements — they are
+ * summed from the OPENING cast alone, so four bodies is four targets and
+ * landing hits gets easier. The thing that grew is the danger.
+ */
+export const FINALE_WAVES: readonly FinaleWave[] = [
+  {
+    name: 'The pests',
+    enemies: ['walker', 'flier'],
+    reinforcements: [
+      { at: 30, id: 'walker' },
+      { at: 30, id: 'flier' },
+    ],
+  },
+  {
+    name: 'The real ones',
+    enemies: ['duelist', 'spitter'],
+    reinforcements: [
+      { at: 30, id: 'warden' },
+      { at: 30, id: 'duelist' },
+    ],
+  },
 ];
+
+/**
+ * Finale arena waves (1..FINALE_WAVE_COUNT). DERIVED, never written down —
+ * this constant and FINALE_WAVES drifted apart once already (the count said
+ * three while the waves said what they said), and a derived number cannot.
+ */
+export const FINALE_WAVE_COUNT = FINALE_WAVES.length;
+
+/**
+ * The most enemies the arena will ever hold at once. Every wave's opening
+ * cast plus its reinforcements must fit inside it — pinned as a data
+ * invariant in stages.test.ts, so a wave that outgrows the arena fails a
+ * test rather than the frame budget.
+ */
+export const ARENA_MAX_ALIVE = 4;

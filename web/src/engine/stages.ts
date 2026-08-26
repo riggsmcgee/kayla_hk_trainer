@@ -12,17 +12,52 @@
  * engine/roster.ts so the map, the gates and the arena always agree.
  */
 import type { EnemyId } from '@dojo/shared';
-import { FINALE_WAVES, ROSTER, STAGE_SURVIVE_SECONDS, rosterEntry } from './roster';
+import {
+  ARENA_MAX_ALIVE,
+  FINALE_WAVES,
+  ROSTER,
+  STAGE_SURVIVE_SECONDS,
+  rosterEntry,
+  type WaveJoin,
+} from './roster';
 
 export interface StageDef {
-  /** Who is in the arena, spawned together. */
+  /** Who is in the arena when the stage opens. */
   enemies: readonly EnemyId[];
+  /**
+   * Who walks in later, ascending by `at`. Undefined for every Colosseum
+   * stage — the stage rule never learns reinforcements exist.
+   */
+  reinforcements?: readonly WaveJoin[];
+  /** The most bodies this stage will ever hold. Undefined means "the opening cast". */
+  maxAlive?: number;
   /** Seconds that must be survived. */
   surviveSeconds: number;
   /** Clean nail hits that must land (across every enemy in the stage). */
   hitsRequired: number;
-  /** What the HUD calls it: an enemy's name, or "walker + flier". */
+  /** What the HUD calls it: an enemy's name, or a wave's title. */
   label: string;
+}
+
+/**
+ * How many reinforcements should have arrived by `elapsed` seconds of stage
+ * time. Monotone and cursor-friendly: the session keeps a count of who has
+ * actually joined and spawns the difference, so a schedule can never
+ * double-spawn or skip an arrival, and a checkpoint reload starts over at
+ * zero for free.
+ *
+ * Pure, and the whole TDD seam for the schedule — the session's own job is
+ * only "spawn the difference".
+ */
+export function dueCount(def: StageDef, elapsed: number): number {
+  const script = def.reinforcements;
+  if (!script) return 0;
+  let due = 0;
+  for (const join of script) {
+    if (elapsed < join.at) break; // ascending, so nothing after this is due either
+    due += 1;
+  }
+  return due;
 }
 
 /** One stage per roster entry, in teaching order. */
@@ -35,13 +70,22 @@ export function rosterStages(): StageDef[] {
   }));
 }
 
-/** One stage per finale wave; the hits required are the pair's summed. */
+/**
+ * One stage per finale wave.
+ *
+ * The hits required are summed over the OPENING cast only — ratified in
+ * playtest 4: the reinforcements are the difficulty, and asking for twenty
+ * hits instead of ten would have been asking for the opposite of what the
+ * extra bodies give you.
+ */
 export function waveStages(): StageDef[] {
-  return FINALE_WAVES.map((pair) => ({
-    enemies: [...pair],
+  return FINALE_WAVES.map((wave) => ({
+    enemies: [...wave.enemies],
+    reinforcements: wave.reinforcements,
+    maxAlive: ARENA_MAX_ALIVE,
     surviveSeconds: STAGE_SURVIVE_SECONDS,
-    hitsRequired: pair.reduce((sum, id) => sum + rosterEntry(id).hitsToPass, 0),
-    label: pair.join(' + '),
+    hitsRequired: wave.enemies.reduce((sum, id) => sum + rosterEntry(id).hitsToPass, 0),
+    label: wave.name,
   }));
 }
 

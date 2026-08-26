@@ -9,8 +9,22 @@
  */
 import { describe, expect, it } from 'vitest';
 import { FIXED_DT } from './constants';
-import { FINALE_WAVES, ROSTER, STAGE_SURVIVE_SECONDS, rosterEntry } from './roster';
-import { createStageState, rosterStages, startStage, stepStage, waveStages } from './stages';
+import {
+  ARENA_MAX_ALIVE,
+  FINALE_WAVES,
+  FINALE_WAVE_COUNT,
+  ROSTER,
+  STAGE_SURVIVE_SECONDS,
+  rosterEntry,
+} from './roster';
+import {
+  createStageState,
+  dueCount,
+  rosterStages,
+  startStage,
+  stepStage,
+  waveStages,
+} from './stages';
 import type { StageDef } from './stages';
 
 const QUIET = { playerHit: false, nailLanded: false };
@@ -41,18 +55,94 @@ describe('stage definitions', () => {
     }
   });
 
-  it('builds one wave stage per finale pair, hits = the pair’s hits summed', () => {
+  it('builds one wave stage per finale wave, labelled by the wave’s own name', () => {
     const stages = waveStages();
-    expect(stages.map((s) => s.enemies)).toEqual(FINALE_WAVES.map((w) => [...w]));
+    expect(stages.map((s) => s.enemies)).toEqual(FINALE_WAVES.map((w) => [...w.enemies]));
     for (const [i, s] of stages.entries()) {
-      const pair = FINALE_WAVES[i]!;
+      const wave = FINALE_WAVES[i]!;
       expect(s.surviveSeconds).toBe(STAGE_SURVIVE_SECONDS);
-      expect(s.hitsRequired).toBe(pair.reduce((sum, id) => sum + rosterEntry(id).hitsToPass, 0));
+      expect(s.reinforcements).toEqual(wave.reinforcements);
+      expect(s.maxAlive).toBe(ARENA_MAX_ALIVE);
     }
-    expect(stages[0]!.label).toBe('walker + flier');
-    expect(stages[2]!.label).toBe('spitter + warden');
+    expect(stages.map((s) => s.label)).toEqual(['The pests', 'The real ones']);
   });
 
+  it('sums hits over the OPENING cast only — the reinforcements are free targets', () => {
+    const stages = waveStages();
+    // Ratified in playtest 4: four bodies is four things to hit, so asking
+    // for 20 and 12 would make the wave EASIER in the way that matters and
+    // longer in the way that doesn't.
+    expect(stages.map((s) => s.hitsRequired)).toEqual([10, 6]);
+    for (const [i, s] of stages.entries()) {
+      const opening = FINALE_WAVES[i]!.enemies;
+      expect(s.hitsRequired).toBe(opening.reduce((n, id) => n + rosterEntry(id).hitsToPass, 0));
+    }
+  });
+
+  it('keeps the wave data inside the arena’s invariants', () => {
+    expect(FINALE_WAVE_COUNT).toBe(2);
+    expect(FINALE_WAVE_COUNT).toBe(FINALE_WAVES.length);
+    const seen = new Set<string>();
+    for (const wave of FINALE_WAVES) {
+      expect(wave.enemies.length + wave.reinforcements.length).toBeLessThanOrEqual(ARENA_MAX_ALIVE);
+      const times = wave.reinforcements.map((r) => r.at);
+      expect([...times].sort((a, b) => a - b)).toEqual(times);
+      for (const t of times) expect(t).toBeLessThan(STAGE_SURVIVE_SECONDS);
+      for (const id of [...wave.enemies, ...wave.reinforcements.map((r) => r.id)]) seen.add(id);
+    }
+    // Ratified: every enemy on the roster still appears somewhere in the finale.
+    expect([...seen].sort()).toEqual(ROSTER.map((e) => e.id).sort());
+  });
+});
+
+describe('dueCount — the reinforcement schedule', () => {
+  const scripted: StageDef = {
+    enemies: ['walker'],
+    reinforcements: [
+      { at: 30, id: 'walker' },
+      { at: 30, id: 'flier' },
+      { at: 45, id: 'warden' },
+    ],
+    surviveSeconds: 60,
+    hitsRequired: 1,
+    label: 'scripted',
+  };
+
+  it('counts nobody before the first arrival and everybody after the last', () => {
+    expect(dueCount(scripted, 0)).toBe(0);
+    expect(dueCount(scripted, 29.99)).toBe(0);
+    expect(dueCount(scripted, 30)).toBe(2);
+    expect(dueCount(scripted, 44.99)).toBe(2);
+    expect(dueCount(scripted, 45)).toBe(3);
+    expect(dueCount(scripted, 600)).toBe(3);
+  });
+
+  it('is monotone across the whole stage', () => {
+    let last = 0;
+    for (let t = 0; t <= 60; t += FIXED_DT) {
+      const due = dueCount(scripted, t);
+      expect(due).toBeGreaterThanOrEqual(last);
+      last = due;
+    }
+  });
+
+  it('is zero forever for a stage with no script — the Colosseum never grows', () => {
+    for (const stage of rosterStages()) {
+      expect(stage.reinforcements).toBeUndefined();
+      expect(stage.maxAlive).toBeUndefined();
+      for (let t = 0; t <= 70; t += 5) expect(dueCount(stage, t)).toBe(0);
+    }
+  });
+
+  it('lands both of a real wave’s arrivals on the same beat', () => {
+    const wave = waveStages()[0]!;
+    expect(dueCount(wave, 29.9)).toBe(0);
+    expect(dueCount(wave, 30.1)).toBe(2);
+  });
+
+});
+
+describe('stage definitions are freshly built', () => {
   it('hands out fresh arrays each call', () => {
     expect(rosterStages()).not.toBe(rosterStages());
     expect(waveStages()).not.toBe(waveStages());

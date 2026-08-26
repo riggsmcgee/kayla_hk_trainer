@@ -61,7 +61,7 @@ describe('nextBeat', () => {
 
   it('moves to the waves once the level is cleared', () => {
     expect(nextBeat(progress({ finaleLevelCleared: true }))).toBe(2);
-    expect(nextBeat(progress({ finaleLevelCleared: true, finaleWavesCleared: [1, 2] }))).toBe(2);
+    expect(nextBeat(progress({ finaleLevelCleared: true, finaleWavesCleared: [1] }))).toBe(2);
   });
 
   it('rests at the bottom once the level and every wave are cleared', () => {
@@ -93,7 +93,7 @@ describe('beatDone', () => {
   });
 
   it('the waves are done when every wave is cleared', () => {
-    expect(beatDone(2, progress({ finaleWavesCleared: [1, 2] }))).toBe(false);
+    expect(beatDone(2, progress({ finaleWavesCleared: [1] }))).toBe(false);
     expect(beatDone(2, progress({ finaleWavesCleared: allWaves }))).toBe(true);
   });
 
@@ -164,8 +164,8 @@ describe('firstUnclearedWave', () => {
   });
 
   it('resumes at the first wave she has not cleared', () => {
+    expect(firstUnclearedWave(progress({ finaleWavesCleared: [] }))).toBe(0);
     expect(firstUnclearedWave(progress({ finaleWavesCleared: [1] }))).toBe(1);
-    expect(firstUnclearedWave(progress({ finaleWavesCleared: [1, 2] }))).toBe(2);
   });
 
   it('never picks a locked wave: cleared 2 without 1 still resumes at 1', () => {
@@ -188,7 +188,9 @@ describe('waveName', () => {
   it('names the pair from the roster', () => {
     expect(waveName(1)).toBe('Walker + Flier');
     expect(waveName(2)).toBe('Duelist + Spitter');
-    expect(waveName(3)).toBe('Spitter + Warden');
+    // The reinforcements are deliberately left out of the name: the strip
+    // says what she is walking into, and the arrivals are a surprise.
+    expect(waveName(FINALE_WAVE_COUNT + 1)).toBe('');
   });
 });
 
@@ -238,5 +240,23 @@ describe('afterLevel', () => {
   it('has nothing left to offer once every wave is cleared too', () => {
     const p = progress({ finaleLevelCleared: true, finaleWavesCleared: allWaves });
     expect(afterLevel(p)).toEqual({ title: 'Level clear.', offerWaves: false });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4, note 3 — the finale went from three waves to two. The migration
+// is deliberately generous: old waves 1 and 2 are credited as the new 1 and
+// 2, old wave 3 is dropped in silence, and anyone who had cleared the finale
+// keeps it cleared. Nothing she has already done is taken back.
+// ---------------------------------------------------------------------------
+describe('the cut from three waves to two', () => {
+  it('keeps a finale cleared under the old three-wave record', () => {
+    expect(beatDone(2, progress({ finaleWavesCleared: [1, 2, 3] }))).toBe(true);
+    expect(nextBeat(progress({ finaleLevelCleared: true, finaleWavesCleared: [1, 2, 3] }))).toBe(3);
+  });
+
+  it('does not send her back to a wave that no longer exists', () => {
+    expect(firstUnclearedWave(progress({ finaleWavesCleared: [1, 2, 3] }))).toBe(0);
+    expect(firstUnclearedWave(progress({ finaleWavesCleared: [1, 2] }))).toBe(0);
   });
 });

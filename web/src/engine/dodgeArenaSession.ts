@@ -31,7 +31,7 @@ import {
   lerpVec,
 } from './render';
 import { formatClock } from './clock';
-import { createStageState, startStage, stepStage } from './stages';
+import { createStageState, dueCount, startStage, stepStage } from './stages';
 import type { StageDef, StageState } from './stages';
 import { recordRun } from '../storage/recordRun';
 import type { GameSession, OverlayControls } from './session';
@@ -53,6 +53,9 @@ export const FLOOR_Y = 600;
 export const PLAYER_SPAWN_X = 450;
 /** Seconds the "Stage clear" banner hangs before the next stage steps in (Z skips it). */
 export const STAGE_CLEAR_BANNER_SECONDS = 2;
+
+/** How long "Reinforcements." stays on screen after bodies walk in. */
+export const JOIN_BANNER_SECONDS = 1.2;
 
 /**
  * What the stages are: the Colosseum's roster (one enemy each; runs are
@@ -136,15 +139,78 @@ export function spawnX(index: number, awayFromX: number): number {
   return farSide + inward * index * 170;
 }
 
+/**
+ * How close to the wall a body that walks in mid-fight is placed. A flier
+ * bobs ±80 px horizontally (`ATTACKS.flier.bobX`) around its home and is 32
+ * px wide, so 110 keeps even the far end of its bob inside the arena.
+ */
+export const WALL_INSET = 110;
+
+/**
+ * Where an enemy that arrives mid-stage appears: hard against the wall on
+ * the far side from the Knight.
+ *
+ * Deliberately NOT `spawnX`, which steps inward 170 px per slot. With a
+ * third and fourth body that walks the last slot to within 56 px of her —
+ * a reinforcement (or a respawn) materialising on top of her, which in a
+ * one-hit mode is not a difficulty spike, it is a bug. `joinX` has no slot
+ * term at all, so its clearance is a floor and not an average:
+ * (1168 - 220) / 2 = 474 px, whichever half of the arena she is standing in.
+ * @internal exported for the tests
+ */
+export function joinX(awayFromX: number): number {
+  return awayFromX < CANVAS.width / 2 ? CANVAS.width - WALL_INSET : WALL_INSET;
+}
+
+/**
+ * Enemies never see each other — `stepEnemy` takes only the player — and
+ * every machine is deterministic. Two fliers hunting the same Knight would
+ * converge on the same home point at the same speed with the same bob and
+ * become a single body. Staggering the bob phase per slot separates them
+ * with no RNG and no cross-enemy awareness.
+ *
+ * Slot 0 stays at zero so every single-enemy stage and every lesson demo is
+ * bit-identical to before.
+ */
+export const SLOT_PHASE_STAGGER = 1.7;
+
 function spawnEnemy(id: EnemyId, index: number, awayFromX: number): Enemy {
-  return createEnemy(id, spawnX(index, awayFromX), spawnHeight(id));
+  return placeEnemy(createEnemy(id, spawnX(index, awayFromX), spawnHeight(id)), index);
+}
+
+/** A reinforcement or a respawn: same body, placed at the wall instead of a slot. */
+function joinEnemy(id: EnemyId, index: number, awayFromX: number): Enemy {
+  return placeEnemy(createEnemy(id, joinX(awayFromX), spawnHeight(id)), index);
+}
+
+function placeEnemy(enemy: Enemy, index: number): Enemy {
+  enemy.bobPhase = index * SLOT_PHASE_STAGGER;
+  return enemy;
 }
 
 function describeTime(seconds: number): string {
   return seconds === 60 ? 'a minute' : `${seconds} seconds`;
 }
 
-export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession {
+/**
+ * A GameSession plus the one thing the wave tests have to see from outside:
+ * how many bodies are in the arena right now.
+ *
+ * Deliberately a WIDER type rather than a wider `GameSession` — the pogo
+ * course implements that interface too and has no enemies to count. Every
+ * caller still holds a GameSession, so nothing else changes.
+ */
+export interface ArenaSession extends GameSession {
+  /** Live bodies in the arena, dead-but-respawning included. @internal for the tests */
+  enemyCount(): number;
+  /**
+   * The arena's own enemy array — the tests kill a body in a known slot and
+   * watch what walks back in. @internal for the tests
+   */
+  debugEnemies(): readonly Enemy[];
+}
+
+export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSession {
   const { stages, comfort, onNext, nextLabel, jumpKey = 'Z', attackKey = 'X' } = config;
   if (stages.length === 0) throw new Error('createDodgeArenaSession: no stages');
   const observe = config.observe ?? false;
@@ -172,6 +238,10 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
   let godToast = 0;
   let landSquash = 0;
   let bannerTimer = 0;
+  /** How many of this stage's reinforcements have actually walked in. */
+  let joined = 0;
+  /** Seconds the "Reinforcements." line stays up after an arrival. */
+  let joinBanner = 0;
   /** Seconds a fail/all-cleared screen still ignores both keys. See OVERLAY_LOCKOUT_SECONDS. */
   let overlayLockout = 0;
   let allCleared = false;
@@ -193,6 +263,8 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
     godToast = 0;
     landSquash = 0;
     bannerTimer = 0;
+    joined = 0;
+    joinBanner = 0;
     overlayLockout = 0;
     allCleared = false;
     wasGrounded = false;
@@ -223,6 +295,34 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
     if (stageIndex + 1 < stages.length) loadStage(stageIndex + 1);
   }
 
+  /**
+   * Walk in whoever the schedule says is overdue (playtest 4, note 3).
+   *
+   * `dueCount` is monotone and `joined` counts who actually arrived, so
+   * spawning the difference can neither double-spawn nor skip an arrival —
+   * and a checkpoint reload, which resets `joined` to zero with the stage
+   * clock, starts the schedule over for free.
+   *
+   * The cap CONSUMES rather than defers: a slot that is full when a body is
+   * due burns that arrival. A wave whose data respects ARENA_MAX_ALIVE can
+   * never hit it (stages.test.ts pins that as an invariant); the guard is
+   * here so a future wave that gets it wrong drops an enemy instead of
+   * quietly filling the arena forever.
+   */
+  function joinDue(): void {
+    const cap = def.maxAlive ?? def.enemies.length;
+    while (joined < dueCount(def, stage.elapsed)) {
+      const id = def.reinforcements?.[joined]?.id;
+      joined += 1;
+      if (id === undefined || enemies.length >= cap) continue;
+      const slot = enemies.length;
+      enemies.push(joinEnemy(id, slot, player.position.x));
+      prevEnemyFeet.push({ ...enemies[slot]!.position });
+      juice.addTrauma(FEEDBACK.enemyDeath.trauma);
+      joinBanner = JOIN_BANNER_SECONDS;
+    }
+  }
+
   /** "the flier" / "wave 2" — what she is facing, for the overlays. */
   function foe(): string {
     return kind === 'waves' ? `wave ${stageIndex + 1}` : `the ${def.label.toLowerCase()}`;
@@ -238,6 +338,14 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
   loadStage(stageIndex);
 
   return {
+    enemyCount(): number {
+      return enemies.length;
+    },
+
+    debugEnemies(): readonly Enemy[] {
+      return enemies;
+    },
+
     step(rawInput: InputFrame, dt: number): void {
       simTime += dt;
       juice.update(dt);
@@ -348,9 +456,14 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
         juice.hitStop(FEEDBACK.enemyDeath.hitStop);
       }
       for (const slot of events.respawn) {
-        const id = def.enemies[slot];
-        if (id === undefined) continue;
-        enemies[slot] = spawnEnemy(id, slot, player.position.x);
+        // The id comes off the DEAD BODY in the slot, not off `def.enemies`
+        // — `def.enemies` is only the OPENING cast, so reading it here meant
+        // a reinforcement that died never came back. It walks in at the
+        // wall, the same read as an arrival: "one steps back in from over
+        // there".
+        const dead = enemies[slot];
+        if (!dead) continue;
+        enemies[slot] = joinEnemy(dead.id, slot, player.position.x);
         prevEnemyFeet[slot] = { ...enemies[slot].position };
       }
 
@@ -381,6 +494,13 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
           bannerTimer = STAGE_CLEAR_BANNER_SECONDS;
         }
       }
+
+      // Reinforcements are read AFTER stepStage, deliberately and in this
+      // order: `stage.elapsed` only advances inside stepStage, a newcomer
+      // must not be stepped or collided with on the frame it appears, and a
+      // stage that cleared or failed on this very step must not gain a body.
+      joinBanner = Math.max(0, joinBanner - dt);
+      if (stage.status === 'running') joinDue();
     },
 
     render(ctx: CanvasRenderingContext2D, alpha: number): void {
@@ -432,6 +552,15 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
           CANVAS.width / 2,
           96,
         );
+      }
+
+      if (joinBanner > 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = COLORS.hudText;
+        ctx.font = '26px system-ui, sans-serif';
+        ctx.globalAlpha = Math.min(1, joinBanner / 0.4);
+        ctx.fillText('Reinforcements.', CANVAS.width / 2, 140);
+        ctx.globalAlpha = 1;
       }
 
       if (hitFlash > 0) {

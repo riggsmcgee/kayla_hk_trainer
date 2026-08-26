@@ -95,10 +95,14 @@ export function firstUnclearedWave(progress: ProgressV1): number {
   return 0;
 }
 
-/** "Walker + Flier" — who is in the wave, by their roster names. */
+/**
+ * "Walker + Flier" — who OPENS the wave, by their roster names. The
+ * reinforcements are deliberately left out: the strip is what she is walking
+ * into, and half the point of the arrivals is that they are a surprise.
+ */
 export function waveName(wave: number): string {
-  const pair = FINALE_WAVES[wave - 1] ?? [];
-  return pair.map((id) => rosterEntry(id).name).join(' + ');
+  const opening = FINALE_WAVES[wave - 1]?.enemies ?? [];
+  return opening.map((id) => rosterEntry(id).name).join(' + ');
 }
 
 /** One line for the wave she's on. */

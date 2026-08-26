@@ -9,12 +9,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
 import { RESPAWN_DELAY, createArenaState, enemyHurtsBox, stepArena } from './arena';
-import { PLAYER_SPAWN_X, arenaWorld, createDodgeArenaSession } from './dodgeArenaSession';
+import {
+  PLAYER_SPAWN_X,
+  arenaWorld,
+  createDodgeArenaSession,
+  joinX,
+  spawnX,
+} from './dodgeArenaSession';
 import { OVERLAY_LOCKOUT_SECONDS } from './session';
 import { ATTACKS, ENEMY_SIZES, createEnemy, enemyBox } from './enemies';
 import type { Enemy } from './enemies';
 import { createPlayer } from './player';
 import { rosterStages, waveStages } from './stages';
+import { ARENA_MAX_ALIVE } from './roster';
 import type { InputFrame } from './types';
 
 /** The session records every stage attempt; capture instead of touching storage. */
@@ -1060,5 +1067,233 @@ describe('god mode', () => {
     expect(events.playerHit).toBe(true);
     expect(events.wouldHaveHit).toBe(false);
     expect(state.over).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4, note 3 — the finale's waves grow from two bodies to four.
+//
+// "I believe after 30 seconds, there's supposed to be up to four enemies
+// that spawn." They were specced in session 7 and never built: the code
+// shipped three waves of two with no arrivals at all, so there was no
+// difficulty curve to be disappointed by.
+// ---------------------------------------------------------------------------
+describe('the finale’s reinforcements (playtest 4, note 3)', () => {
+  const IDLE: InputFrame = {
+    left: false,
+    right: false,
+    jumpHeld: false,
+    jumpPressed: false,
+    attackPressed: false,
+    up: false,
+    down: false,
+    dashPressed: false,
+  };
+  const COMFORT = { reduceShake: false, reduceFlashing: false };
+  const press = (partial: Partial<InputFrame>): InputFrame => ({ ...IDLE, ...partial });
+
+  /** God mode, so a wave can be watched for its whole minute without dying. */
+  function waveSession(stageIndex = 0) {
+    const s = createDodgeArenaSession({
+      stages: waveStages(),
+      startIndex: stageIndex,
+      comfort: COMFORT,
+      godMode: true,
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT); // any input starts the stage clock
+    return s;
+  }
+
+  /** Run `seconds` of stage time. The clock only advances once the stage is running. */
+  function run(s: ReturnType<typeof waveSession>, seconds: number): void {
+    for (let i = 0; i < Math.round(seconds / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+  }
+
+  it('opens on two and stands at four just after thirty seconds', () => {
+    const s = waveSession();
+    expect(s.enemyCount()).toBe(2);
+    run(s, 29.5);
+    expect(s.enemyCount()).toBe(2);
+    run(s, 1);
+    expect(s.enemyCount()).toBe(4);
+  });
+
+  it('never exceeds the cap, however long it runs', () => {
+    const s = waveSession();
+    for (let i = 0; i < Math.round(59 / FIXED_DT); i++) {
+      s.step(IDLE, FIXED_DT);
+      expect(s.enemyCount()).toBeLessThanOrEqual(ARENA_MAX_ALIVE);
+    }
+  });
+
+  it('holds at two while the stage has not started — the clock is her input', () => {
+    const s = createDodgeArenaSession({
+      stages: waveStages(),
+      comfort: COMFORT,
+      godMode: true,
+    });
+    for (let i = 0; i < Math.round(45 / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+    expect(s.enemyCount()).toBe(2);
+  });
+
+  it('starts the schedule over on a checkpoint restart', () => {
+    const s = waveSession();
+    run(s, 31);
+    expect(s.enemyCount()).toBe(4);
+    // Restarting the same stage is what a touch does; loadStage resets both
+    // the stage clock and the arrival cursor, so 0:30 has to come round again.
+    s.step(press({ jumpPressed: true }), FIXED_DT);
+    const fresh = waveSession();
+    expect(fresh.enemyCount()).toBe(2);
+    run(fresh, 10);
+    expect(fresh.enemyCount()).toBe(2);
+  });
+
+  it('leaves the Colosseum at one body for a full stage', () => {
+    const s = createDodgeArenaSession({
+      stages: rosterStages(),
+      comfort: COMFORT,
+      godMode: true,
+    });
+    s.step(press({ attackPressed: true }), FIXED_DT);
+    for (let i = 0; i < Math.round(70 / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+    expect(s.enemyCount()).toBe(1);
+  });
+
+  it('is deterministic — two identically driven sessions agree', () => {
+    const a = waveSession();
+    const b = waveSession();
+    for (let i = 0; i < Math.round(35 / FIXED_DT); i++) {
+      a.step(IDLE, FIXED_DT);
+      b.step(IDLE, FIXED_DT);
+      expect(a.enemyCount()).toBe(b.enemyCount());
+    }
+  });
+});
+
+describe('joinX — where a body that walks in mid-fight lands', () => {
+  it('is never less than 474 px from her, wherever she stands', () => {
+    for (let x = 0; x <= CANVAS.width; x++) {
+      expect(Math.abs(joinX(x) - x)).toBeGreaterThanOrEqual(474);
+    }
+  });
+
+  it('places a body clear of the walls, unlike a third spawnX slot', () => {
+    const world = arenaWorld();
+    const inside = (box: { x: number; y: number; width: number; height: number }) =>
+      world.solids.some(
+        (s) =>
+          box.x < s.x + s.width &&
+          box.x + box.width > s.x &&
+          box.y < s.y + s.height &&
+          box.y + box.height > s.y,
+      );
+    for (let x = 0; x <= CANVAS.width; x += 8) {
+      for (const id of ['walker', 'duelist', 'warden'] as const) {
+        expect(inside(enemyBox(createEnemy(id, joinX(x), FLOOR_Y)))).toBe(false);
+      }
+      // The bug this replaces: spawnX's fourth slot walks all the way in.
+      expect(Math.abs(joinX(x) - x)).toBeGreaterThan(Math.abs(spawnX(3, x) - x));
+    }
+  });
+});
+
+describe('a reinforcement that dies comes back (the T10 respawn bug)', () => {
+  const IDLE: InputFrame = {
+    left: false,
+    right: false,
+    jumpHeld: false,
+    jumpPressed: false,
+    attackPressed: false,
+    up: false,
+    down: false,
+    dashPressed: false,
+  };
+  const COMFORT = { reduceShake: false, reduceFlashing: false };
+
+  function waveAtFour() {
+    const s = createDodgeArenaSession({
+      stages: waveStages(),
+      comfort: COMFORT,
+      godMode: true,
+    });
+    s.step({ ...IDLE, attackPressed: true }, FIXED_DT);
+    for (let i = 0; i < Math.round(31 / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+    return s;
+  }
+
+  it('brings back slot 3 as itself, not as undefined', () => {
+    const s = waveAtFour();
+    expect(s.enemyCount()).toBe(4);
+    // Wave 1 opens walker + flier and is joined by walker + flier, so slot 3
+    // is a flier that `def.enemies[3]` knows nothing about — the exact shape
+    // of the bug: the old code read the OPENING cast and gave up on
+    // `undefined`, so a reinforcement that died never returned.
+    const doomed = s.debugEnemies()[3]!;
+    expect(doomed.id).toBe('flier');
+    doomed.dead = true;
+    for (let i = 0; i < Math.round((RESPAWN_DELAY + 0.2) / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+    expect(s.enemyCount()).toBe(4);
+    expect(s.debugEnemies()[3]!.id).toBe('flier');
+    expect(s.debugEnemies()[3]!.dead).toBe(false);
+  });
+
+  it('walks the returning body in at the wall, not on top of her', () => {
+    const s = waveAtFour();
+    const doomed = s.debugEnemies()[2]!;
+    doomed.dead = true;
+    // Measured on the arrival frame itself: it starts walking the moment it
+    // is back, so anything later is testing the walker's legs, not the
+    // placement. `spawnX`'s fourth slot would have put it 92 px from her.
+    let back = s.debugEnemies()[2]!;
+    for (let i = 0; i < 4 && back === doomed; i++) {
+      s.step(IDLE, FIXED_DT);
+      back = s.debugEnemies()[2]!;
+    }
+    expect(back).not.toBe(doomed);
+    expect(Math.abs(back.home.x - PLAYER_SPAWN_X)).toBeGreaterThanOrEqual(474);
+  });
+});
+
+describe('identical twins do not become one body (playtest 4)', () => {
+  const IDLE: InputFrame = {
+    left: false,
+    right: false,
+    jumpHeld: false,
+    jumpPressed: false,
+    attackPressed: false,
+    up: false,
+    down: false,
+    dashPressed: false,
+  };
+
+  it('keeps wave 1’s two fliers apart at some point in every 2 s window', () => {
+    const s = createDodgeArenaSession({
+      stages: waveStages(),
+      comfort: { reduceShake: false, reduceFlashing: false },
+      godMode: true,
+    });
+    s.step({ ...IDLE, attackPressed: true }, FIXED_DT);
+    for (let i = 0; i < Math.round(31 / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+    const fliers = s.debugEnemies().filter((e) => e.id === 'flier');
+    expect(fliers).toHaveLength(2);
+
+    // Enemies never see each other and every machine is deterministic, so
+    // without the per-slot bob stagger these two would converge on the same
+    // home point and overlap exactly, forever, in every run.
+    const window = Math.round(2 / FIXED_DT);
+    let apartThisWindow = false;
+    for (let i = 0; i < Math.round(20 / FIXED_DT); i++) {
+      s.step(IDLE, FIXED_DT);
+      const gap = Math.hypot(
+        fliers[0]!.position.x - fliers[1]!.position.x,
+        fliers[0]!.position.y - fliers[1]!.position.y,
+      );
+      if (gap > 30) apartThisWindow = true;
+      if ((i + 1) % window === 0) {
+        expect(apartThisWindow).toBe(true);
+        apartThisWindow = false;
+      }
+    }
   });
 });
