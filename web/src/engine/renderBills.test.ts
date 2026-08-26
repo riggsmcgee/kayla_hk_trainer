@@ -17,7 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_SIZES, createEnemy, type AttackKind, type Enemy } from './enemies';
 import { drawBill, drawBillDog, billDogPose, billPose } from './renderBills';
-import { DOG_LOOKS, boneAngle, dogLook } from './dogLook';
+import { DEFAULT_DOG_LOOK, DOG_LOOKS, boneAngle, dogLook } from './dogLook';
 
 /**
  * A canvas that writes down what it was asked to draw, so a pose is
@@ -226,11 +226,27 @@ describe('the rolling ball shows its own rule', () => {
 // ---------------------------------------------------------------------------
 // Playtest 4 — the ball and the bones ship as a portfolio too.
 // ---------------------------------------------------------------------------
-describe('the dog’s three hazard looks', () => {
-  it('offers three, each named and described', () => {
-    expect(DOG_LOOKS).toHaveLength(3);
-    expect(new Set(DOG_LOOKS.map((l) => l.name)).size).toBe(3);
+describe('the dog’s hazard looks', () => {
+  it('offers four, each named and described', () => {
+    expect(DOG_LOOKS).toHaveLength(4);
+    expect(new Set(DOG_LOOKS.map((l) => l.name)).size).toBe(4);
     for (const l of DOG_LOOKS) expect(l.feel.length).toBeGreaterThan(20);
+  });
+
+  it('defaults to the pick: stepped bones on the plain orb ring', () => {
+    // Playtest 5 asked for "Stepped for the bones" — the BONES, not the
+    // broken ring the portfolio happened to bundle them with. Every fallback
+    // here used to resolve to index 0, so a fresh browser played the SMOOTH
+    // bones: the one version the user had just voted against.
+    const pick = dogLook(DEFAULT_DOG_LOOK);
+    expect(pick.boneSteps).toBe(8);
+    expect(pick.ring).toBe('thin');
+  });
+
+  it('leaves the three older looks exactly where they were', () => {
+    // The picker exists to compare, so a stored index must never come back
+    // pointing at a different design.
+    expect(DOG_LOOKS.slice(0, 3).map((l) => l.name)).toEqual(['Orb rules', 'Loud', 'Stepped']);
   });
 
   it('marks the ball in every one of them — none of them can say nothing', () => {
@@ -271,8 +287,8 @@ describe('the dog’s three hazard looks', () => {
     expect(DOG_LOOKS.some((l) => l.boneSteps > 0)).toBe(true);
   });
 
-  it('falls back to the first look for an index that does not exist', () => {
-    expect(dogLook(99)).toBe(DOG_LOOKS[0]);
-    expect(dogLook(-1)).toBe(DOG_LOOKS[0]);
+  it('falls back to the picked look for an index that does not exist', () => {
+    expect(dogLook(99)).toBe(DOG_LOOKS[DEFAULT_DOG_LOOK]);
+    expect(dogLook(-1)).toBe(DOG_LOOKS[DEFAULT_DOG_LOOK]);
   });
 });

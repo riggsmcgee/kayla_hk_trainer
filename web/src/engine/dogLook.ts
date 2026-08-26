@@ -18,10 +18,15 @@
  * that nothing in either Bill module interpolates — every offset is a whole
  * step on a `Math.floor(t * hz)` clock, and that was the single axis
  * separating the two designs the user chose from the seven they did not. A
- * smoothly spinning bone quietly breaks it. `boneSteps` is the fix, and
- * "Stepped" is the variant that applies it; the default is left on the
- * smooth one only so the user can see the difference for themselves rather
- * than being told.
+ * smoothly spinning bone quietly breaks it. `boneSteps` is the fix.
+ *
+ * PLAYTEST 5 PICKED "Stepped for the bones" — and picked the BONES, not the
+ * broken ring that "Stepped" happened to be bundled with. The two were one
+ * entry only because the portfolio grouped them, so there is a fourth entry
+ * now that separates them: the stepped bones on the plain orb ring. It is
+ * the DEFAULT, because every fallback in this file used to resolve to index
+ * 0 and a fresh browser therefore played the SMOOTH bones — the version the
+ * user has just voted against.
  */
 
 export type RingStyle =
@@ -63,10 +68,26 @@ export const DOG_LOOKS: readonly DogLook[] = [
     ring: 'spun',
     boneSteps: 8,
   },
+  {
+    name: 'Stepped, plain ring',
+    feel: "The bones tumble in whole frames, and the ball keeps the red orb's own quiet ring. The rule kept, without the louder marker.",
+    ring: 'thin',
+    boneSteps: 8,
+  },
 ];
 
+/**
+ * The look the fight wears, and what an unset or out-of-range setting means.
+ *
+ * Playtest 5 asked for the stepped bones on the plain ring, and this is the
+ * entry that is both. It is LAST rather than first for the same reason the
+ * ratified roll is: re-pointing a stored index at a different design on a
+ * picker whose only job is comparison is the one thing it must not do.
+ */
+export const DEFAULT_DOG_LOOK = DOG_LOOKS.length - 1;
+
 export function dogLook(index: number): DogLook {
-  return DOG_LOOKS[index] ?? DOG_LOOKS[0]!;
+  return DOG_LOOKS[index] ?? DOG_LOOKS[DEFAULT_DOG_LOOK]!;
 }
 
 /**
