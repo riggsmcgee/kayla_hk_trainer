@@ -12,7 +12,17 @@ import {
   rebind,
   type Action,
 } from '../engine/input';
+import {
+  DEFAULT_GAMEPAD_BINDINGS,
+  buttonName,
+  connectedPads,
+  pressedButton,
+  readGamepads,
+  rebindButton,
+  type ConnectedPad,
+} from '../engine/gamepad';
 import { friendlyKeyName } from '../storage/keyNames';
+import { useGamepadBindings } from '../storage/useGamepadBindings';
 import { useBindings } from '../storage/useBindings';
 import { notifyProgressChanged, progressStore } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
@@ -37,6 +47,18 @@ const ACTION_LABELS: Record<Action, string> = {
 };
 
 const DEFAULT_STORED = JSON.stringify(bindingsToSettings(DEFAULT_BINDINGS));
+const DEFAULT_PAD_STORED = JSON.stringify(DEFAULT_GAMEPAD_BINDINGS);
+
+/**
+ * How often the Controller section looks for pads.
+ *
+ * The Gamepad API has no "a pad appeared" event worth relying on, and it
+ * hides a pad entirely until a button is pressed on it (the spec's own
+ * anti-fingerprinting rule). So this polls — six times a second, which finds
+ * a newly-woken pad fast enough to feel instant and is nothing next to the
+ * 60 Hz the game itself polls at.
+ */
+const PAD_POLL_MS = 160;
 
 type ResetStage = 'idle' | 'confirm' | 'cleared';
 
@@ -47,7 +69,10 @@ export function Settings() {
   const [rollVariant, setRollVariant] = useRollVariant();
   const [entranceVariant, setEntranceVariant] = useEntranceVariant();
   const [dogLook, setDogLook] = useDogLook();
+  const [padBindings, setPadBindings] = useGamepadBindings();
+  const [pads, setPads] = useState<ConnectedPad[]>([]);
   const [capturing, setCapturing] = useState<Action | null>(null);
+  const [capturingPad, setCapturingPad] = useState<Action | null>(null);
   const [resetStage, setResetStage] = useState<ResetStage>('idle');
 
   // Capture state: the next keydown becomes that action's only key. Which
@@ -75,7 +100,32 @@ export function Settings() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [capturing, bindings, setBindings]);
 
+  // Which pads are here, refreshed on a timer. A pad stays invisible to the
+  // browser until she presses something on it, so this is also what turns
+  // "no controller found" into her controller's name the moment she does.
+  useEffect(() => {
+    const poll = (): void => setPads(connectedPads());
+    poll();
+    const timer = window.setInterval(poll, PAD_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  // Capture: the next button held on any pad becomes that action's only
+  // button. Same shape as the keyboard capture above, but polled rather than
+  // evented, because that is the only way the Gamepad API can be read.
+  useEffect(() => {
+    if (capturingPad === null) return;
+    const timer = window.setInterval(() => {
+      const index = pressedButton(readGamepads());
+      if (index === null) return;
+      setPadBindings(rebindButton(padBindings, capturingPad, index));
+      setCapturingPad(null);
+    }, PAD_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [capturingPad, padBindings, setPadBindings]);
+
   const isDefault = JSON.stringify(bindingsToSettings(bindings)) === DEFAULT_STORED;
+  const padIsDefault = JSON.stringify(padBindings) === DEFAULT_PAD_STORED;
 
   // The reset flow swaps the button she pressed for a panel, then a line of
   // text; move her focus along with it so the keyboard (and the screen
@@ -160,8 +210,87 @@ export function Settings() {
             Reset to defaults
           </button>
         </div>
+      </section>
+
+      <section className="settings-section" aria-labelledby="settings-controller">
+        <h2 id="settings-controller">Controller</h2>
+        {pads.length === 0 ? (
+          <p className="settings-note">
+            No controller yet. Plug it in and <strong>press any button on it</strong> — browsers
+            keep a controller hidden until you do, so pressing a button is what wakes it up.
+          </p>
+        ) : (
+          <ul className="pad-list">
+            {pads.map((padInfo, i) => (
+              <li key={`${padInfo.id}-${i}`} className="pad-row">
+                <span className="pad-name">{padInfo.id}</span>
+                {!padInfo.standard && (
+                  <span className="fine-print">
+                    — your browser could not match this to a standard layout, so the buttons below
+                    may sit in odd places. Re-map the ones that are wrong.
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <ul className="binding-list">
+          {ACTIONS.map((action) => {
+            const active = capturingPad === action;
+            return (
+              <li key={action} className={active ? 'binding-row is-capturing' : 'binding-row'}>
+                <span className="binding-action">{ACTION_LABELS[action]}</span>
+                <span className="binding-keys">
+                  {active ? (
+                    <span className="binding-prompt">press a button…</span>
+                  ) : padBindings[action].length === 0 ? (
+                    <span className="binding-prompt">no button</span>
+                  ) : (
+                    padBindings[action].map((index) => (
+                      <kbd key={index} className="key-chip">
+                        {buttonName(index)}
+                      </kbd>
+                    ))
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className={active ? 'chip chip-active' : 'chip'}
+                  aria-label={
+                    active
+                      ? `Cancel changing button for ${ACTION_LABELS[action]}`
+                      : `Change button for ${ACTION_LABELS[action]}`
+                  }
+                  onClick={() => setCapturingPad(active ? null : action)}
+                >
+                  {active ? 'Cancel' : 'Change'}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="sr-only" role="status">
+          {capturingPad ? `Press a button for ${ACTION_LABELS[capturingPad]}.` : ''}
+        </p>
+        <div className="btn-row">
+          <button
+            type="button"
+            className="chip"
+            disabled={padIsDefault}
+            onClick={() => {
+              setCapturingPad(null);
+              setPadBindings(DEFAULT_GAMEPAD_BINDINGS);
+            }}
+          >
+            Reset to defaults
+          </button>
+        </div>
         <p className="fine-print settings-note">
-          The real controllers get their own check-and-remap here once we plug them in.
+          Buttons are named by <em>where they are</em>, not by the letter printed on them — every
+          controller disagrees about the letters, and none of them disagree about the positions. The
+          keyboard keeps working the whole time; the controller is an extra pair of hands, not a
+          replacement.
         </p>
       </section>
 

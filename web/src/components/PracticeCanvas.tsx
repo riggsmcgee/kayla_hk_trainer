@@ -14,6 +14,8 @@
 import { useEffect, useRef } from 'react';
 import { CANVAS } from '../engine/constants';
 import { attachKeyboard, createKeyboardInput } from '../engine/input';
+import { createGamepadInput, mergeInput, readGamepads } from '../engine/gamepad';
+import { useGamepadBindings } from '../storage/useGamepadBindings';
 import { createGameLoop } from '../engine/loop';
 import type { GameSession } from '../engine/session';
 import { controlsCaption } from '../storage/keyNames';
@@ -29,6 +31,7 @@ interface PracticeCanvasProps {
 export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bindings] = useBindings();
+  const [padBindings] = useGamepadBindings();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,10 +41,15 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
     const session = createSession();
     const keyboard = createKeyboardInput(bindings);
     const detachKeyboard = attachKeyboard(keyboard);
+    // The pad is polled where the keyboard is evented, so it is read inside
+    // simulate() rather than wired to a listener. Both produce an InputFrame
+    // and the session cannot tell which hand it came from.
+    const gamepad = createGamepadInput(padBindings);
     canvas.focus({ preventScroll: true });
 
     const loop = createGameLoop({
-      simulate: (dt) => session.step(keyboard.sample(), dt),
+      simulate: (dt) =>
+        session.step(mergeInput(keyboard.sample(), gamepad.sample(readGamepads())), dt),
       render: (alpha) => session.render(ctx, alpha),
     });
     loop.start();
@@ -50,7 +58,7 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
       loop.stop();
       detachKeyboard();
     };
-  }, [createSession, bindings]);
+  }, [createSession, bindings, padBindings]);
 
   return (
     <figure className="practice-canvas-frame">

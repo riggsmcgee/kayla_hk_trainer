@@ -135,6 +135,12 @@ export interface SettingsV1 {
    */
   inputBindings?: Record<string, string>;
   /**
+   * Optional gamepad rebinds (action name -> comma-joined button indices, in
+   * W3C standard-mapping order). Separate from `inputBindings` because the
+   * two sources are live at the same time and neither replaces the other.
+   */
+  gamepadBindings?: Record<string, string>;
+  /**
    * DEV TOOL: remove in the final build. God mode — nothing can touch her, but
    * every hit she WOULD have taken is still shown and counted. It exists so
    * the developer can reach and test any part of the dojo without playing
