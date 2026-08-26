@@ -839,8 +839,8 @@ describe('arena session (staged game)', () => {
       stages: quick(2),
       startIndex: 1,
       comfort: COMFORT,
-      jumpKey: 'Space',
-      attackKey: 'J',
+      jumpKey: () => 'Space',
+      attackKey: () => 'J',
       onNext: () => {},
       nextLabel: 'the waves',
     });

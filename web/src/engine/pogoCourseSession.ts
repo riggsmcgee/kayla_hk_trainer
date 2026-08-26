@@ -89,8 +89,8 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
     onNext,
     nextLabel,
     godMode = false,
-    jumpKey = 'Z',
-    attackKey = 'X',
+    jumpKey = () => 'Z',
+    attackKey = () => 'X',
   } = options;
 
   const world: World = {
@@ -301,8 +301,8 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
           onNext
-            ? `Press ${jumpKey} for ${nextLabel ?? 'the next one'} · ${attackKey} to run it again.`
-            : `Press ${attackKey} to run it again.`,
+            ? `Press ${jumpKey()} for ${nextLabel ?? 'the next one'} · ${attackKey()} to run it again.`
+            : `Press ${attackKey()} to run it again.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );

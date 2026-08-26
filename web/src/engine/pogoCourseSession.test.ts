@@ -105,8 +105,8 @@ describe('pogo course clear screen (playtest 3, note 11)', () => {
     const s = runToClear({
       level: 1,
       comfort: COMFORT,
-      jumpKey: 'Space',
-      attackKey: 'J',
+      jumpKey: () => 'Space',
+      attackKey: () => 'J',
       onNext: () => {},
       nextLabel: 'level 2',
     });

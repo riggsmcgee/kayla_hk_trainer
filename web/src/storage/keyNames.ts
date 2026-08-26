@@ -159,3 +159,33 @@ export function jumpKeyName(bindings: Bindings): string {
 export function attackKeyName(bindings: Bindings): string {
   return actionKeyName(bindings, 'attack', 'X');
 }
+
+/**
+ * What the in-canvas overlays call the FORWARD control, in the terms of the
+ * board she last touched: "Z", or "the bottom button".
+ *
+ * The ratified rule is "jump = forward, attack = again" — not "Z = forward,
+ * X = again", which is how PLAN.md and playtest 3 both stated it and which
+ * teaches the next reader to hard-code two keys that she may already have
+ * rebound and that a pad does not have at all.
+ */
+export function jumpLabel(
+  bindings: Bindings,
+  padBindings: GamepadBindings,
+  source: InputSource,
+): string {
+  return source === 'gamepad'
+    ? joinButtonNames([padBindings.jump[0] ?? -1])
+    : jumpKeyName(bindings);
+}
+
+/** What the overlays call the AGAIN control, same rule. */
+export function attackLabel(
+  bindings: Bindings,
+  padBindings: GamepadBindings,
+  source: InputSource,
+): string {
+  return source === 'gamepad'
+    ? joinButtonNames([padBindings.attack[0] ?? -1])
+    : attackKeyName(bindings);
+}

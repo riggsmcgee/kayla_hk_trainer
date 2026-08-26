@@ -251,7 +251,7 @@ export interface ArenaSession extends GameSession {
 }
 
 export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSession {
-  const { stages, comfort, onNext, nextLabel, jumpKey = 'Z', attackKey = 'X' } = config;
+  const { stages, comfort, onNext, nextLabel, jumpKey = () => 'Z', attackKey = () => 'X' } = config;
   if (stages.length === 0) throw new Error('createDodgeArenaSession: no stages');
   const observe = config.observe ?? false;
   const godMode = config.godMode ?? false;
@@ -639,8 +639,8 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
           onNext
-            ? `Press ${jumpKey} for ${nextLabel ?? 'the next stop'} · ${attackKey} to run it again from the top.`
-            : `Press ${attackKey} to run it again from the top.`,
+            ? `Press ${jumpKey()} for ${nextLabel ?? 'the next stop'} · ${attackKey()} to run it again from the top.`
+            : `Press ${attackKey()} to run it again from the top.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );
@@ -658,7 +658,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         ctx.font = '19px system-ui, sans-serif';
         ctx.fillStyle = COLORS.hudDim;
         ctx.fillText(
-          `${stage.hits} ${stage.hits === 1 ? 'hit' : 'hits'} · ${formatClock(stage.elapsed)} — press ${jumpKey} for the next one.`,
+          `${stage.hits} ${stage.hits === 1 ? 'hit' : 'hits'} · ${formatClock(stage.elapsed)} — press ${jumpKey()} for the next one.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 8,
         );
@@ -680,7 +680,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         );
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
-          `Press ${attackKey} to face ${foe()} again.`,
+          `Press ${attackKey()} to face ${foe()} again.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );

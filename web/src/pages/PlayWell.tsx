@@ -22,7 +22,7 @@ import type { ComfortSettings } from '../engine/juice';
 import { createPogoCourseSession } from '../engine/pogoCourseSession';
 import { FINALE_LEVEL, FINALE_WAVE_COUNT } from '../engine/roster';
 import { waveStages } from '../engine/stages';
-import { attackKeyName, jumpKeyName } from '../storage/keyNames';
+import { useOverlayLabels } from '../storage/useOverlayLabels';
 import {
   bossSkipKey,
   finaleCleared,
@@ -30,7 +30,6 @@ import {
   waveLocked,
   waveSkipKey,
 } from '../storage/progress';
-import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
@@ -80,10 +79,13 @@ interface BeatProps {
   comfort: ComfortSettings;
   /** DEV TOOL: remove in the final build. Passed straight through to each session. */
   godMode: boolean;
-  /** What the overlays call the forward key (Z) — from her bindings. */
-  jumpKey: string;
-  /** What the overlays call the again key (X) — from her bindings. */
-  attackKey: string;
+  /**
+   * What the overlays call the forward control, asked for at draw time so the
+   * copy can follow her bindings and her board without a rebuild.
+   */
+  jumpKey: () => string;
+  /** What the overlays call the again control, same rule. */
+  attackKey: () => string;
   refresh: () => void;
 }
 
@@ -370,9 +372,7 @@ export function PlayWell() {
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
   const [godMode] = useGodMode();
-  const [bindings] = useBindings();
-  const jumpKey = jumpKeyName(bindings);
-  const attackKey = attackKeyName(bindings);
+  const { jumpKey, attackKey } = useOverlayLabels();
   const [beat, setBeat] = useState<Beat>(() => nextBeat(progress));
   // The locked beat she last pressed; the gate shows while it stays locked.
   const [asked, setAsked] = useState<Beat | null>(null);

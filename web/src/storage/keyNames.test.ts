@@ -6,11 +6,13 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_BINDINGS } from '../engine/input';
 import { BUTTON, DEFAULT_GAMEPAD_BINDINGS } from '../engine/gamepad';
 import {
+  attackLabel,
   controlsCaption,
   friendlyKeyName,
   joinButtonNames,
   joinKeyNames,
   jumpKeyName,
+  jumpLabel,
 } from './keyNames';
 
 describe('jumpKeyName', () => {
@@ -154,6 +156,32 @@ describe('controlsCaption', () => {
       'gamepad',
     );
     expect(caption).toContain('jump with the right button');
+  });
+});
+
+describe('jumpLabel and attackLabel', () => {
+  it('name keys for the keyboard and positions for the pad', () => {
+    expect(jumpLabel(DEFAULT_BINDINGS, DEFAULT_GAMEPAD_BINDINGS, 'keyboard')).toBe('Z');
+    expect(attackLabel(DEFAULT_BINDINGS, DEFAULT_GAMEPAD_BINDINGS, 'keyboard')).toBe('X');
+    expect(jumpLabel(DEFAULT_BINDINGS, DEFAULT_GAMEPAD_BINDINGS, 'gamepad')).toBe(
+      'the bottom button',
+    );
+    expect(attackLabel(DEFAULT_BINDINGS, DEFAULT_GAMEPAD_BINDINGS, 'gamepad')).toBe(
+      'the left button',
+    );
+  });
+
+  it('follow a remap on either board', () => {
+    expect(
+      jumpLabel({ ...DEFAULT_BINDINGS, jump: ['Space'] }, DEFAULT_GAMEPAD_BINDINGS, 'keyboard'),
+    ).toBe('Space');
+    expect(
+      attackLabel(
+        DEFAULT_BINDINGS,
+        { ...DEFAULT_GAMEPAD_BINDINGS, attack: [BUTTON.faceUp] },
+        'gamepad',
+      ),
+    ).toBe('the top button');
   });
 });
 

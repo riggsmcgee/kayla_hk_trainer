@@ -20,6 +20,8 @@ import { MemoryRouter } from 'react-router';
 import type { ProgressV1 } from '@dojo/shared';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import type { GameSession } from '../engine/session';
+import { noteInputSource } from '../engine/inputSource';
+import type { InputFrame } from '../engine/types';
 
 /**
  * Hoisted so the `vi.mock` factories below can see them — `vi.mock` is
@@ -92,6 +94,17 @@ function firstConfig(spy: Mock): Record<string, unknown> {
   return call[0] as Record<string, unknown>;
 }
 
+const IDLE_FRAME: InputFrame = {
+  left: false,
+  right: false,
+  up: false,
+  down: false,
+  jumpHeld: false,
+  jumpPressed: false,
+  attackPressed: false,
+  dashPressed: false,
+};
+
 function renderWell(): void {
   render(
     <MemoryRouter>
@@ -144,6 +157,22 @@ describe('a clear must not rebuild the game that produced it', () => {
     renderWell();
 
     expect(firstConfig(spies.boss).cleared).toBe(true);
+  });
+
+  it('renames the overlay prompts for her pad without rebuilding the fight', () => {
+    // The whole reason OverlayControls.jumpKey is a function and not a
+    // string. Baked in at construction, the only way to make the copy say
+    // "the bottom button" would be to rebuild the session — which restarts
+    // her run, so picking the pad up mid-fight would cost her the fight.
+    seedProgress({ finaleLevelCleared: true, finaleWavesCleared: [1, 2, 3] });
+    renderWell();
+    const attackKey = firstConfig(spies.boss).attackKey as () => string;
+    expect(attackKey()).toBe('X');
+
+    act(() => noteInputSource(IDLE_FRAME, { ...IDLE_FRAME, attackPressed: true }));
+
+    expect(attackKey()).toBe('the left button');
+    expect(spies.boss).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the wave session alive when she clears a wave', () => {

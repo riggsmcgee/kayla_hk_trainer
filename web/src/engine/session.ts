@@ -16,10 +16,18 @@ import type { InputFrame } from './types';
  * reflex press inside a hit-stop cannot skip the screen she has not read yet.
  */
 export interface OverlayControls {
-  /** What the copy calls the forward key. Remappable; the page passes the name. */
-  jumpKey?: string;
-  /** What the copy calls the again key. Remappable; the page passes the name. */
-  attackKey?: string;
+  /**
+   * What the copy calls the FORWARD control, asked for at DRAW time.
+   *
+   * A function and not a string, deliberately. These used to be baked in
+   * when the session was built, so the only way to change the copy was to
+   * rebuild the session — which restarts her run. Asking at draw time lets
+   * the name follow a rebind, and follow which board she is holding, without
+   * any session ever learning what a gamepad is (playtest 6, note 1).
+   */
+  jumpKey?: () => string;
+  /** What the copy calls the AGAIN control, asked for at draw time. */
+  attackKey?: () => string;
   /**
    * Where Z goes from a clear screen. Absent means there is nowhere forward
    * (the last level, a fail): Z is inert and the copy offers X only.

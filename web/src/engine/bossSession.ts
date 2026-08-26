@@ -105,7 +105,7 @@ function pressedAnything(input: InputFrame): boolean {
 }
 
 export function createBossSession(config: BossSessionConfig): GameSession {
-  const { comfort, jumpKey = 'Z', attackKey = 'X', onNext, nextLabel } = config;
+  const { comfort, jumpKey = () => 'Z', attackKey = () => 'X', onNext, nextLabel } = config;
   const godMode = config.godMode ?? false;
   const world = bossWorld();
   /** Which entrance plays, and how long it runs at normal speed. */
@@ -433,7 +433,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         ctx.textAlign = 'right';
         ctx.fillStyle = COLORS.hudDim;
         ctx.font = '15px system-ui, sans-serif';
-        ctx.fillText(`hold ${jumpKey} to hurry`, CANVAS.width - 16, CANVAS.height - 26);
+        ctx.fillText(`hold ${jumpKey()} to hurry`, CANVAS.width - 16, CANVAS.height - 26);
       } else if (boss.phase === 'ready') {
         drawCard(
           ctx,
@@ -476,8 +476,8 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
           onNext
-            ? `Press ${attackKey} to face them again · ${jumpKey} for ${nextLabel ?? 'the next stop'}.`
-            : `Press ${attackKey} to face them again.`,
+            ? `Press ${attackKey()} to face them again · ${jumpKey()} for ${nextLabel ?? 'the next stop'}.`
+            : `Press ${attackKey()} to face them again.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );

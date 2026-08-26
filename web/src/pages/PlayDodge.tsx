@@ -19,9 +19,8 @@ import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
 import { ROSTER, rosterEntry } from '../engine/roster';
 import { rosterStages } from '../engine/stages';
 import { arenaBest } from '../storage/bests';
-import { attackKeyName, jumpKeyName } from '../storage/keyNames';
+import { useOverlayLabels } from '../storage/useOverlayLabels';
 import { arenaCleared } from '../storage/progress';
-import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
@@ -61,9 +60,9 @@ export function PlayDodge() {
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
   const [godMode] = useGodMode();
-  const [bindings] = useBindings();
-  const jumpKey = jumpKeyName(bindings);
-  const attackKey = attackKeyName(bindings);
+  // Functions, not strings: the overlays ask at draw time, so the copy can
+  // follow her pad without the session being rebuilt under a live run.
+  const { jumpKey, attackKey } = useOverlayLabels();
   const navigate = useNavigate();
   // Fixed for this visit, so recording a clear doesn't rebuild the session under her.
   const [startIndex] = useState(() => firstUncleared(progress));

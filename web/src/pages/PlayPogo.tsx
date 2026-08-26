@@ -15,9 +15,8 @@ import { LevelPicker } from '../components/LevelPicker';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { createPogoCourseSession } from '../engine/pogoCourseSession';
 import { COURSE_LEVEL_COUNT } from '../engine/roster';
-import { attackKeyName, jumpKeyName } from '../storage/keyNames';
+import { useOverlayLabels } from '../storage/useOverlayLabels';
 import { levelSkipKey } from '../storage/progress';
-import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
@@ -32,9 +31,9 @@ export function PlayPogo() {
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
   const [godMode] = useGodMode();
-  const [bindings] = useBindings();
-  const jumpKey = jumpKeyName(bindings);
-  const attackKey = attackKeyName(bindings);
+  // Functions, not strings: the overlays ask at draw time, so the copy can
+  // follow her pad without the session being rebuilt under a live run.
+  const { jumpKey, attackKey } = useOverlayLabels();
   const navigate = useNavigate();
   const [level, setLevel] = useState(() => nextLevelToPlay(progress));
   /** The level cleared most recently in this visit — drives the panel under the canvas. */
