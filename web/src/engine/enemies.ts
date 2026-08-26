@@ -17,12 +17,26 @@ export interface Target {
   grounded: boolean;
 }
 
-/** One spitter shot. Nail contact destroys it; body contact is a hit. */
+/** One spitter shot or thrown bone. Nail contact destroys it; body contact is a hit. */
 export interface Projectile {
   position: Vec2;
   velocity: Vec2;
   radius: number;
   dead: boolean;
+  /**
+   * Rebounds left before a surface kills it instead of turning it. Absent or
+   * zero is the spitter's shot: it dies on the first thing it touches.
+   *
+   * The budget is spent by ANY surface — floor, wall or ceiling — so a bone
+   * that goes wall, ceiling, floor is finished. That was ratified over a
+   * floor-only rule on purpose: the budget is the readable limit, and it is
+   * meant to be short.
+   */
+  bounces?: number;
+  /** Radians per second the drawing spins. Simulation-irrelevant; the box is round. */
+  spin?: number;
+  /** Current rotation in radians, advanced by `spin`. */
+  angle?: number;
 }
 
 /**
@@ -286,6 +300,18 @@ export const ATTACKS = {
     projSpeed: 300,
     bonesActive: 0.12,
     bonesRecovery: 0.6,
+    /**
+     * A thrown bone rebounds this many times before a surface stops it
+     * (playtest 4, note 1). Spent by ANY surface — floor, wall or ceiling —
+     * so a bone that goes wall → ceiling → floor is done.
+     *
+     * Three is a knob. It is meant to be SHORT: the budget is the readable
+     * limit on how long the arena stays full of them, and the whole point of
+     * a rebound she can watch is that she can also wait it out.
+     */
+    boneBounces: 3,
+    /** Radians per second the bone tumbles. Drawing only — its hitbox is round. */
+    boneSpin: 11,
     rollEvery: 6.5,
     rollEveryHot: 4.5,
     rollTelegraph: 0.45,
@@ -1339,13 +1365,27 @@ function stepDog(e: Enemy, world: World, dt: number, t: Target | undefined): Pro
         x: e.position.x + e.facing * (size.width / 2),
         y: e.position.y - size.height / 2,
       };
+      // THROWN, not fired (playtest 4, note 1): “I thought that he would
+      // actually shoot the bones, and they would sort of spin around and go
+      // around the map and actually bounce them.” Same fan, same speed, same
+      // pokeable radius — what changed is that a surface turns them instead
+      // of eating them, and that they tumble while they travel.
+      //
+      // The alternating spin direction is free readability: three bones
+      // leaving the same mouth on the same frame no longer look like one
+      // object, and it costs nothing but a sign.
       return fanShots(
         mouth,
         { x: t.position.x, y: t.position.y - CHEST },
         A.shots,
         A.spreadDeg,
         A.projSpeed,
-      );
+      ).map((bone, i) => ({
+        ...bone,
+        bounces: A.boneBounces,
+        spin: i % 2 === 0 ? A.boneSpin : -A.boneSpin,
+        angle: 0,
+      }));
     }
     case 'active':
       if (e.phaseTimer <= 0) setPhase(e, 'recovery', A.bonesRecovery);
@@ -1497,12 +1537,52 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
   }
 }
 
-/** One projectile step: straight flight; dies on world geometry. */
+/**
+ * One projectile step.
+ *
+ * A spitter shot flies straight and dies on the first solid it meets — that
+ * is still the default, and every mode she has already played is unchanged.
+ *
+ * A thrown bone (`bounces > 0`) REBOUNDS instead, spending one of its budget
+ * per surface (playtest 4, note 1). The two axes are resolved separately so
+ * the rebound knows which surface it met: a wall flips x, a floor or ceiling
+ * flips y. A corner that turns both in one step still costs one bounce — it
+ * is one event to watch, so it should be one number off the budget.
+ */
 export function stepProjectile(p: Projectile, world: World, dt: number): void {
   if (p.dead) return;
-  p.position.x += p.velocity.x * dt;
-  p.position.y += p.velocity.y * dt;
-  if (solidAt(world, p.position.x, p.position.y)) p.dead = true;
+  if (p.spin) p.angle = (p.angle ?? 0) + p.spin * dt;
+
+  const nextX = p.position.x + p.velocity.x * dt;
+  const nextY = p.position.y + p.velocity.y * dt;
+
+  if (!p.bounces) {
+    p.position.x = nextX;
+    p.position.y = nextY;
+    if (solidAt(world, p.position.x, p.position.y)) p.dead = true;
+  } else {
+    let turned = false;
+    if (solidAt(world, nextX, p.position.y)) {
+      p.velocity.x = -p.velocity.x;
+      turned = true;
+    } else {
+      p.position.x = nextX;
+    }
+    if (solidAt(world, p.position.x, nextY)) {
+      p.velocity.y = -p.velocity.y;
+      turned = true;
+    } else {
+      p.position.y = nextY;
+    }
+    if (turned) {
+      p.bounces -= 1;
+      // A bone that just changed direction should look like it did.
+      if (p.spin) p.spin = -p.spin;
+      // The budget is spent: the next surface is the one that stops it.
+      if (p.bounces <= 0 && solidAt(world, p.position.x, p.position.y)) p.dead = true;
+    }
+  }
+
   if (Math.abs(p.position.x) > 8000 || Math.abs(p.position.y) > 4000) p.dead = true;
 }
 

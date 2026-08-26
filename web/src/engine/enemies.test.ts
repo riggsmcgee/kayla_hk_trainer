@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EnemyId } from '@dojo/shared';
 import { CANVAS, ENEMIES, FIXED_DT } from './constants';
-import { arenaWorld, spawnX } from './dodgeArenaSession';
+import { arenaWorld, bossWorld, spawnX } from './dodgeArenaSession';
 import {
   ATTACKS,
   applyNailHit,
@@ -340,5 +340,138 @@ describe('flier hunting', () => {
       hit = overlaps(enemyBox(flier), playerHurtbox(player));
     }
     expect(hit).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4, note 1 — the dog THROWS his bones.
+//
+// "I thought that he would actually shoot the bones, and they would sort of
+// spin around and go around the map and actually bounce them."
+//
+// This deliberately breaks "nothing new is taught at the end of the road",
+// ratified with the reasoning: bouncing is the one thing this entire dojo
+// has taught her, so a bone that arcs and rebounds is MORE the dojo's
+// language, not less.
+// ---------------------------------------------------------------------------
+describe('thrown bones', () => {
+  const flat = () => arenaWorld();
+
+  function bone(vx: number, vy: number, x = 600, y = 400): Projectile {
+    return {
+      position: { x, y },
+      velocity: { x: vx, y: vy },
+      radius: 7,
+      dead: false,
+      bounces: ATTACKS.dog.boneBounces,
+      spin: ATTACKS.dog.boneSpin,
+      angle: 0,
+    };
+  }
+
+  /** Fly it until it dies or the clock runs out; report what happened. */
+  function fly(p: Projectile, world: World, seconds = 12) {
+    let turns = 0;
+    let lastVx = p.velocity.x;
+    let lastVy = p.velocity.y;
+    const steps = Math.round(seconds / FIXED_DT);
+    for (let i = 0; i < steps && !p.dead; i++) {
+      stepProjectile(p, world, FIXED_DT);
+      if (Math.sign(p.velocity.x) !== Math.sign(lastVx) || Math.sign(p.velocity.y) !== Math.sign(lastVy)) {
+        turns += 1;
+      }
+      lastVx = p.velocity.x;
+      lastVy = p.velocity.y;
+    }
+    return { turns, dead: p.dead };
+  }
+
+  it('rebounds off a wall instead of dying on it', () => {
+    const b = bone(ATTACKS.dog.projSpeed, 0);
+    stepProjectile(b, flat(), FIXED_DT);
+    expect(b.dead).toBe(false);
+    const before = b.bounces;
+    for (let i = 0; i < Math.round(4 / FIXED_DT) && b.velocity.x > 0; i++) {
+      stepProjectile(b, flat(), FIXED_DT);
+    }
+    expect(b.velocity.x).toBeLessThan(0);
+    expect(b.bounces).toBe(before! - 1);
+    expect(b.dead).toBe(false);
+  });
+
+  it('spends its budget on ANY surface, then the next one stops it', () => {
+    // Ping-ponging between the boss's floor and its lid — the world bones
+    // actually live in. Floor, ceiling, floor, dead: three turns, and the
+    // fourth surface is the one that stops it. The budget is the readable
+    // limit on how long the arena stays full of them.
+    const b = bone(0, 400, 600, 400);
+    const { turns, dead } = fly(b, bossWorld());
+    expect(turns).toBe(ATTACKS.dog.boneBounces);
+    expect(dead).toBe(true);
+  });
+
+  it('bounces off a boss-only ceiling that the shared arena does not have', () => {
+    const b = bone(0, -400, 600, 300);
+    // In the shared world it leaves the top of the screen and is gone.
+    const escaped = { ...b, position: { ...b.position }, velocity: { ...b.velocity } };
+    fly(escaped, arenaWorld(), 6);
+    expect(escaped.position.y).toBeLessThan(0);
+
+    // Under the boss's lid it comes back down.
+    const lidded = { ...b, position: { ...b.position }, velocity: { ...b.velocity } };
+    for (let i = 0; i < Math.round(6 / FIXED_DT) && lidded.velocity.y < 0; i++) {
+      stepProjectile(lidded, bossWorld(), FIXED_DT);
+    }
+    expect(lidded.velocity.y).toBeGreaterThan(0);
+  });
+
+  it('leaves the shared arena at exactly three solids — the spitter is untouched', () => {
+    // enemies.test.ts has pinned this since the ledges came out. The boss's
+    // ceiling would also have changed the spitter, whose shots die off the
+    // top of the screen today.
+    expect(arenaWorld().solids).toHaveLength(3);
+    expect(bossWorld().solids).toHaveLength(4);
+  });
+
+  it('leaves a spitter shot flying straight and dying on the first solid', () => {
+    const shot: Projectile = {
+      position: { x: 600, y: 400 },
+      velocity: { x: 0, y: 400 },
+      radius: 7,
+      dead: false,
+    };
+    const { turns, dead } = fly(shot, flat());
+    expect(turns).toBe(0);
+    expect(dead).toBe(true);
+  });
+
+  it('tumbles, and reverses its tumble when it turns', () => {
+    const b = bone(ATTACKS.dog.projSpeed, 0);
+    stepProjectile(b, flat(), FIXED_DT);
+    expect(b.angle).toBeCloseTo(ATTACKS.dog.boneSpin * FIXED_DT, 10);
+    const spinBefore = b.spin;
+    for (let i = 0; i < Math.round(4 / FIXED_DT) && b.velocity.x > 0; i++) {
+      stepProjectile(b, flat(), FIXED_DT);
+    }
+    expect(b.spin).toBe(-spinBefore!);
+  });
+
+  it('throws three of them, still pokeable, spinning both ways', () => {
+    const dog = createEnemy('dog', 600, FLOOR_Y);
+    const target: Target = { position: { x: 300, y: FLOOR_Y }, grounded: true };
+    let thrown: Projectile[] = [];
+    for (let i = 0; i < Math.round(12 / FIXED_DT) && thrown.length === 0; i++) {
+      const shots = stepEnemy(dog, flat(), FIXED_DT, target);
+      // The roll fires nothing; only the bones return projectiles.
+      if (shots) thrown = shots;
+    }
+    expect(thrown).toHaveLength(ATTACKS.dog.shots);
+    for (const b of thrown) {
+      expect(b.bounces).toBe(ATTACKS.dog.boneBounces);
+      // Same radius as the spitter's: the nail kills it exactly as before,
+      // which is the link that makes a projectile fair.
+      expect(b.radius).toBe(7);
+    }
+    expect(new Set(thrown.map((b) => Math.sign(b.spin!))).size).toBe(2);
   });
 });

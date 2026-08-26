@@ -122,6 +122,28 @@ export function arenaWorld(): World {
   };
 }
 
+/**
+ * The Two Bills' arena: the same floor and walls, plus a ceiling.
+ *
+ * The ceiling is BOSS-ONLY, and that is the whole reason this function
+ * exists rather than a fourth solid in `arenaWorld()`. `arenaWorld()` is
+ * shared by the Colosseum, the finale's waves and the boss, and the
+ * spitter's shots currently leave the top of the screen and die there —
+ * putting a lid on the shared world would silently change an enemy she has
+ * already playtested. `enemies.test.ts` pins `arenaWorld()` at exactly three
+ * solids for that reason.
+ *
+ * What the lid is for: the dog's thrown bones rebound off every surface, and
+ * a bone that vanishes upward is a rebound she never gets to watch.
+ *
+ * @internal exported for the boss session and the tests
+ */
+export function bossWorld(): World {
+  const world = arenaWorld();
+  world.solids.push({ x: -200, y: -200, width: CANVAS.width + 400, height: 200 });
+  return world;
+}
+
 /** Airborne enemies spawn at hover height; the rest on the floor. */
 function spawnHeight(id: EnemyId): number {
   return id === 'flier' || id === 'spitter' ? 430 : FLOOR_Y;

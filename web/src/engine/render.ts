@@ -730,6 +730,31 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
 }
 
 /** Spitter shots: pale-green pokeable orbs (green = "your nail beats this"). */
+/**
+ * A tumbling bone: a shaft with a knuckle at each end, drawn at `angle`.
+ *
+ * It is drawn INSIDE the same glow and at the same radius as the spitter's
+ * shot, because it is the same promise — this is pokeable, and the nail
+ * kills it. The silhouette changes; the contract she learned in chapter 3
+ * does not. That link is the one that matters: it is what makes a projectile
+ * fair.
+ */
+function drawBone(ctx: CanvasRenderingContext2D, s: Projectile): void {
+  const r = s.radius;
+  ctx.save();
+  ctx.translate(s.position.x, s.position.y);
+  ctx.rotate(s.angle ?? 0);
+  ctx.fillStyle = COLORS.pokeGreen;
+  ctx.fillRect(-r, -r * 0.32, r * 2, r * 0.64);
+  for (const end of [-r, r]) {
+    ctx.beginPath();
+    ctx.arc(end, -r * 0.42, r * 0.44, 0, Math.PI * 2);
+    ctx.arc(end, r * 0.42, r * 0.44, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 export function drawProjectiles(ctx: CanvasRenderingContext2D, shots: readonly Projectile[]): void {
   for (const s of shots) {
     if (s.dead) continue;
@@ -737,6 +762,12 @@ export function drawProjectiles(ctx: CanvasRenderingContext2D, shots: readonly P
     ctx.beginPath();
     ctx.arc(s.position.x, s.position.y, s.radius + 5, 0, Math.PI * 2);
     ctx.fill();
+    // A bone tumbles; a spitter's shot is a bead. The `spin` field is what
+    // separates them, so nothing here has to know which enemy fired it.
+    if (s.spin !== undefined) {
+      drawBone(ctx, s);
+      continue;
+    }
     ctx.fillStyle = COLORS.pokeGreen;
     ctx.beginPath();
     ctx.arc(s.position.x, s.position.y, s.radius, 0, Math.PI * 2);

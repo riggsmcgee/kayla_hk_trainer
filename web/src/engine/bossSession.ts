@@ -33,7 +33,7 @@ import {
   lerpVec,
 } from './render';
 import { formatClock } from './clock';
-import { FLOOR_Y, PLAYER_SPAWN_X, arenaWorld } from './dodgeArenaSession';
+import { FLOOR_Y, PLAYER_SPAWN_X, bossWorld } from './dodgeArenaSession';
 import { recordRun } from '../storage/recordRun';
 import type { GameSession, OverlayControls } from './session';
 import type { InputFrame, Vec2 } from './types';
@@ -69,7 +69,7 @@ function pressedAnything(input: InputFrame): boolean {
 export function createBossSession(config: BossSessionConfig): GameSession {
   const { comfort, jumpKey = 'Z', attackKey = 'X', onNext, nextLabel } = config;
   const godMode = config.godMode ?? false;
-  const world = arenaWorld();
+  const world = bossWorld();
   const juice = createJuice(comfort);
   const edgeCarry = createEdgeCarry();
 
