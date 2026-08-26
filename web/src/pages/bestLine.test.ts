@@ -67,6 +67,26 @@ describe('bestLine', () => {
     expect(bestLine(chapterById('dodge-arena'), runs)).toBe('Best: 1 hit on the walker');
   });
 
+  it('prefers the furthest enemy she PASSED over the furthest she merely faced', () => {
+    // The roster runs easiest to hardest. arenaBest also reports her longest
+    // survival among failures, so before this one panicked half-minute
+    // against the warden outranked a passed stage on everything before it —
+    // the sign said how far she had wandered, not how far she had got.
+    const runs = [
+      run({ mode: 'dodge', enemyId: 'walker', hitsLanded: 9, cleared: true }),
+      run({ mode: 'dodge', enemyId: 'duelist', hitsLanded: 7, cleared: true }),
+      run({ mode: 'dodge', enemyId: 'warden', hitsLanded: 0, durationMs: 9_800, cleared: false }),
+    ];
+    expect(bestLine(chapterById('dodge-arena'), runs)).toBe('Best: 7 hits on the duelist');
+  });
+
+  it('still says something when she has not passed anything yet', () => {
+    const runs = [
+      run({ mode: 'dodge', enemyId: 'walker', hitsLanded: 2, durationMs: 12_000, cleared: false }),
+    ];
+    expect(bestLine(chapterById('dodge-arena'), runs)).toBe('Best: 2 hits on the walker');
+  });
+
   it('shows the furthest finale wave, else the finale level', () => {
     const waves = [
       run({ mode: 'dodge', enemyId: 'walker', wave: 1, hitsLanded: 8, cleared: true }),
@@ -77,5 +97,24 @@ describe('bestLine', () => {
 
     const levelOnly = [run({ level: 4, cleared: true, durationMs: 40_200 })];
     expect(bestLine(chapterById('finale'), levelOnly)).toBe('Best: level 4 in 0:40.2');
+  });
+
+  it('lets the Bills outrank the waves, because they are what the finale ends on', () => {
+    // The boss had no line at all: the last and hardest of the twelve
+    // scoreable things in the dojo was invisible on the one surface for it.
+    const runs = [
+      run({ mode: 'dodge', enemyId: 'walker', wave: 1, hitsLanded: 8, cleared: true }),
+      run({ mode: 'dodge', boss: true, hitsLanded: 0, durationMs: 47_400, cleared: false }),
+    ];
+    expect(bestLine(chapterById('finale'), runs)).toBe('Best: 0:47.4 against the Bills');
+  });
+
+  it('says so when she has been past 1:30', () => {
+    const runs = [
+      run({ mode: 'dodge', boss: true, hitsLanded: 0, durationMs: 96_200, cleared: true }),
+    ];
+    expect(bestLine(chapterById('finale'), runs)).toBe(
+      'Best: 1:36.2 against the Bills — past 1:30',
+    );
   });
 });

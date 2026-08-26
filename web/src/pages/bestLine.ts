@@ -10,7 +10,7 @@
 import type { PracticeRun } from '@dojo/shared';
 import type { Chapter } from '../chapters';
 import { COURSE_LEVEL_COUNT, FINALE_LEVEL, FINALE_WAVE_COUNT, ROSTER } from '../engine/roster';
-import { arenaBest, courseBest, waveBest, type StageBest } from '../storage/bests';
+import { arenaBest, bossBest, courseBest, waveBest, type StageBest } from '../storage/bests';
 
 /** Milliseconds as the in-game clock reads them: m:ss.t. */
 export function formatClock(ms: number): string {
@@ -32,20 +32,52 @@ function courseLine(runs: readonly PracticeRun[]): string | null {
   return null;
 }
 
+function arenaPhrase(name: string, best: StageBest): string {
+  return best.hitsLanded > 0
+    ? `Best: ${hits(best)} on the ${name}`
+    : `Best: ${formatClock(best.durationMs)} against the ${name}`;
+}
+
+/**
+ * The furthest enemy she has PASSED, and only if she has passed none, the
+ * furthest she has faced.
+ *
+ * The roster runs easiest to hardest, so walking it backwards is the same
+ * "how far down the road are you" that `courseLine` does. It used to take
+ * the first enemy with any run at all, which is not the same thing:
+ * `courseBest` only counts clears, but `arenaBest` also returns her longest
+ * survival among failures, so one panicked ten seconds against the warden
+ * quietly outranked a passed stage on everything before it. The sign was
+ * reporting how far she had WANDERED, not how far she had got.
+ */
 function arenaLine(runs: readonly PracticeRun[]): string | null {
+  let attempted: string | null = null;
   for (let i = ROSTER.length - 1; i >= 0; i--) {
     const enemy = ROSTER[i]!;
     const best = arenaBest(runs, enemy.id);
     if (!best) continue;
-    const name = enemy.name.toLowerCase();
-    return best.hitsLanded > 0
-      ? `Best: ${hits(best)} on the ${name}`
-      : `Best: ${formatClock(best.durationMs)} against the ${name}`;
+    if (best.cleared) return arenaPhrase(enemy.name.toLowerCase(), best);
+    attempted ??= arenaPhrase(enemy.name.toLowerCase(), best);
   }
-  return null;
+  return attempted;
 }
 
+/**
+ * The finale in its own order: the Bills, then the waves, then the level.
+ *
+ * The Bills had no line here at all, so the last and hardest of the twelve
+ * scoreable things in the dojo was invisible on the one surface that would
+ * have shown it — a run that costs 1:30 of not being touched, reported as
+ * whichever wave she happened to clear. The fight is scored in seconds and
+ * nothing down there can be hurt, so its line speaks in time, like its HUD.
+ */
 function finaleLine(runs: readonly PracticeRun[]): string | null {
+  const boss = bossBest(runs);
+  if (boss) {
+    return boss.cleared
+      ? `Best: ${formatClock(boss.durationMs)} against the Bills — past 1:30`
+      : `Best: ${formatClock(boss.durationMs)} against the Bills`;
+  }
   for (let wave = FINALE_WAVE_COUNT; wave >= 1; wave--) {
     const best = waveBest(runs, wave);
     if (!best) continue;

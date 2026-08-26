@@ -68,7 +68,9 @@ export function countWordCap(n: number): string {
 
 const COURSE_DONE = `Clear all ${countWord(COURSE_LEVEL_COUNT)} levels of the Pogo Course`;
 const ARENA_DONE = `Clear all ${countWord(ROSTER.length)} enemies in the Dodge Arena`;
-const FINALE_DONE = `Clear the level and all ${countWord(FINALE_WAVE_COUNT)} waves`;
+// The Bills are named because they are what it takes: finaleCleared
+// requires finaleBossCleared, and the sign used to stop at the waves.
+const FINALE_DONE = `Clear the level, all ${countWord(FINALE_WAVE_COUNT)} waves, and the Two Bills`;
 
 export const CHAPTERS: readonly Chapter[] = [
   {
