@@ -16,12 +16,17 @@
 import { tickDown } from './session';
 
 /**
+ * - `intro`   — Bill's entrance (playtest 4, note 4). The arena opens empty
+ *   but for the Knight; the clock is frozen throughout, and her input does
+ *   NOT start the fight from here — it only fast-forwards the beat. It runs
+ *   on every retry, so a slow intro can never eat her best time and can
+ *   never be lost to impatience either.
  * - `ready`   — inert until her first input, so reading the arena is free.
  * - `fighting` — the clock runs and a touch ends it.
  * - `card`    — the dog's arrival card: everything freezes, INCLUDING the clock.
  * - `over`    — she was touched; the clock is frozen for good.
  */
-export type BossPhase = 'ready' | 'fighting' | 'card' | 'over';
+export type BossPhase = 'intro' | 'ready' | 'fighting' | 'card' | 'over';
 
 /** The four moments the fight has; everything else is just time passing. */
 export type BossEvent = 'dog-arrives' | 'heat' | 'passed' | 'over';
@@ -39,6 +44,8 @@ export const BOSS = {
 
 export interface BossState {
   phase: BossPhase;
+  /** Seconds into Bill's entrance. Frozen at its full length once it is done. */
+  introElapsed: number;
   /** FIGHT time — the score. Never moves during a card or after the touch. */
   elapsed: number;
   /** Seconds left on the dog's card; zero in every other phase. */
@@ -54,7 +61,8 @@ export interface BossState {
 
 export function createBossState(): BossState {
   return {
-    phase: 'ready',
+    phase: 'intro',
+    introElapsed: 0,
     elapsed: 0,
     cardTimer: 0,
     dogIn: false,
@@ -66,6 +74,24 @@ export function createBossState(): BossState {
 /** Her first input starts the clock. Harmless to call again. */
 export function startBoss(s: BossState): void {
   if (s.phase === 'ready') s.phase = 'fighting';
+}
+
+/**
+ * Advance Bill's entrance by `dt` seconds of intro time — the session scales
+ * that by the fast-forward when she is holding jump — and move on to
+ * `ready` when the beat is over.
+ *
+ * Deliberately separate from `stepBoss`: the fight's clock and the intro's
+ * clock must never be the same number, because the whole point of the beat
+ * is that it costs her nothing.
+ */
+export function stepIntro(s: BossState, seconds: number, dt: number): void {
+  if (s.phase !== 'intro') return;
+  s.introElapsed += dt;
+  if (s.introElapsed >= seconds) {
+    s.introElapsed = seconds;
+    s.phase = 'ready';
+  }
 }
 
 /**

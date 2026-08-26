@@ -13,7 +13,14 @@
  * its three thresholds live in engine/boss.ts; this file is the wiring.
  */
 
-import { BOSS, createBossState, skipCard, startBoss, stepBoss } from './boss';
+import { BOSS, createBossState, skipCard, startBoss, stepBoss, stepIntro } from './boss';
+import {
+  BILL_ENTRANCE,
+  INTRO_FAST_FORWARD,
+  arrivalX,
+  entranceSeconds,
+  stepEntrance,
+} from './entrance';
 import { createArenaState, stepArena } from './arena';
 import { CANVAS } from './constants';
 import { createEnemy, stepEnemy, stepProjectile } from './enemies';
@@ -40,6 +47,20 @@ import type { InputFrame, Vec2 } from './types';
 
 /** Where Bill the man is waiting when she walks in. */
 const BILL_SPAWN_X = CANVAS.width - 300;
+/**
+ * Where Bill stands before his entrance begins: past the right edge with his
+ * whole 68 px body clear of it.
+ *
+ * Ratified in playtest 4: he is NOT on screen when the beat opens. The arena
+ * is empty but for the Knight, the thumps land while he is still out of
+ * frame, and he enters from the RIGHT — the far side from her spawn, and the
+ * same side the dog already walks in from, so the well keeps a consistent
+ * "they come from over there" geography.
+ */
+const BILL_OFFSTAGE_X = CANVAS.width + 80;
+
+/** How long Bill’s whole entrance runs at normal speed. */
+const INTRO_SECONDS = entranceSeconds(BILL_ENTRANCE);
 /** Where the dog stops after walking in, measured from the wall he came through. */
 const DOG_WALK_IN_INSET = 200;
 
@@ -81,7 +102,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   let boss = createBossState();
   let arena = createArenaState(false, godMode);
   let player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
-  let bill = createEnemy('bill', BILL_SPAWN_X, FLOOR_Y);
+  let bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
   /** Null until 0:30. */
   let dog: Enemy | null = null;
   /** Where the dog is heading while his card is up, and how fast. */
@@ -106,7 +127,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     boss = createBossState();
     arena = createArenaState(false, godMode);
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
-    bill = createEnemy('bill', BILL_SPAWN_X, FLOOR_Y);
+    bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
     dog = null;
     projectiles = [];
     hitFlash = 0;
@@ -169,6 +190,28 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         return;
       }
 
+      // Bill's entrance (playtest 4, note 4). Everything holds — the fight's
+      // clock has not started and the Knight cannot move, so the beat costs
+      // her nothing. Holding jump does NOT skip it; it runs it at 2.5x, so
+      // an impatient twentieth attempt still gets the theatre, briefly.
+      //
+      // The raw frame is read and the carry is neither absorbed nor merged,
+      // for the same reason the card branch does it: the hold that
+      // fast-forwarded the intro must not also arrive as a jump on the
+      // fight's first frame.
+      if (boss.phase === 'intro') {
+        const rate = rawInput.jumpHeld || rawInput.jumpPressed ? INTRO_FAST_FORWARD : 1;
+        const before = boss.introElapsed;
+        stepIntro(boss, INTRO_SECONDS, dt * rate);
+        const beat = stepEntrance(BILL_ENTRANCE, before, boss.introElapsed);
+        if (beat.thumped) juice.addTrauma(FEEDBACK.enemyDeath.trauma);
+        bill.position.x =
+          beat.beat === 'thumps'
+            ? BILL_OFFSTAGE_X
+            : arrivalX(BILL_OFFSTAGE_X, BILL_SPAWN_X, beat.beat === 'arrival' ? beat.progress : 1);
+        return;
+      }
+
       // The card. Everything holds, including the clock, and any key skips.
       //
       // The raw frame is read and the carry is NEITHER absorbed nor merged:
@@ -176,8 +219,13 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       // the fight's first frame. That is verbatim the bug playtest 2 fixed.
       if (boss.phase === 'card') {
         if (pressedAnything(rawInput)) skipCard(boss);
-        walkTheDogIn(dt);
-        stepBoss(boss, { playerHit: false }, dt);
+        // It also fast-forwards, like Bill's entrance. Two mechanisms on one
+        // overlay is untidy, and the tidy version costs her a fight: this one
+        // interrupts a run already in progress and she may be mid-panic, so
+        // the instant out stays.
+        const cardDt = rawInput.jumpHeld ? dt * INTRO_FAST_FORWARD : dt;
+        walkTheDogIn(cardDt);
+        stepBoss(boss, { playerHit: false }, cardDt);
         if (boss.phase !== 'card' && dog) dog.position.x = dogWalkTo;
         return;
       }
@@ -310,7 +358,29 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
       }
 
-      if (boss.phase === 'ready') {
+      if (boss.phase === 'intro') {
+        const beat = stepEntrance(BILL_ENTRANCE, boss.introElapsed, boss.introElapsed);
+        if (beat.beat === 'thumps') {
+          // Nothing but the Knight and a floor that will not stop moving.
+          // The line is deliberately not his name: she should be looking at
+          // the empty right-hand side of the arena, wondering.
+          ctx.textAlign = 'center';
+          ctx.fillStyle = COLORS.hudDim;
+          ctx.font = '19px system-ui, sans-serif';
+          ctx.fillText('Something is coming.', CANVAS.width / 2, CANVAS.height / 2 - 40);
+        } else if (beat.beat === 'name') {
+          drawCard(
+            ctx,
+            'BILL THE MAN',
+            "Kayla's uncle. You cannot hurt him — only outlast him.",
+            0.7 * beat.progress,
+          );
+        }
+        ctx.textAlign = 'right';
+        ctx.fillStyle = COLORS.hudDim;
+        ctx.font = '15px system-ui, sans-serif';
+        ctx.fillText(`hold ${jumpKey} to hurry`, CANVAS.width - 16, CANVAS.height - 26);
+      } else if (boss.phase === 'ready') {
         drawCard(
           ctx,
           'BILL THE MAN',
@@ -326,10 +396,11 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           CANVAS.height / 2 + 76,
         );
       } else if (boss.phase === 'card') {
+        drawBarking(ctx, 1 - boss.cardTimer / BOSS.cardSeconds, bill.position.x);
         drawCard(
           ctx,
           'BILL THE DOG',
-          'The family had two. Any key to skip — your clock is paused.',
+          `The family had two. Any key to skip, hold ${jumpKey} to hurry — your clock is paused.`,
           0.7,
         );
       } else if (boss.phase === 'over') {
@@ -362,6 +433,54 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };
+}
+
+/**
+ * Bill calls for help, and the answer arrives from off-screen.
+ *
+ * There is no audio anywhere in this project — no `Audio`, no Web Audio, no
+ * sound files — so the barking is DRAWN. Bill shouts in his own lettering
+ * and "WOOF!" comes in from the right edge with motion lines behind it,
+ * which is the same right edge both Bills walk in from.
+ *
+ * Stepped, like everything else the Bills do: the shout and the woof move in
+ * whole 4 px jumps on a floored clock, never interpolated. That constraint
+ * is what the user picked these designs FOR (PLAN.md §3), and an entrance
+ * that glided would be the one place the fight stops honouring it.
+ */
+function drawBarking(ctx: CanvasRenderingContext2D, progress: number, billX: number): void {
+  const step = (v: number) => Math.round(v / 4) * 4;
+  ctx.textAlign = 'center';
+  ctx.font = '22px system-ui, sans-serif';
+
+  // Bill's shout comes first and stays up.
+  if (progress > 0.1) {
+    const bob = step(Math.floor(progress * 8) % 2 === 0 ? 0 : 4);
+    ctx.fillStyle = COLORS.hudText;
+    // Clamped inward: Bill can be standing against either wall when the
+    // dog is due, and a shout that runs off the edge of the canvas reads as
+    // a rendering bug rather than as a shout.
+    const shoutX = Math.min(Math.max(billX, 90), CANVAS.width - 90);
+    ctx.fillText('HELP!', step(shoutX), step(FLOOR_Y - 200) + bob);
+  }
+
+  // The woof crosses in from the right edge over the back half of the card.
+  if (progress > 0.35) {
+    const t = Math.min(1, (progress - 0.35) / 0.45);
+    const x = step(CANVAS.width + 40 + (CANVAS.width * 0.45 - CANVAS.width - 40) * t);
+    const y = step(FLOOR_Y - 150);
+    ctx.fillStyle = COLORS.hudText;
+    ctx.font = '26px system-ui, sans-serif';
+    ctx.fillText('WOOF!', x, y);
+    ctx.strokeStyle = COLORS.hudDim;
+    ctx.lineWidth = 3;
+    for (const dy of [-12, 0, 12]) {
+      ctx.beginPath();
+      ctx.moveTo(x + 56, y + dy);
+      ctx.lineTo(x + 56 + step(28 + dy * 0.6), y + dy);
+      ctx.stroke();
+    }
+  }
 }
 
 /** A named card over a dimmed arena: the boss's one piece of theatre. */

@@ -16,7 +16,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createArenaState, stepArena } from './arena';
-import { BOSS, createBossState, skipCard, startBoss, stepBoss } from './boss';
+import { BOSS, createBossState, skipCard, startBoss, stepBoss, stepIntro } from './boss';
+import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import { ATTACKS, ENEMY_SIZES, createEnemy, stepEnemy, stepProjectile } from './enemies';
 import type { Projectile } from './enemies';
 import type { Enemy } from './enemies';
@@ -251,6 +252,10 @@ describe('the whole fight, with the touch disarmed', () => {
     const arena = createArenaState(false);
     arena.started = true;
     const boss = createBossState();
+    // Bill’s entrance runs in front of every fight now (playtest 4). It is
+    // theatre on a frozen clock, so the bot walks past it rather than
+    // simulating it — what it is here to measure starts afterwards.
+    stepIntro(boss, entranceSeconds(BILL_ENTRANCE), entranceSeconds(BILL_ENTRANCE));
     startBoss(boss);
     let projectiles: Projectile[] = [];
 

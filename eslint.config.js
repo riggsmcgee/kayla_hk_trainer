@@ -19,6 +19,8 @@ export default tseslint.config(
       'docs/**',
       '.agents/**',
       '.claude/**',
+      // Sprint machinery and its scratch patch scripts (git-excluded).
+      '.proactive/**',
     ],
   },
 

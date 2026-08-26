@@ -316,7 +316,16 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
         // A touch records the run, and her best time comes from those.
         onFailed: refresh,
       }),
-    [comfort, godMode, rollVariant, jumpKey, attackKey, progress.finaleBossCleared, onPassed, refresh],
+    [
+      comfort,
+      godMode,
+      rollVariant,
+      jumpKey,
+      attackKey,
+      progress.finaleBossCleared,
+      onPassed,
+      refresh,
+    ],
   );
 
   return (

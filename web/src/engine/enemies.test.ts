@@ -380,7 +380,10 @@ describe('thrown bones', () => {
     const steps = Math.round(seconds / FIXED_DT);
     for (let i = 0; i < steps && !p.dead; i++) {
       stepProjectile(p, world, FIXED_DT);
-      if (Math.sign(p.velocity.x) !== Math.sign(lastVx) || Math.sign(p.velocity.y) !== Math.sign(lastVy)) {
+      if (
+        Math.sign(p.velocity.x) !== Math.sign(lastVx) ||
+        Math.sign(p.velocity.y) !== Math.sign(lastVy)
+      ) {
         turns += 1;
       }
       lastVx = p.velocity.x;

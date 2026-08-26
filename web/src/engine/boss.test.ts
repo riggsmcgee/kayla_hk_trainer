@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { BOSS, createBossState, skipCard, startBoss, stepBoss } from './boss';
+import { BOSS, createBossState, skipCard, startBoss, stepBoss, stepIntro } from './boss';
+import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import type { BossEvent, BossState } from './boss';
 import { FIXED_DT } from './constants';
 
@@ -32,9 +33,16 @@ function fight(s: BossState, seconds: number): BossEvent[] {
   return events;
 }
 
+/** Past Bill's entrance and waiting on her first input. */
+function ready(): BossState {
+  const s = createBossState();
+  stepIntro(s, entranceSeconds(BILL_ENTRANCE), entranceSeconds(BILL_ENTRANCE));
+  return s;
+}
+
 /** A fight already underway. */
 function started(): BossState {
-  const s = createBossState();
+  const s = ready();
   startBoss(s);
   return s;
 }
@@ -54,8 +62,33 @@ function pastTheDog(): BossState {
 }
 
 describe('the boss clock, before it starts', () => {
-  it('is inert until she presses something', () => {
+  it('opens on Bill’s entrance, not on the fight', () => {
+    // Playtest 4, note 4. The clock is frozen throughout, so a slow intro
+    // can never eat her best time — and her input during it fast-forwards
+    // the beat rather than starting the fight.
     const s = createBossState();
+    expect(s.phase).toBe('intro');
+    startBoss(s);
+    expect(s.phase).toBe('intro');
+    expect(run(s, 5)).toEqual([]);
+    expect(s.elapsed).toBe(0);
+  });
+
+  it('reaches ready when the entrance finishes, and no sooner', () => {
+    const total = entranceSeconds(BILL_ENTRANCE);
+    const s = createBossState();
+    stepIntro(s, total, total - 0.1);
+    expect(s.phase).toBe('intro');
+    stepIntro(s, total, 0.1);
+    expect(s.phase).toBe('ready');
+    expect(s.introElapsed).toBe(total);
+    // And it stays put: nothing after the beat keeps winding the intro on.
+    stepIntro(s, total, 5);
+    expect(s.introElapsed).toBe(total);
+  });
+
+  it('is inert until she presses something', () => {
+    const s = ready();
     expect(s.phase).toBe('ready');
     expect(run(s, 5)).toEqual([]);
     expect(s.elapsed).toBe(0);

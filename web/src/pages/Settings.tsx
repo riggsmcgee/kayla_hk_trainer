@@ -233,9 +233,9 @@ export function Settings() {
             ))}
           </fieldset>
           <p className="fine-print settings-note">
-            Fight the Two Bills with each one and pick a favourite. They all alternate between a
-            hop you can run under and a skitter you cannot — what changes is the pace, the rhythm
-            and how long you get to decide.
+            Fight the Two Bills with each one and pick a favourite. They all alternate between a hop
+            you can run under and a skitter you cannot — what changes is the pace, the rhythm and
+            how long you get to decide.
           </p>
         </div>
       </details>

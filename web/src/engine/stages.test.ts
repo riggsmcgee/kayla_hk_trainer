@@ -139,7 +139,6 @@ describe('dueCount — the reinforcement schedule', () => {
     expect(dueCount(wave, 29.9)).toBe(0);
     expect(dueCount(wave, 30.1)).toBe(2);
   });
-
 });
 
 describe('stage definitions are freshly built', () => {

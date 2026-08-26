@@ -13,6 +13,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBossSession } from './bossSession';
+import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import { FIXED_DT } from './constants';
 import type { InputFrame } from './types';
 
@@ -64,13 +65,52 @@ function hold(session: Session, seconds: number, input: InputFrame = IDLE): void
   for (let i = 0; i < Math.round(seconds / FIXED_DT); i++) session.step(input, FIXED_DT);
 }
 
+/**
+ * A boss session with Bill's entrance already played out.
+ *
+ * Almost every test here wants one: playtest 4 put a 2.8 s entrance in front
+ * of the fight, and it replays on every retry, so "the fight" now means
+ * "after the beat". Idle input, not a held jump — the fast-forward is a
+ * behaviour under test, not a shortcut the other tests should lean on.
+ */
+function afterEntrance(config: Parameters<typeof createBossSession>[0]) {
+  const session = createBossSession(config);
+  hold(session, entranceSeconds(BILL_ENTRANCE) + 0.1);
+  return session;
+}
+
 beforeEach(() => {
   recorded.length = 0;
 });
 
 describe('walking in', () => {
-  it('names Bill the man and holds the clock at zero until she moves', () => {
+  it('opens with him OFF screen, thumping, before any of it', () => {
+    // Ratified in playtest 4: the arena opens empty but for the Knight, and
+    // the thumps land while he is still out of frame.
     const session = createBossSession({ comfort: COMFORT });
+    hold(session, 0.3);
+    const early = drawn(session);
+    expect(early).toContain('Something is coming.');
+    expect(early).not.toContain('BILL THE MAN');
+    expect(early[0]).toBe('0:00 / 1:30');
+  });
+
+  it('runs the entrance faster when she holds jump, but never skips it', () => {
+    // "If you hold down the jump button, the intro isn't skipped, but it goes
+    // at two or three times speed."
+    const patient = createBossSession({ comfort: COMFORT });
+    const hurried = createBossSession({ comfort: COMFORT });
+    hold(patient, 1.0);
+    hold(hurried, 1.0, press({ jumpHeld: true }));
+    // Same moment on the wall clock, further through the beat.
+    expect(drawn(patient)).toContain('Something is coming.');
+    expect(drawn(hurried)).not.toContain('Something is coming.');
+    // And the fight still has not started: the clock is frozen throughout.
+    expect(drawn(hurried)[0]).toBe('0:00 / 1:30');
+  });
+
+  it('names Bill the man and holds the clock at zero until she moves', () => {
+    const session = afterEntrance({ comfort: COMFORT });
     hold(session, 3);
 
     const lines = drawn(session);
@@ -79,12 +119,12 @@ describe('walking in', () => {
   });
 
   it('drops the target once she has already done 1:30', () => {
-    const session = createBossSession({ comfort: COMFORT, cleared: true });
+    const session = afterEntrance({ comfort: COMFORT, cleared: true });
     expect(drawn(session)[0]).toBe('0:00');
   });
 
   it('starts on any input, and never shows a hits line', () => {
-    const session = createBossSession({ comfort: COMFORT });
+    const session = afterEntrance({ comfort: COMFORT });
     session.step(press({ attackPressed: true }), FIXED_DT);
     hold(session, 1);
 
@@ -97,7 +137,7 @@ describe('walking in', () => {
 describe('the run it records', () => {
   it('carries no enemy and no wave, so no other best can claim it', () => {
     const failed: number[] = [];
-    const session = createBossSession({ comfort: COMFORT, onFailed: () => failed.push(1) });
+    const session = afterEntrance({ comfort: COMFORT, onFailed: () => failed.push(1) });
     session.step(press({ attackPressed: true }), FIXED_DT);
     // A Knight who does nothing is lanced inside the first few seconds.
     hold(session, 8);
@@ -110,7 +150,7 @@ describe('the run it records', () => {
   });
 
   it('records the fight clock, and freezes it at the touch', () => {
-    const session = createBossSession({ comfort: COMFORT });
+    const session = afterEntrance({ comfort: COMFORT });
     session.step(press({ attackPressed: true }), FIXED_DT);
     hold(session, 8);
 
@@ -122,20 +162,25 @@ describe('the run it records', () => {
   });
 
   it('shows the fail screen, and both keys face them again', () => {
-    const session = createBossSession({ comfort: COMFORT });
+    const session = afterEntrance({ comfort: COMFORT });
     session.step(press({ attackPressed: true }), FIXED_DT);
     hold(session, 8);
     expect(drawn(session)).toContain('Got you.');
 
+    // Retrying replays the entrance from the top — ratified in playtest 4.
+    // A skip would mean the twentieth attempt never sees the theatre again;
+    // the fast-forward is what makes replaying it affordable.
     session.step(press({ attackPressed: true }), FIXED_DT);
-    expect(drawn(session)).toContain('BILL THE MAN');
+    expect(drawn(session)).toContain('Something is coming.');
     expect(drawn(session)[0]).toBe('0:00 / 1:30');
+    hold(session, entranceSeconds(BILL_ENTRANCE) + 0.1);
+    expect(drawn(session)).toContain('BILL THE MAN');
   });
 });
 
 describe('the Bills, over a long run', () => {
   it('never take a hit, however many times she swings and dies', () => {
-    const session = createBossSession({ comfort: COMFORT });
+    const session = afterEntrance({ comfort: COMFORT });
     // A hundred seconds of mashing: swing, die, X, swing again.
     for (let i = 0; i < 60 * 100; i++) {
       session.step(press({ attackPressed: i % 25 === 0, down: true }), FIXED_DT);
