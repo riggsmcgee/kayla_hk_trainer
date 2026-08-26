@@ -7,6 +7,7 @@ import {
   chapterGate,
   chapterLocked,
   chapterPassed,
+  chapterState,
   chapterSkipped,
   finaleLevelSkipKey,
   levelLocked,
@@ -106,6 +107,18 @@ describe('skipped and passed', () => {
     const p = progress({ ...courseDone, skipped: ['pogo-course'] });
     expect(chapterDone('pogo-course', p)).toBe(true);
     expect(chapterPassed('pogo-course', p)).toBe(true);
+  });
+
+  it('a skip is not a brand: going back and clearing it lights the stop properly', () => {
+    // Pinned because playtest 6 states the opposite as fact — "skipping brands
+    // the map with a dashed-unfinished ring forever" — and it is the premise
+    // under a ratified decision. chapterState asks chapterDone BEFORE it asks
+    // chapterSkipped, so the dashed ring is only ever the CURRENT answer.
+    const skippedOnly = progress({ skipped: ['pogo-course'] });
+    expect(chapterState('pogo-course', skippedOnly, new Set())).toBe('skipped');
+
+    const clearedLater = progress({ ...courseDone, skipped: ['pogo-course'] });
+    expect(chapterState('pogo-course', clearedLater, new Set())).toBe('done');
   });
 });
 

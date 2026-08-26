@@ -43,12 +43,25 @@ scoring change (note 4) — see "Needs you".
    else, so it loses nothing by waiting for a session that can do it in one
    piece.
 
-4. **Still only you can close these** (unchanged from the interview): whether
+4. **One premise in the contract looks wrong, and I did not act on it.**
+   Note 4's ratified fix is "Rename 'Skip this challenge', **and stop the skip
+   writing a permanent mark**" — on the stated grounds that "skipping brands the
+   map with a dashed-unfinished ring forever". I could not confirm the second
+   half. `chapterState` asks `chapterDone` **before** it asks
+   `chapterSkipped`, so a skipped stop she later goes back and clears draws a
+   full ring, not a dashed one; the dashed ring is only ever the current answer.
+   Same for the level and wave chips, which have no skipped class at all. I have
+   pinned that behaviour with a test rather than changing anything, so the next
+   session does not fix a non-bug. **The rename half is untouched** — it is real
+   and ratified, but the exact word is the most-read copy on the site and it
+   seemed better handed to you than picked at the end of a sprint.
+
+5. **Still only you can close these** (unchanged from the interview): whether
    the new 180 px roll feels right, `rollEveryHot`'s 9.5 s → 11.5 s drift, and
    what your pads report against your Switch layout — ten seconds on
    Settings → Controller.
 
-5. **The gamepad copy is proven by test, not by hand.** I have no pad here, so
+6. **The gamepad copy is proven by test, not by hand.** I have no pad here, so
    `controlsCaption(..., 'gamepad')` and the overlay prompts are covered by
    unit and component tests but nobody has _seen_ them. Plug the pad in, press
    anything, and the caption under the canvas should switch from "jump with Z
@@ -69,6 +82,10 @@ scoring change (note 4) — see "Needs you".
 | 9   | `c8d0c5e` | **The overlay prompts are asked at draw time** (note 1, second half) — "Press the left button to face them again".        | Pick the pad up mid-fight: the prompt renames and the run does **not** restart.                          | medium |
 | 10  | `ed92bc7` | The Session 12 skills log.                                                                                                | `docs/skills-log.md`.                                                                                    | low    |
 
+The branch is pushed to `origin`. There is no PR: `gh` is not installed on
+this machine, and the skill treats the report as the deliverable rather than
+the PR.
+
 Merge everything: `git checkout proactive/2026-08-26-1054 && git merge proactive/2026-08-26-1419`
 Drop one: `git revert <hash>` on the sprint branch first, then merge.
 
@@ -86,7 +103,7 @@ and it is why ledger row 1 also adds the harness.
 
 Green at 15:57:
 
-- `npm run test` — **705 tests passed** (34 files) + 1 server. Was 660.
+- `npm run test` — **706 tests passed** (34 files) + 1 server. Was 660.
 - `npm run lint` — clean. `npm run typecheck` — clean. `npm run build` — clean.
 - Bundle 387.59 → **393.22 kB** (gzip 121.85 → 123.49). The 5.6 kB is six new
   celebration poses across the two Bill painters plus the input-source modules.
