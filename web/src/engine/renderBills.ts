@@ -14,6 +14,7 @@
  */
 import { ENEMY_SIZES, type Enemy } from './enemies';
 import { CANVAS_BG } from './constants';
+import type { RingStyle } from './dogLook';
 import { paintBillDog, type BillDogPose } from './renderBillDog';
 import { paintBillMan, type BillPose } from './renderBillMan';
 import type { Vec2 } from './types';
@@ -38,16 +39,36 @@ import type { Vec2 } from './types';
  * simulation enforces but the picture never mentions is the exact bug that
  * shipped the warden's invisible telegraph.
  */
-function drawRollHazardRing(ctx: CanvasRenderingContext2D, feet: Vec2): void {
-  const size = ENEMY_SIZES.dog;
-  const radius = size.height / 2;
+function drawRollHazardRing(
+  ctx: CanvasRenderingContext2D,
+  feet: Vec2,
+  style: RingStyle,
+  timeS: number,
+): void {
+  const radius = ENEMY_SIZES.dog.height / 2;
+  const cx = feet.x;
+  const cy = feet.y - radius;
 
   ctx.save();
   ctx.strokeStyle = CANVAS_BG;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(feet.x, feet.y - radius, radius - 3, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.lineWidth = style === 'bold' ? 4 : 2;
+
+  if (style === 'spun') {
+    // Four gaps that travel around the ring: the ball's spin, drawn. Stepped
+    // on a floored clock like the rest of the Bills, never swept.
+    const step = (Math.PI * 2) / 16;
+    const offset = Math.floor(timeS * 12) * step;
+    for (let i = 0; i < 4; i++) {
+      const from = offset + (i * Math.PI) / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius - 3, from, from + step * 2.6);
+      ctx.stroke();
+    }
+  } else {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 3, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -112,10 +133,11 @@ export function drawBillDog(
   feet: Vec2,
   enemy: Enemy,
   timeS = 0,
+  ring: RingStyle = 'thin',
 ): void {
   paintBillDog(ctx, feet, billDogPose(enemy), timeS, enemy.facing);
   // Only while he is actually a ball. A standing dog hurts everywhere too,
   // but the ring is the ROLL’s marker: it says “this one is coming at you
   // and there is no safe face on it”.
-  if (enemy.roll) drawRollHazardRing(ctx, feet);
+  if (enemy.roll) drawRollHazardRing(ctx, feet, ring, timeS);
 }

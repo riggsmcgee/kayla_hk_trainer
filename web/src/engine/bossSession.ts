@@ -21,6 +21,7 @@ import {
   entranceSeconds,
   stepEntrance,
 } from './entrance';
+import { dogLook } from './dogLook';
 import { createArenaState, stepArena } from './arena';
 import { CANVAS } from './constants';
 import { createEnemy, stepEnemy, stepProjectile } from './enemies';
@@ -85,6 +86,11 @@ export interface BossSessionConfig extends OverlayControls {
    * before the fight. Defaults to the first.
    */
   entranceVariant?: number;
+  /**
+   * DEV TOOL: remove in the final build. Which of DOG_LOOKS the ball and the
+   * bones wear. Defaults to the first.
+   */
+  dogLook?: number;
   /** Fires live at the 1:30 crossing, not at the end of the run. */
   onPassed?: () => void;
   /** Fires once per touch, after the run is recorded. */
@@ -101,6 +107,8 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   const world = bossWorld();
   /** Which entrance plays, and how long it runs at normal speed. */
   const entrance = billEntrance(config.entranceVariant ?? 0);
+  /** Which hazard markers the dog's ball and bones wear. */
+  const look = dogLook(config.dogLook ?? 0);
   const INTRO_SECONDS = entranceSeconds(entrance);
   const juice = createJuice(comfort);
   const edgeCarry = createEdgeCarry();
@@ -335,8 +343,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       ctx.translate(shake.x, shake.y);
       drawWorld(ctx, world);
       drawEnemy(ctx, lerpVec(prevBillFeet, bill.position, alpha), bill, simTime, 0);
-      if (dog) drawEnemy(ctx, lerpVec(prevDogFeet, dog.position, alpha), dog, simTime, 0);
-      drawProjectiles(ctx, projectiles);
+      if (dog)
+        drawEnemy(ctx, lerpVec(prevDogFeet, dog.position, alpha), dog, simTime, 0, look.ring);
+      drawProjectiles(ctx, projectiles, look.boneSteps);
       drawNailSlash(ctx, feet, player);
       drawKnight(ctx, feet, player, computeStretch(player.velocity.y, landSquash));
       ctx.restore();

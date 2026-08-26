@@ -157,4 +157,10 @@ export interface SettingsV1 {
    * portfolio to choose from rather than as a pick.
    */
   entranceVariant?: number;
+  /**
+   * DEV TOOL: remove in the final build. Which of the dog's three hazard
+   * looks (engine/dogLook.ts DOG_LOOKS) the ball and the bones wear. Same
+   * portfolio rule as `rollVariant` and `entranceVariant`.
+   */
+  dogLook?: number;
 }

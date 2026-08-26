@@ -19,8 +19,10 @@ import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
 import { useEntranceVariant } from '../storage/useEntranceVariant';
+import { useDogLook } from '../storage/useDogLook';
 import { ROLL_VARIANTS } from '../engine/enemies';
 import { BILL_ENTRANCES } from '../engine/entrance';
+import { DOG_LOOKS } from '../engine/dogLook';
 import { captureVerdict } from './settings.helpers';
 import '../styles/settings.css';
 
@@ -44,6 +46,7 @@ export function Settings() {
   const [godMode, setGodMode] = useGodMode();
   const [rollVariant, setRollVariant] = useRollVariant();
   const [entranceVariant, setEntranceVariant] = useEntranceVariant();
+  const [dogLook, setDogLook] = useDogLook();
   const [capturing, setCapturing] = useState<Action | null>(null);
   const [resetStage, setResetStage] = useState<ResetStage>('idle');
 
@@ -262,6 +265,30 @@ export function Settings() {
             All three open on an empty arena and bring him in from the right; what changes is how
             many footfalls you hear coming and how he crosses the ground. Hold jump during any of
             them to run it at 2.5×.
+          </p>
+
+          <fieldset className="roll-variants">
+            <legend>The dog’s ball and bones — three to try</legend>
+            {DOG_LOOKS.map((variant, i) => (
+              <label key={variant.name} className="roll-variant">
+                <input
+                  type="radio"
+                  name="dog-look"
+                  checked={dogLook === i}
+                  onChange={() => setDogLook(i)}
+                />
+                <span>
+                  <strong>{variant.name}</strong>
+                  <span className="fine-print">{variant.feel}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <p className="fine-print settings-note">
+            The ball’s pale “safe on top” cap is gone — it is lethal everywhere now — so it needs a
+            marker that says so. All three use the dark ring the red hazard orbs already wear in
+            Bounce Bog. “Stepped” also tumbles the bones in whole frames instead of spinning them
+            smoothly, which is the rule the rest of the Bills are held to.
           </p>
         </div>
       </details>

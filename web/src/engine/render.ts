@@ -5,6 +5,7 @@
  */
 
 import { CANVAS, CANVAS_BG, ENEMIES, KNIGHT, PHYSICS } from './constants';
+import { boneAngle, type RingStyle } from './dogLook';
 import type { Mover } from './course';
 import { moverBox } from './course';
 import type { Enemy, Projectile } from './enemies';
@@ -297,12 +298,17 @@ export function drawNailSlash(ctx: CanvasRenderingContext2D, feet: Vec2, player:
  * Draw one enemy at an interpolated feet position. `deathFade` in [0, 1]
  * fades a dying enemy out (1 = fully faded); pass 0 for a live one.
  */
+/**
+ * @param ring which hazard marker the rolling dog wears. Only the boss passes
+ * it; no other mode has a dog in it.
+ */
 export function drawEnemy(
   ctx: CanvasRenderingContext2D,
   feet: Vec2,
   enemy: Enemy,
   timeS: number,
   deathFade = 0,
+  ring: RingStyle = 'thin',
 ): void {
   const size = ENEMY_SIZES[enemy.id];
   const flashing = enemy.hurtFlashTimer > 0;
@@ -379,7 +385,7 @@ export function drawEnemy(
       drawBill(ctx, feet, enemy, timeS);
       break;
     case 'dog':
-      drawBillDog(ctx, feet, enemy, timeS);
+      drawBillDog(ctx, feet, enemy, timeS, ring);
       break;
   }
 
@@ -739,11 +745,11 @@ function drawWarden(ctx: CanvasRenderingContext2D, feet: Vec2, enemy: Enemy, bod
  * does not. That link is the one that matters: it is what makes a projectile
  * fair.
  */
-function drawBone(ctx: CanvasRenderingContext2D, s: Projectile): void {
+function drawBone(ctx: CanvasRenderingContext2D, s: Projectile, steps: number): void {
   const r = s.radius;
   ctx.save();
   ctx.translate(s.position.x, s.position.y);
-  ctx.rotate(s.angle ?? 0);
+  ctx.rotate(boneAngle(s.angle ?? 0, steps));
   ctx.fillStyle = COLORS.pokeGreen;
   ctx.fillRect(-r, -r * 0.32, r * 2, r * 0.64);
   for (const end of [-r, r]) {
@@ -755,7 +761,16 @@ function drawBone(ctx: CanvasRenderingContext2D, s: Projectile): void {
   ctx.restore();
 }
 
-export function drawProjectiles(ctx: CanvasRenderingContext2D, shots: readonly Projectile[]): void {
+/**
+ * @param boneSteps rotation positions a bone snaps to; 0 spins it smoothly.
+ * Only the boss passes it — every other mode's projectiles are spitter beads
+ * with no rotation at all, so the default keeps them byte-identical.
+ */
+export function drawProjectiles(
+  ctx: CanvasRenderingContext2D,
+  shots: readonly Projectile[],
+  boneSteps = 0,
+): void {
   for (const s of shots) {
     if (s.dead) continue;
     ctx.fillStyle = 'rgba(159, 216, 168, 0.25)';
@@ -765,7 +780,7 @@ export function drawProjectiles(ctx: CanvasRenderingContext2D, shots: readonly P
     // A bone tumbles; a spitter's shot is a bead. The `spin` field is what
     // separates them, so nothing here has to know which enemy fired it.
     if (s.spin !== undefined) {
-      drawBone(ctx, s);
+      drawBone(ctx, s, boneSteps);
       continue;
     }
     ctx.fillStyle = COLORS.pokeGreen;

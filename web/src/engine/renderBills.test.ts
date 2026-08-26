@@ -17,6 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_SIZES, createEnemy, type AttackKind, type Enemy } from './enemies';
 import { drawBill, drawBillDog, billDogPose, billPose } from './renderBills';
+import { DOG_LOOKS, boneAngle, dogLook } from './dogLook';
 
 /**
  * A canvas that writes down what it was asked to draw, so a pose is
@@ -213,5 +214,59 @@ describe('the rolling ball shows its own rule', () => {
     // Everything the art drew came first; the marker is the last thing said.
     expect(ops.findIndex((op) => op.startsWith(RING))).toBeGreaterThan(0);
     expect(ops[ops.length - 1]).toBe('restore()');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4 — the ball and the bones ship as a portfolio too.
+// ---------------------------------------------------------------------------
+describe('the dog’s three hazard looks', () => {
+  it('offers three, each named and described', () => {
+    expect(DOG_LOOKS).toHaveLength(3);
+    expect(new Set(DOG_LOOKS.map((l) => l.name)).size).toBe(3);
+    for (const l of DOG_LOOKS) expect(l.feel.length).toBeGreaterThan(20);
+  });
+
+  it('marks the ball in every one of them — none of them can say nothing', () => {
+    // The pale "safe on top" cap is struck, so the ball is lethal everywhere.
+    // A look that drew no marker at all would leave a rule the simulation
+    // enforces and the picture never mentions, which is exactly how the
+    // warden's invisible telegraph shipped.
+    for (const look of DOG_LOOKS) {
+      const { ops, ctx } = recordingCtx();
+      drawBillDog(ctx, { x: 400, y: 600 }, dog('roll', 'active', true), 0, look.ring);
+      expect(ops.some((op) => op.startsWith('arc(400,'))).toBe(true);
+      expect(ops.some((op) => op === 'stroke()')).toBe(true);
+    }
+  });
+
+  it('draws no ring on a dog who is not a ball, whichever look is chosen', () => {
+    for (const look of DOG_LOOKS) {
+      const { ops, ctx } = recordingCtx();
+      drawBillDog(ctx, { x: 400, y: 600 }, dog('roll', 'active', false), 0, look.ring);
+      expect(ops.some((op) => op === 'stroke()')).toBe(false);
+    }
+  });
+
+  it('snaps a bone’s rotation only when the look asks for it', () => {
+    // The finding this portfolio surfaced: the bones as first built rotate
+    // CONTINUOUSLY, and PLAN.md §3 ratifies that nothing in either Bill
+    // module interpolates. `boneSteps` is the fix, and one of the three
+    // looks applies it, so the user can see the difference rather than be
+    // told about it.
+    const odd = 0.37;
+    expect(boneAngle(odd, 0)).toBe(odd);
+    for (const steps of [4, 8, 16]) {
+      const turn = (Math.PI * 2) / steps;
+      const snapped = boneAngle(odd, steps);
+      expect(snapped / turn).toBeCloseTo(Math.round(snapped / turn), 10);
+      expect(Math.abs(snapped - odd)).toBeLessThanOrEqual(turn / 2 + 1e-9);
+    }
+    expect(DOG_LOOKS.some((l) => l.boneSteps > 0)).toBe(true);
+  });
+
+  it('falls back to the first look for an index that does not exist', () => {
+    expect(dogLook(99)).toBe(DOG_LOOKS[0]);
+    expect(dogLook(-1)).toBe(DOG_LOOKS[0]);
   });
 });
