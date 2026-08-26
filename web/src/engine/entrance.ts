@@ -88,6 +88,21 @@ export interface EntranceShape {
   /** Seconds the name card holds afterwards. */
   card: number;
   style: ArrivalStyle;
+  /**
+   * THE DOG'S ENTRANCE, at 0:30, expressed as fractions of his own card.
+   *
+   * Ratified: Bill looks winded and calls for help, barking arrives from
+   * off-screen, and the dog bursts in. There is no audio anywhere in this
+   * project, so the calling and the barking are both DRAWN.
+   *
+   * It lives on the same variant as Bill's own entrance rather than on a
+   * picker of its own, for the same reason the ball and the bones share one:
+   * they are the same scene, and choosing them separately invites a
+   * frantic shout answered by a leisurely dog.
+   */
+  dogShoutAt: number;
+  dogWoofAt: number;
+  dogStyle: ArrivalStyle;
 }
 
 /**
@@ -117,6 +132,11 @@ export const BILL_ENTRANCES: readonly EntranceShape[] = [
     arrival: 0.9,
     card: 0.7,
     style: 'steady',
+    // He calls, and a moment later he is answered. The scene in its plainest
+    // reading: cause, then effect.
+    dogShoutAt: 0.1,
+    dogWoofAt: 0.35,
+    dogStyle: 'steady',
   },
   {
     name: 'Sudden',
@@ -126,6 +146,11 @@ export const BILL_ENTRANCES: readonly EntranceShape[] = [
     arrival: 0.5,
     card: 0.9,
     style: 'stomp',
+    // The woof lands BEFORE the shout: the dog was already coming, and Bill
+    // is asking for help that is halfway across the arena.
+    dogShoutAt: 0.3,
+    dogWoofAt: 0.05,
+    dogStyle: 'stomp',
   },
   {
     name: 'Looming',
@@ -135,6 +160,11 @@ export const BILL_ENTRANCES: readonly EntranceShape[] = [
     arrival: 1.1,
     card: 0.4,
     style: 'loom',
+    // He calls, and nothing happens, and nothing keeps happening, and then
+    // the answer arrives late and takes its time getting there.
+    dogShoutAt: 0.1,
+    dogWoofAt: 0.55,
+    dogStyle: 'loom',
   },
 ];
 
@@ -195,6 +225,15 @@ export function stepEntrance(
  * the fight where he stops being the thing they picked.
  */
 export const ENTRANCE_STEP_PX = 4;
+
+/**
+ * Where the dog is on his walk in, as a fraction of the distance covered —
+ * the same curve family Bill's own arrival uses, so a variant's two halves
+ * move the same way.
+ */
+export function dogArrivalT(shape: EntranceShape, progress: number): number {
+  return curve(shape.dogStyle, Math.min(1, Math.max(0, progress)));
+}
 
 /** The arrival curves. Each maps 0→0 and 1→1; everything between is taste. */
 function curve(style: ArrivalStyle, t: number): number {

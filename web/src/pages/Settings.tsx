@@ -245,7 +245,7 @@ export function Settings() {
           </p>
 
           <fieldset className="roll-variants">
-            <legend>Bill’s entrance — three to try</legend>
+            <legend>The entrances — three to try</legend>
             {BILL_ENTRANCES.map((variant, i) => (
               <label key={variant.name} className="roll-variant">
                 <input
@@ -262,9 +262,10 @@ export function Settings() {
             ))}
           </fieldset>
           <p className="fine-print settings-note">
-            All three open on an empty arena and bring him in from the right; what changes is how
-            many footfalls you hear coming and how he crosses the ground. Hold jump during any of
-            them to run it at 2.5×.
+            Each one covers BOTH Bills: how many footfalls you hear before the man arrives and how
+            he crosses the ground, and then at 0:30 how quickly he calls for help, how long the
+            barking takes to answer and how the dog comes in. Hold jump during either to run it at
+            2.5×.
           </p>
 
           <fieldset className="roll-variants">

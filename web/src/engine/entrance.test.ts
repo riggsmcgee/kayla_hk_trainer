@@ -14,6 +14,7 @@ import {
   INTRO_FAST_FORWARD,
   arrivalX,
   billEntrance,
+  dogArrivalT,
   entranceSeconds,
   stepEntrance,
 } from './entrance';
@@ -202,5 +203,42 @@ describe('the three entrances to choose between', () => {
     expect(billEntrance(99)).toBe(BILL_ENTRANCES[0]);
     expect(billEntrance(-1)).toBe(BILL_ENTRANCES[0]);
     expect(BILL_ENTRANCE).toBe(BILL_ENTRANCES[0]);
+  });
+});
+
+describe('the dog’s entrance rides the same choice', () => {
+  it('gives every variant a shout, a woof and a walk', () => {
+    for (const e of BILL_ENTRANCES) {
+      // Both cues land inside the card, with room left to see them.
+      expect(e.dogShoutAt).toBeGreaterThanOrEqual(0);
+      expect(e.dogShoutAt).toBeLessThan(0.8);
+      expect(e.dogWoofAt).toBeGreaterThanOrEqual(0);
+      expect(e.dogWoofAt).toBeLessThan(0.8);
+      expect(['steady', 'stomp', 'loom']).toContain(e.dogStyle);
+    }
+  });
+
+  it('reads differently across the three — one of them answers before it is asked', () => {
+    // Ratified scene: Bill looks winded and calls for help, barking arrives
+    // from off-screen, the dog bursts in. "Sudden" plays it the other way
+    // round on purpose — the dog was already coming.
+    const orders = BILL_ENTRANCES.map((e) => e.dogShoutAt < e.dogWoofAt);
+    expect(new Set(orders).size).toBe(2);
+  });
+
+  it('walks the dog in with the same curve family as Bill’s own arrival', () => {
+    for (const shape of BILL_ENTRANCES) {
+      expect(dogArrivalT(shape, 0)).toBe(0);
+      expect(dogArrivalT(shape, 1)).toBe(1);
+      let last = -1;
+      for (let i = 0; i <= 40; i++) {
+        const t = dogArrivalT(shape, i / 40);
+        expect(t).toBeGreaterThanOrEqual(last);
+        last = t;
+      }
+      // Clamped, so an overshoot frame cannot walk him past his mark.
+      expect(dogArrivalT(shape, 2)).toBe(1);
+      expect(dogArrivalT(shape, -1)).toBe(0);
+    }
   });
 });

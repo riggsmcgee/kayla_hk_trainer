@@ -18,10 +18,12 @@ import {
   INTRO_FAST_FORWARD,
   arrivalX,
   billEntrance,
+  dogArrivalT,
   entranceSeconds,
   stepEntrance,
 } from './entrance';
 import { dogLook } from './dogLook';
+import type { EntranceShape } from './entrance';
 import { createArenaState, stepArena } from './arena';
 import { CANVAS } from './constants';
 import { createEnemy, stepEnemy, stepProjectile } from './enemies';
@@ -121,7 +123,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   let dog: Enemy | null = null;
   /** Where the dog is heading while his card is up, and how fast. */
   let dogWalkTo = 0;
-  let dogWalkSpeed = 0;
+  let dogWalkFrom = 0;
+  /** 0 → 1 across the dog’s card; the variant’s curve shapes the walk. */
+  let dogWalkT = 0;
   let projectiles: Projectile[] = [];
 
   let simTime = 0;
@@ -164,7 +168,8 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     const fromRight = player.position.x < CANVAS.width / 2;
     const startX = fromRight ? CANVAS.width + 80 : -80;
     dogWalkTo = fromRight ? CANVAS.width - DOG_WALK_IN_INSET : DOG_WALK_IN_INSET;
-    dogWalkSpeed = (dogWalkTo - startX) / BOSS.cardSeconds;
+    dogWalkFrom = startX;
+    dogWalkT = 0;
     dog = createEnemy('dog', startX, FLOOR_Y);
     dog.rollVariantIndex = config.rollVariant ?? 0;
     dog.facing = fromRight ? -1 : 1;
@@ -173,7 +178,11 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   }
 
   function walkTheDogIn(dt: number): void {
-    if (dog) dog.position.x += dogWalkSpeed * dt;
+    if (!dog) return;
+    dogWalkT = Math.min(1, dogWalkT + dt / BOSS.cardSeconds);
+    // Stepped like everything else the Bills do: the curve shapes the pace,
+    // and the result lands on a whole 4 px step from his mark.
+    dog.position.x = arrivalX(dogWalkFrom, dogWalkTo, dogArrivalT(entrance, dogWalkT));
   }
 
   function record(): void {
@@ -416,7 +425,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           CANVAS.height / 2 + 76,
         );
       } else if (boss.phase === 'card') {
-        drawBarking(ctx, 1 - boss.cardTimer / BOSS.cardSeconds, bill.position.x);
+        drawBarking(ctx, 1 - boss.cardTimer / BOSS.cardSeconds, bill.position.x, entrance);
         drawCard(
           ctx,
           'BILL THE DOG',
@@ -468,13 +477,18 @@ export function createBossSession(config: BossSessionConfig): GameSession {
  * is what the user picked these designs FOR (PLAN.md §3), and an entrance
  * that glided would be the one place the fight stops honouring it.
  */
-function drawBarking(ctx: CanvasRenderingContext2D, progress: number, billX: number): void {
+function drawBarking(
+  ctx: CanvasRenderingContext2D,
+  progress: number,
+  billX: number,
+  shape: EntranceShape,
+): void {
   const step = (v: number) => Math.round(v / 4) * 4;
   ctx.textAlign = 'center';
   ctx.font = '22px system-ui, sans-serif';
 
   // Bill's shout comes first and stays up.
-  if (progress > 0.1) {
+  if (progress > shape.dogShoutAt) {
     const bob = step(Math.floor(progress * 8) % 2 === 0 ? 0 : 4);
     ctx.fillStyle = COLORS.hudText;
     // Clamped inward: Bill can be standing against either wall when the
@@ -485,8 +499,8 @@ function drawBarking(ctx: CanvasRenderingContext2D, progress: number, billX: num
   }
 
   // The woof crosses in from the right edge over the back half of the card.
-  if (progress > 0.35) {
-    const t = Math.min(1, (progress - 0.35) / 0.45);
+  if (progress > shape.dogWoofAt) {
+    const t = Math.min(1, (progress - shape.dogWoofAt) / 0.45);
     const x = step(CANVAS.width + 40 + (CANVAS.width * 0.45 - CANVAS.width - 40) * t);
     const y = step(FLOOR_Y - 150);
     ctx.fillStyle = COLORS.hudText;
