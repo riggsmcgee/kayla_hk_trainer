@@ -112,6 +112,18 @@ Green at 15:57:
   numbers, the canvas caption reads correctly, **zero console errors anywhere**.
 - Three of the fixes were re-verified by planting the mutation back and watching
   the test go red: the dog's walk pose, his interpolation, and the shared store.
+- **The two riskiest changes were then watched in a real browser**, god mode on,
+  a direction key held down throughout — which is the exact input both bugs
+  turned on. Screenshots in the sprint scratch:
+  - **The 1:30 crossing.** The HUD read `1:41 / 1:30`, "past 1:30 — how long can
+    you go?", with both Bills still on screen. Before this sprint that moment
+    dropped the fight to an empty arena reading "Move to begin". The ` / 1:30`
+    target is still drawn, which is the frozen `cleared` flag doing its job.
+  - **The dog's card.** `BILL THE DOG · The family had two. Watch him come in —
+your clock is paused.` on screen at 0:30 **with a direction key held**, Bill
+    shouting HELP! and WOOF! crossing in from the right, the clock frozen. It
+    ran its full 2.5 s and the fight resumed at 0:30. That is the beat the note
+    says has never once been seen.
 
 Nothing that was green at baseline is red now.
 
