@@ -71,6 +71,38 @@ describe('run history cap', () => {
 });
 
 describe('local store round-trip', () => {
+  it('evicts god-mode clears before real runs — a cheat is not a best', () => {
+    const store = createLocalStore(createMemoryStorage());
+    // Her one honest run, recorded first so eviction would reach it first.
+    store.addRun({
+      ...sampleRun,
+      id: 'real-clear',
+      mode: 'pogo',
+      level: 1,
+      cleared: true,
+      durationMs: 14_300,
+    });
+    // Six hundred cheated clears. A clear is normally protected from
+    // eviction, so without the god-mode exception these would be the six
+    // hundred runs the store kept, and her real one the one it dropped.
+    for (let i = 0; i < 600; i++) {
+      store.addRun({
+        ...sampleRun,
+        id: `god-${i}`,
+        mode: 'pogo',
+        level: 1,
+        cleared: true,
+        godMode: true,
+        durationMs: 1_000,
+      });
+    }
+
+    const runs = store.listRuns();
+    expect(runs.length).toBe(500);
+    expect(runs[0]!.id).toBe('real-clear');
+    expect(courseBest(runs, 1)).toEqual({ durationMs: 14_300 });
+  });
+
   it('round-trips settings through the injected backend', () => {
     const store = createLocalStore(createMemoryStorage());
     const settings: SettingsV1 = {
@@ -81,6 +113,23 @@ describe('local store round-trip', () => {
     };
     store.saveSettings(settings);
     expect(store.getSettings()).toEqual(settings);
+  });
+
+  it('remembers god mode, and reads an older blob as off', () => {
+    const store = createLocalStore(createMemoryStorage());
+    // Off unless it was deliberately switched on: a cheat must never be the
+    // state she arrives in.
+    expect(store.getSettings().godMode).toBe(false);
+
+    store.saveSettings({ ...store.getSettings(), godMode: true });
+    expect(store.getSettings().godMode).toBe(true);
+
+    // A settings blob written before god mode existed has no such key. It is
+    // optional precisely so this needs no migration - absent reads as off.
+    const older = createLocalStore(createMemoryStorage());
+    older.saveSettings({ version: 1, reduceShake: true, reduceFlashing: false });
+    expect(older.getSettings().godMode).toBeUndefined();
+    expect(older.getSettings().godMode === true).toBe(false);
   });
 
   it('returns defaults when nothing is stored', () => {

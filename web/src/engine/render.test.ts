@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnemyId } from '@dojo/shared';
 import { ENEMIES } from './constants';
 import { ATTACKS, createEnemy, type AttackKind, type Enemy } from './enemies';
-import { COLORS, drawEnemy } from './render';
+import { COLORS, drawEnemy, drawGodModeHud } from './render';
 
 const FLOOR_Y = 600;
 
@@ -180,5 +180,38 @@ describe('the punish rim is only ever drawn on something punishable', () => {
       expect(ops).not.toContain(RIM_STROKE);
       expect(ops.length).toBeGreaterThan(0);
     }
+  });
+});
+
+/**
+ * DEV TOOL: remove in the final build. The god-mode overlay honours the same
+ * comfort promise the rest of the canvas does.
+ */
+describe('the god-mode marker', () => {
+  function paintHud(reduceFlashing: boolean): string[] {
+    const { ops, ctx } = recordingCtx();
+    drawGodModeHud(ctx, 3, 1.0, reduceFlashing);
+    return ops;
+  }
+
+  it('counts hits IGNORED, never hits taken — the arena HUD already owns that word', () => {
+    // `hits N / M` two lines up means hits SHE landed; a badge reading
+    // "hits taken" under it would say the opposite of what it counts.
+    expect(paintHud(false).join(' | ')).toContain('god mode · 3 hits ignored');
+  });
+
+  it('drops the red pulse when she has asked for less flashing', () => {
+    const plain = paintHud(false).join(' | ');
+    const gentle = paintHud(true).join(' | ');
+    expect(plain).toContain(COLORS.hazard);
+    expect(gentle).not.toContain(COLORS.hazard);
+    // The words survive; only the way they arrive changes.
+    expect(gentle).toContain('that would have got you');
+  });
+
+  it('says nothing at all when no hit is recent', () => {
+    const { ops, ctx } = recordingCtx();
+    drawGodModeHud(ctx, 0, 0, false);
+    expect(ops.join(' | ')).not.toContain('that would have got you');
   });
 });

@@ -27,6 +27,7 @@ import {
   drawHazardOrbs,
   drawKnight,
   drawMovers,
+  drawGodModeHud,
   drawNailSlash,
   drawOrbs,
   drawSpikes,
@@ -49,6 +50,11 @@ export interface PogoCourseOptions extends OverlayControls {
   /** 1-based index into POGO_COURSES; out-of-range values clamp to the ends. */
   level: number;
   comfort: ComfortSettings;
+  /**
+   * DEV TOOL: remove in the final build. Spikes and red orbs stop sending her
+   * back; every touch is still counted in `misses` and called out on screen.
+   */
+  godMode?: boolean;
   /** Fires once per finish, after the run is recorded. */
   onClear?: (info: PogoClearInfo) => void;
 }
@@ -77,7 +83,15 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
   const options: PogoCourseOptions = 'level' in arg ? arg : { level: 1, comfort: arg };
   const level = Math.min(Math.max(1, Math.floor(options.level)), POGO_COURSES.length);
   const course = POGO_COURSES[level - 1] ?? POGO_COURSE_1;
-  const { comfort, onClear, onNext, nextLabel, jumpKey = 'Z', attackKey = 'X' } = options;
+  const {
+    comfort,
+    onClear,
+    onNext,
+    nextLabel,
+    godMode = false,
+    jumpKey = 'Z',
+    attackKey = 'X',
+  } = options;
 
   const world: World = {
     solids: course.solids,
@@ -87,7 +101,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
   const edgeCarry = createEdgeCarry();
 
   let player = createPlayer(course.spawn.x, course.spawn.y);
-  let courseState: CourseState = createCourseState(course);
+  let courseState: CourseState = createCourseState(course, godMode);
   let prevFeet: Vec2 = { ...player.position };
   let pogosAtRunStart = 0;
   let startedAtIso = '';
@@ -98,12 +112,15 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
   let landSquash = 0;
   let wasGrounded = false;
   let recorded = false;
+  /** God mode: hits she did not take this run, and the toast that says so. */
+  let phantomHits = 0;
+  let godToast = 0;
   /** Seconds the clear screen still ignores both keys. See OVERLAY_LOCKOUT_SECONDS. */
   let clearLockout = 0;
 
   function resetRun(): void {
     player = createPlayer(course.spawn.x, course.spawn.y);
-    courseState = createCourseState(course);
+    courseState = createCourseState(course, godMode);
     prevFeet = { ...player.position };
     pogosAtRunStart = player.totalPogos;
     moverTime = 0;
@@ -113,6 +130,8 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
     wasGrounded = false;
     recorded = false;
     clearLockout = 0;
+    phantomHits = 0;
+    godToast = 0;
   }
 
   return {
@@ -126,6 +145,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
       }
       const input = edgeCarry.merge(rawInput);
       respawnFlash = Math.max(0, respawnFlash - dt);
+      godToast = Math.max(0, godToast - dt);
       checkpointToast = Math.max(0, checkpointToast - dt);
       landSquash = Math.max(0, landSquash - dt);
 
@@ -179,6 +199,13 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
         juice.addTrauma(FEEDBACK.playerHit.trauma);
         juice.hitStop(FEEDBACK.playerHit.hitStop);
       }
+      if (events.wouldHaveRespawned) {
+        // Trauma but no hit-stop: she is being told, not interrupted. A
+        // freeze on a hit that costs nothing only gets in the way of testing.
+        phantomHits += 1;
+        godToast = 1.1;
+        juice.addTrauma(FEEDBACK.playerHit.trauma);
+      }
       if (events.checkpointReached !== null) {
         checkpointToast = 1.6;
       }
@@ -190,6 +217,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
         recordRun({
           mode: 'pogo',
           level,
+          godMode: godMode || undefined,
           cleared: true,
           hitsLanded: player.totalPogos - pogosAtRunStart,
           durationMs,
@@ -281,6 +309,10 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
           CANVAS.height / 2 + 24,
         );
       }
+
+      // Last, so it survives the respawn and clear washes above — a badge you
+      // cannot see on the very screenshot you are taking is no safeguard.
+      if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };
 }

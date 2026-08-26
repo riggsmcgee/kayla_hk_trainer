@@ -33,6 +33,7 @@ import {
 import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useGodMode } from '../storage/useGodMode';
 import { levelBestLine } from './playPogo.helpers';
 import {
   BEATS,
@@ -74,6 +75,8 @@ interface BeatProps {
   progress: ProgressV1;
   runs: readonly PracticeRun[];
   comfort: ComfortSettings;
+  /** DEV TOOL: remove in the final build. Passed straight through to each session. */
+  godMode: boolean;
   /** What the overlays call the forward key (Z) — from her bindings. */
   jumpKey: string;
   /** What the overlays call the again key (X) — from her bindings. */
@@ -86,6 +89,7 @@ function LevelBeat({
   progress,
   runs,
   comfort,
+  godMode,
   jumpKey,
   attackKey,
   refresh,
@@ -98,6 +102,7 @@ function LevelBeat({
       createPogoCourseSession({
         level: FINALE_LEVEL,
         comfort,
+        godMode,
         jumpKey,
         attackKey,
         // Z goes on to the waves, X runs the level again (playtest 3, note 11).
@@ -109,7 +114,7 @@ function LevelBeat({
           setJustCleared(true);
         },
       }),
-    [comfort, jumpKey, attackKey, onWaves, refresh],
+    [comfort, godMode, jumpKey, attackKey, onWaves, refresh],
   );
 
   const panel = justCleared ? afterLevel(progress) : null;
@@ -140,6 +145,7 @@ function WavesBeat({
   progress,
   runs,
   comfort,
+  godMode,
   jumpKey,
   attackKey,
   refresh,
@@ -194,6 +200,7 @@ function WavesBeat({
         stages: waveStages(),
         startIndex: startWave,
         comfort,
+        godMode,
         kind: 'waves',
         jumpKey,
         attackKey,
@@ -204,7 +211,7 @@ function WavesBeat({
         // A touch records a run, and the "longest survival" best comes from those.
         onStageFailed: refresh,
       }),
-    [startWave, comfort, jumpKey, attackKey, onBottom, onStageCleared, refresh],
+    [startWave, comfort, godMode, jumpKey, attackKey, onBottom, onStageCleared, refresh],
   );
 
   return (
@@ -276,7 +283,16 @@ function WavesBeat({
  * down here can be hurt, so the strip, the panel and the HUD all speak in
  * time survived rather than hits landed.
  */
-function BossBeat({ progress, runs, comfort, jumpKey, attackKey, refresh }: BeatProps) {
+function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refresh }: BeatProps) {
+  /**
+   * DEV TOOL: remove in the final build. God mode makes the fight unlosable,
+   * and the only way out of the canvas is the fail screen (bossSession's
+   * `over` branch), which can then never be reached — so the fight would run
+   * until she left the page. The nonce remounts it, the same trick WavesBeat
+   * uses to replay a wave it is already on.
+   */
+  const [runCount, setRunCount] = useState(0);
+
   const onPassed = useCallback(() => {
     progressStore.markFinaleBossCleared();
     refresh();
@@ -286,6 +302,7 @@ function BossBeat({ progress, runs, comfort, jumpKey, attackKey, refresh }: Beat
     () =>
       createBossSession({
         comfort,
+        godMode,
         jumpKey,
         attackKey,
         cleared: progress.finaleBossCleared,
@@ -293,13 +310,25 @@ function BossBeat({ progress, runs, comfort, jumpKey, attackKey, refresh }: Beat
         // A touch records the run, and her best time comes from those.
         onFailed: refresh,
       }),
-    [comfort, jumpKey, attackKey, progress.finaleBossCleared, onPassed, refresh],
+    [comfort, godMode, jumpKey, attackKey, progress.finaleBossCleared, onPassed, refresh],
   );
 
   return (
     <div className="well-beat-body">
       <p className="level-best">{bossBestLine(runs)}</p>
-      <PracticeCanvas label="The thing at the bottom" createSession={createSession} />
+      <PracticeCanvas
+        key={runCount}
+        label="The thing at the bottom"
+        createSession={createSession}
+      />
+      {godMode && (
+        <p className="fine-print settings-note">
+          <button type="button" className="text-button" onClick={() => setRunCount((n) => n + 1)}>
+            Start the fight over
+          </button>{' '}
+          — god mode means it cannot end on its own.
+        </p>
+      )}
     </div>
   );
 }
@@ -308,6 +337,7 @@ export function PlayWell() {
   const chapter = chapterById(CHAPTER_ID);
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
+  const [godMode] = useGodMode();
   const [bindings] = useBindings();
   const jumpKey = jumpKeyName(bindings);
   const attackKey = attackKeyName(bindings);
@@ -349,7 +379,15 @@ export function PlayWell() {
   };
 
   const toBottom = useCallback(() => selectBeat(3), [selectBeat]);
-  const beatProps: BeatProps = { progress, runs, comfort, jumpKey, attackKey, refresh };
+  const beatProps: BeatProps = {
+    progress,
+    runs,
+    comfort,
+    godMode,
+    jumpKey,
+    attackKey,
+    refresh,
+  };
 
   return (
     <ChapterGate current={CHAPTER_ID}>

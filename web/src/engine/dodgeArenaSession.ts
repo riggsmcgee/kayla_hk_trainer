@@ -23,6 +23,7 @@ import {
   COLORS,
   clearCanvas,
   drawEnemy,
+  drawGodModeHud,
   drawKnight,
   drawNailSlash,
   drawProjectiles,
@@ -73,6 +74,14 @@ export interface ArenaSessionConfig extends OverlayControls {
    */
   observe?: boolean;
   kind?: ArenaKind;
+  /**
+   * DEV TOOL: remove in the final build. God mode: a touch no longer fails
+   * the stage, but is still shown and counted. Unlike observe mode a stage
+   * CAN still be cleared with it on, which is the point — it exists to reach
+   * a stop without playing through everything before it. The run is flagged
+   * so it can never become a personal best.
+   */
+  godMode?: boolean;
   /** Fires once per stage passed (never in observe mode), after the run is recorded. */
   onStageCleared?: (index: number) => void;
   /** Fires once, when the last stage is passed, right after its onStageCleared. */
@@ -139,6 +148,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
   const { stages, comfort, onNext, nextLabel, jumpKey = 'Z', attackKey = 'X' } = config;
   if (stages.length === 0) throw new Error('createDodgeArenaSession: no stages');
   const observe = config.observe ?? false;
+  const godMode = config.godMode ?? false;
   const kind: ArenaKind =
     config.kind ?? (stages.some((s) => s.enemies.length > 1) ? 'waves' : 'roster');
   const world = arenaWorld();
@@ -150,13 +160,16 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
   let stage: StageState = createStageState();
   let player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
   let enemies: Enemy[] = [];
-  let arena: ArenaState = createArenaState(observe);
+  let arena: ArenaState = createArenaState(observe, godMode);
   let projectiles: Projectile[] = [];
   let prevFeet: Vec2 = { ...player.position };
   let prevEnemyFeet: Vec2[] = [];
   let simTime = 0;
   let startedAtIso = '';
   let hitFlash = 0;
+  /** God mode: hits she did not take on this stage, and the toast that says so. */
+  let phantomHits = 0;
+  let godToast = 0;
   let landSquash = 0;
   let bannerTimer = 0;
   /** Seconds a fail/all-cleared screen still ignores both keys. See OVERLAY_LOCKOUT_SECONDS. */
@@ -171,11 +184,13 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
     stage = createStageState();
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
     enemies = def.enemies.map((id, i) => spawnEnemy(id, i, PLAYER_SPAWN_X));
-    arena = createArenaState(observe);
+    arena = createArenaState(observe, godMode);
     projectiles = [];
     prevFeet = { ...player.position };
     prevEnemyFeet = enemies.map((e) => ({ ...e.position }));
     hitFlash = 0;
+    phantomHits = 0;
+    godToast = 0;
     landSquash = 0;
     bannerTimer = 0;
     overlayLockout = 0;
@@ -197,6 +212,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
       wave: kind === 'waves' ? stageIndex + 1 : undefined,
       cleared,
       observeMode: observe || undefined,
+      godMode: godMode || undefined,
       hitsLanded: stage.hits,
       durationMs: Math.round(stage.elapsed * 1000),
       startedAt: startedAtIso || new Date().toISOString(),
@@ -231,6 +247,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
       }
       const input = edgeCarry.merge(rawInput);
       hitFlash = Math.max(0, hitFlash - dt);
+      godToast = Math.max(0, godToast - dt);
       landSquash = Math.max(0, landSquash - dt);
 
       // The overlays read the RAW press for BOTH keys: a reflexive X inside
@@ -311,6 +328,13 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
 
       const events = stepArena(arena, player, enemies, dt, projectiles);
       projectiles = projectiles.filter((s) => !s.dead);
+      if (events.wouldHaveHit) {
+        // Trauma but no hit-stop: she is being told, not interrupted. A
+        // freeze on a hit that costs nothing only gets in the way of testing.
+        phantomHits += 1;
+        godToast = 1.1;
+        juice.addTrauma(FEEDBACK.playerHit.trauma);
+      }
       if (player.totalPogos > pogosBefore) {
         juice.addTrauma(FEEDBACK.pogo.trauma);
         juice.hitStop(FEEDBACK.pogo.hitStop);
@@ -487,6 +511,10 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): GameSession
           CANVAS.height / 2 + 24,
         );
       }
+
+      // Last, so it survives the clear and fail washes above — a badge you
+      // cannot see on the very screenshot you are taking is no safeguard.
+      if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };
 }

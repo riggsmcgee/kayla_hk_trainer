@@ -16,6 +16,7 @@ import { friendlyKeyName } from '../storage/keyNames';
 import { useBindings } from '../storage/useBindings';
 import { notifyProgressChanged, progressStore } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useGodMode } from '../storage/useGodMode';
 import { captureVerdict } from './settings.helpers';
 import '../styles/settings.css';
 
@@ -36,6 +37,7 @@ type ResetStage = 'idle' | 'confirm' | 'cleared';
 export function Settings() {
   const [bindings, setBindings] = useBindings();
   const [comfort, setComfort] = useComfortSettings();
+  const [godMode, setGodMode] = useGodMode();
   const [capturing, setCapturing] = useState<Action | null>(null);
   const [resetStage, setResetStage] = useState<ResetStage>('idle');
 
@@ -192,6 +194,25 @@ export function Settings() {
           {resetStage === 'cleared' ? 'Cleared. The map starts at Dirtmouth again.' : ''}
         </p>
       </section>
+
+      {/* DEV TOOL: remove in the final build */}
+      <details className="dev-tools">
+        <summary>Dev tools — remove in the final build</summary>
+        <div role="group" aria-label="Dev tools">
+          <label className="observe-toggle">
+            <input
+              type="checkbox"
+              checked={godMode}
+              onChange={(e) => setGodMode(e.target.checked)}
+            />
+            God mode — nothing can touch you
+          </label>
+          <p className="fine-print settings-note">
+            Every hit still flashes and still counts on the HUD, so you can see what would have got
+            you — it just does not end the run. Runs played with it on never become a personal best.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

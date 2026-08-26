@@ -132,3 +132,35 @@ describe('bossBest', () => {
     for (const wave of [1, 2, 3]) expect(waveBest(runs, wave)).toBeNull();
   });
 });
+
+/**
+ * DEV TOOL: remove in the final build. A run played with god mode on is not a
+ * best in any of the three modes — nothing could have ended it, so its time
+ * and its survival mean nothing. Same treatment observe-mode runs already get.
+ */
+describe('god-mode runs never become a best', () => {
+  it('is skipped by courseBest, however fast it was', () => {
+    const runs = [
+      run({ mode: 'pogo', level: 1, cleared: true, durationMs: 40_000 }),
+      run({ mode: 'pogo', level: 1, cleared: true, durationMs: 1_000, godMode: true }),
+    ];
+    // The cheated 1 s run would otherwise be an unbeatable personal best.
+    expect(courseBest(runs, 1)).toEqual({ durationMs: 40_000 });
+  });
+
+  it('is skipped by arenaBest, waveBest and bossBest alike', () => {
+    const cheated = { cleared: true, durationMs: 999_000, hitsLanded: 99, godMode: true };
+    expect(arenaBest([run({ mode: 'dodge', enemyId: 'warden', ...cheated })], 'warden')).toBeNull();
+    expect(waveBest([run({ mode: 'dodge', wave: 1, ...cheated })], 1)).toBeNull();
+    expect(bossBest([run({ mode: 'dodge', boss: true, ...cheated })])).toBeNull();
+  });
+
+  it('leaves an honest run beside it untouched', () => {
+    const runs = [
+      run({ mode: 'dodge', enemyId: 'warden', cleared: false, durationMs: 12_000, hitsLanded: 2 }),
+      run({ mode: 'dodge', enemyId: 'warden', cleared: true, durationMs: 60_000, godMode: true }),
+    ];
+    expect(arenaBest(runs, 'warden')?.durationMs).toBe(12_000);
+    expect(arenaBest(runs, 'warden')?.cleared).toBe(false);
+  });
+});

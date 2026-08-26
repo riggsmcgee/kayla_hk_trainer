@@ -15,6 +15,7 @@
 
 import { activeNailHitbox, applyPogoBounce, playerHurtbox } from './player';
 import type { Player } from './player';
+import { PHYSICS } from './constants';
 import { ATTACKS, enemyAttackHitbox, enemyBox, resolveNailHit } from './enemies';
 import type { Enemy, Projectile } from './enemies';
 import type { AABB } from './types';
@@ -31,6 +32,18 @@ export interface ArenaState {
   /** Clean nail hits landed, across every enemy. */
   hitsLanded: number;
   observe: boolean;
+  /**
+   * DEV TOOL: remove in the final build. God mode: nothing can end the run.
+   * A touch is reported as `wouldHaveHit` instead, so the developer can reach
+   * any part of the dojo without playing through it and still see exactly
+   * what would have got her.
+   */
+  godMode: boolean;
+  /**
+   * God mode only: seconds until another touch counts. Standing inside a
+   * walker would otherwise report a hit sixty times a second.
+   */
+  graceTimer: number;
   /**
    * Per-enemy countdown after a kill, indexed like the enemies array the
    * session passes to stepArena; at zero the session spawns a fresh enemy
@@ -49,17 +62,46 @@ export interface ArenaEvents {
   enemyDied: boolean;
   /** Indices of enemies whose respawn delay just expired — replace them now. */
   respawn: number[];
+  /**
+   * DEV TOOL: remove in the final build. God mode only: this step would have
+   * ended the run. Deliberately a SECOND flag rather than a lie told through
+   * the first — `playerHit` means "the run is over" to stepStage, stepBoss
+   * and every session's fail branch, and none of them should have to learn
+   * what god mode is. Only the display reads this one.
+   */
+  wouldHaveHit: boolean;
 }
 
-export function createArenaState(observe: boolean): ArenaState {
+export function createArenaState(observe: boolean, godMode = false): ArenaState {
   return {
     started: false,
     over: false,
     elapsed: 0,
     hitsLanded: 0,
     observe,
+    godMode,
+    graceTimer: 0,
     respawnTimers: [],
   };
+}
+
+/**
+ * Something touched her. Normally that is the end of the run — the mode's
+ * whole philosophy. In god mode it is only news, and only once per grace
+ * window, so leaning on an enemy reads as one hit rather than a hundred.
+ *
+ * The window is HK's own i-frame duration, which every one-hit mode in this
+ * dojo has had no use for until now.
+ */
+function registerTouch(state: ArenaState, events: ArenaEvents): void {
+  if (!state.godMode) {
+    state.over = true;
+    events.playerHit = true;
+    return;
+  }
+  if (state.graceTimer > 0) return;
+  state.graceTimer = PHYSICS.iFrames;
+  events.wouldHaveHit = true;
 }
 
 function overlaps(
@@ -110,10 +152,12 @@ export function stepArena(
     hits: 0,
     enemyDied: false,
     respawn: [],
+    wouldHaveHit: false,
   };
   if (state.over) return events;
 
   if (state.started) state.elapsed += dt;
+  if (state.godMode) state.graceTimer = Math.max(0, state.graceTimer - dt);
 
   const nail = activeNailHitbox(player);
   const hurtbox = playerHurtbox(player);
@@ -127,12 +171,13 @@ export function stepArena(
   }
 
   // A projectile that reaches the body ends the run like any other hit.
+  // The shot is spent either way: god mode changes what a hit COSTS, never
+  // what the simulation does, or testing would not be testing the game.
   for (const shot of projectiles) {
     if (!shot.dead && overlaps(hurtbox, projectileBox(shot))) {
       shot.dead = true;
-      state.over = true;
-      events.playerHit = true;
-      return events;
+      registerTouch(state, events);
+      if (state.over) return events;
     }
   }
 
@@ -179,8 +224,7 @@ export function stepArena(
     // plain contact — either way, the run ends. The first hit is the lesson.
     const attack = enemyAttackHitbox(enemy);
     if ((attack && overlaps(hurtbox, attack)) || overlaps(hurtbox, enemyHurtsBox(enemy))) {
-      state.over = true;
-      events.playerHit = true;
+      registerTouch(state, events);
     }
   });
 

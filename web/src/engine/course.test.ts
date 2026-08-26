@@ -614,3 +614,67 @@ describe.each(POGO_COURSES.map((c, i) => [i + 1, c.name, c] as const))(
     });
   },
 );
+
+/**
+ * DEV TOOL: remove in the final build. God mode in the course.
+ *
+ * Same shape as the arena's: `respawned` keeps meaning "move her back to the
+ * checkpoint", so pogoCourseSession's respawn branch needs no god-mode check
+ * at all, and `wouldHaveRespawned` carries the news for the display.
+ */
+describe('god mode', () => {
+  /** Standing in the tiny course's spike strip (x 200–300, y 80–100). */
+  const inTheSpikes = (): AABB => boxAt(250, 100);
+
+  it('reports the touch but leaves her where she is', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, true);
+    state.started = true;
+
+    const events = stepCourse(course, state, inTheSpikes(), DT);
+    expect(events.wouldHaveRespawned).toBe(true);
+    // The flag the session's respawn branch reads, which must not fire.
+    expect(events.respawned).toBe(false);
+  });
+
+  it('still counts the miss, because the miss IS the display', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, true);
+    state.started = true;
+    stepCourse(course, state, inTheSpikes(), DT);
+    expect(state.misses).toBe(1);
+  });
+
+  it('counts one miss per grace window while she stands in them', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, true);
+    state.started = true;
+    // One second in the spikes, inside the 1.3 s window: one miss, not sixty.
+    for (let i = 0; i < 60; i++) stepCourse(course, state, inTheSpikes(), DT);
+    expect(state.misses).toBe(1);
+
+    // And the window really does reopen: three seconds is two more of them.
+    for (let i = 0; i < 120; i++) stepCourse(course, state, inTheSpikes(), DT);
+    expect(state.misses).toBe(3);
+  });
+
+  it('treats a hazard orb the same way', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, true);
+    state.started = true;
+    // The hazard orb sits at x 320–348, y 40–68.
+    const events = stepCourse(course, state, { x: 325, y: 45, width: 18, height: 20 }, DT);
+    expect(events.wouldHaveRespawned).toBe(true);
+    expect(events.respawned).toBe(false);
+  });
+
+  it('is off unless asked for, and a spike still sends her back', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course);
+    state.started = true;
+    expect(state.godMode).toBe(false);
+    const events = stepCourse(course, state, inTheSpikes(), DT);
+    expect(events.respawned).toBe(true);
+    expect(events.wouldHaveRespawned).toBe(false);
+  });
+});

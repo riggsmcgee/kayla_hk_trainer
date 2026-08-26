@@ -25,6 +25,7 @@ import {
   COLORS,
   clearCanvas,
   drawEnemy,
+  drawGodModeHud,
   drawKnight,
   drawNailSlash,
   drawProjectiles,
@@ -49,6 +50,12 @@ export interface BossSessionConfig extends OverlayControls {
    * and shows a bare clock: past that point the fight is about her best time.
    */
   cleared?: boolean;
+  /**
+   * DEV TOOL: remove in the final build. God mode: neither Bill can touch
+   * her, so the clock only stops when she leaves. The run is flagged so a
+   * fight nothing could end never becomes her best time.
+   */
+  godMode?: boolean;
   /** Fires live at the 1:30 crossing, not at the end of the run. */
   onPassed?: () => void;
   /** Fires once per touch, after the run is recorded. */
@@ -61,12 +68,13 @@ function pressedAnything(input: InputFrame): boolean {
 
 export function createBossSession(config: BossSessionConfig): GameSession {
   const { comfort, jumpKey = 'Z', attackKey = 'X', onNext, nextLabel } = config;
+  const godMode = config.godMode ?? false;
   const world = arenaWorld();
   const juice = createJuice(comfort);
   const edgeCarry = createEdgeCarry();
 
   let boss = createBossState();
-  let arena = createArenaState(false);
+  let arena = createArenaState(false, godMode);
   let player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
   let bill = createEnemy('bill', BILL_SPAWN_X, FLOOR_Y);
   /** Null until 0:30. */
@@ -78,6 +86,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
   let simTime = 0;
   let hitFlash = 0;
+  /** God mode: hits she did not take this run, and the toast that says so. */
+  let phantomHits = 0;
+  let godToast = 0;
   let landSquash = 0;
   let wasGrounded = true;
   let startedAtIso = '';
@@ -88,12 +99,14 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
   function restart(): void {
     boss = createBossState();
-    arena = createArenaState(false);
+    arena = createArenaState(false, godMode);
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
     bill = createEnemy('bill', BILL_SPAWN_X, FLOOR_Y);
     dog = null;
     projectiles = [];
     hitFlash = 0;
+    phantomHits = 0;
+    godToast = 0;
     startedAtIso = '';
     prevFeet.x = player.position.x;
     prevFeet.y = player.position.y;
@@ -128,6 +141,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     recordRun({
       mode: 'dodge',
       boss: true,
+      godMode: godMode || undefined,
       cleared: boss.passed,
       hitsLanded: 0,
       durationMs: Math.round(boss.elapsed * 1000),
@@ -172,6 +186,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
       const input = edgeCarry.merge(rawInput);
       hitFlash = Math.max(0, hitFlash - dt);
+      godToast = Math.max(0, godToast - dt);
       landSquash = Math.max(0, landSquash - dt);
 
       if (boss.phase === 'ready' && pressedAnything(input)) {
@@ -206,6 +221,12 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
       const events = stepArena(arena, player, bills(), dt, projectiles);
       projectiles = projectiles.filter((s) => !s.dead);
+      if (events.wouldHaveHit) {
+        // Trauma but no hit-stop: she is being told, not interrupted.
+        phantomHits += 1;
+        godToast = 1.1;
+        juice.addTrauma(FEEDBACK.playerHit.trauma);
+      }
       // Only the pogo can fire here: the Bills never take a hit and never
       // die, so nailHit and enemyDeath have nothing to react to.
       if (player.totalPogos > pogosBefore) {
@@ -324,6 +345,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           CANVAS.height / 2 + 24,
         );
       }
+
+      // Last, so it survives the card and fail washes above.
+      if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };
 }

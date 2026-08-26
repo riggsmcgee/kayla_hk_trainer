@@ -53,7 +53,10 @@ const HARD_CEILING = MAX_STORED_RUNS * 4;
 function trimRuns(runs: readonly PracticeRun[]): PracticeRun[] {
   let excess = runs.length - MAX_STORED_RUNS;
   if (excess <= 0) return [...runs];
-  const kept = runs.filter((r) => runCleared(r) || excess-- <= 0);
+  // A clear is protected from eviction because it is a personal best worth
+  // keeping — but a god-mode clear is not a best (bests.ts skips it), so
+  // protecting it would let cheated runs push her real ones out at the cap.
+  const kept = runs.filter((r) => (runCleared(r) && !r.godMode) || excess-- <= 0);
   return kept.slice(-HARD_CEILING);
 }
 
@@ -61,6 +64,7 @@ export const DEFAULT_SETTINGS: SettingsV1 = {
   version: 1,
   reduceShake: false,
   reduceFlashing: false,
+  godMode: false,
 };
 
 /**

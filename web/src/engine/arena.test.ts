@@ -976,3 +976,89 @@ describe('arena session (staged game)', () => {
     expect(stepArena(sunk, caught, [roller()], FIXED_DT).playerHit).toBe(true);
   });
 });
+
+/**
+ * DEV TOOL: remove in the final build.
+ *
+ * God mode's contract, and the whole reason it is expressed as a SECOND event
+ * rather than by suppressing the first: everything downstream of stepArena —
+ * stepStage, stepBoss, the sessions' fail branches — reads `playerHit` and
+ * takes it to mean "the run is over". If god mode made that flag lie, every
+ * one of them would have to learn about god mode. Instead `playerHit` keeps
+ * its meaning and `wouldHaveHit` carries the news, which only the display
+ * reads.
+ */
+describe('god mode', () => {
+  function godParts() {
+    const state = createArenaState(false, true);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    const enemy = createEnemy('walker', 800, FLOOR_Y);
+    return { state, player, enemy };
+  }
+
+  it('reports the touch without ending the run', () => {
+    const { state, player, enemy } = godParts();
+    player.position.x = enemy.position.x; // standing inside the walker
+
+    const events = stepArena(state, player, [enemy], FIXED_DT);
+    expect(events.wouldHaveHit).toBe(true);
+    // The flag every downstream consumer reads keeps its old meaning.
+    expect(events.playerHit).toBe(false);
+    expect(state.over).toBe(false);
+  });
+
+  it('counts one touch per grace window, not one per frame', () => {
+    const { state, player, enemy } = godParts();
+    player.position.x = enemy.position.x;
+
+    let reported = 0;
+    // One second standing inside it — inside the 1.3 s window. Without a
+    // debounce this would be sixty hits and the counter would read as broken
+    // rather than as information.
+    for (let i = 0; i < 60; i++) {
+      if (stepArena(state, player, [enemy], FIXED_DT).wouldHaveHit) reported += 1;
+    }
+    expect(reported).toBe(1);
+  });
+
+  it('counts again once the grace window has passed', () => {
+    const { state, player, enemy } = godParts();
+    player.position.x = enemy.position.x;
+    let reported = 0;
+    // Three seconds is two full 1.3 s windows and a bit.
+    for (let i = 0; i < 180; i++) {
+      if (stepArena(state, player, [enemy], FIXED_DT).wouldHaveHit) reported += 1;
+    }
+    expect(reported).toBe(3);
+  });
+
+  it('leaves the run going for a projectile too', () => {
+    const { state, player } = godParts();
+    const shot = {
+      position: { x: player.position.x, y: player.position.y - 20 },
+      velocity: { x: 0, y: 0 },
+      radius: 7,
+      dead: false,
+    };
+    const events = stepArena(state, player, [], FIXED_DT, [shot]);
+    expect(events.wouldHaveHit).toBe(true);
+    expect(events.playerHit).toBe(false);
+    expect(state.over).toBe(false);
+    // The shot is still consumed. God mode changes what a hit COSTS, never
+    // what the simulation does — otherwise testing would not be testing.
+    expect(shot.dead).toBe(true);
+  });
+
+  it('is off unless asked for, and the run ends as it always did', () => {
+    const state = createArenaState(false);
+    state.started = true;
+    expect(state.godMode).toBe(false);
+    const player = createPlayer(300, FLOOR_Y);
+    const enemy = createEnemy('walker', 300, FLOOR_Y);
+    const events = stepArena(state, player, [enemy], FIXED_DT);
+    expect(events.playerHit).toBe(true);
+    expect(events.wouldHaveHit).toBe(false);
+    expect(state.over).toBe(true);
+  });
+});

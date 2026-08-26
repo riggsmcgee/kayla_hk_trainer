@@ -16,6 +16,7 @@
  *   is a pure function of course time — no RNG, so a run is reproducible.
  */
 
+import { PHYSICS } from './constants';
 import type { AABB, Vec2 } from './types';
 
 export interface Checkpoint {
@@ -78,6 +79,14 @@ export interface CourseState {
   checkpointIndex: number;
   /** Where a spike hit sends the player back to. */
   respawnPoint: Vec2;
+  /**
+   * DEV TOOL: remove in the final build. God mode: a hazard costs her
+   * nothing but is still counted and still reported, so the developer can
+   * walk a level and see every place it would have sent her back.
+   */
+  godMode: boolean;
+  /** God mode only: seconds until another hazard touch counts. */
+  graceTimer: number;
 }
 
 export interface CourseEvents {
@@ -87,6 +96,12 @@ export interface CourseEvents {
   checkpointReached: number | null;
   /** The goal was reached this step. */
   finishedNow: boolean;
+  /**
+   * DEV TOOL: remove in the final build. God mode only: this touch would
+   * have sent her back. `respawned` keeps its meaning so the session's
+   * respawn branch needs no god-mode check of its own.
+   */
+  wouldHaveRespawned: boolean;
 }
 
 function overlaps(a: AABB, b: AABB): boolean {
@@ -124,7 +139,7 @@ export function moverBox(m: Mover, t: number): AABB {
   };
 }
 
-export function createCourseState(course: CourseDef): CourseState {
+export function createCourseState(course: CourseDef, godMode = false): CourseState {
   return {
     started: false,
     finished: false,
@@ -132,7 +147,30 @@ export function createCourseState(course: CourseDef): CourseState {
     misses: 0,
     checkpointIndex: -1,
     respawnPoint: { ...course.spawn },
+    godMode,
+    graceTimer: 0,
   };
+}
+
+/**
+ * Her body is in a spike strip or a red orb. Normally that costs her the
+ * ground back to the last checkpoint; in god mode it costs nothing but is
+ * still counted, because the miss counter IS the display she is being shown.
+ *
+ * The grace window is HK's own i-frame duration: without it, standing in a
+ * spike strip would tick the counter sixty times a second and read as a bug
+ * rather than as information.
+ */
+function registerHazard(state: CourseState, events: CourseEvents): void {
+  if (!state.godMode) {
+    state.misses += 1;
+    events.respawned = true;
+    return;
+  }
+  if (state.graceTimer > 0) return;
+  state.graceTimer = PHYSICS.iFrames;
+  state.misses += 1;
+  events.wouldHaveRespawned = true;
 }
 
 /**
@@ -151,8 +189,10 @@ export function stepCourse(
     respawned: false,
     checkpointReached: null,
     finishedNow: false,
+    wouldHaveRespawned: false,
   };
   if (state.finished) return events;
+  if (state.godMode) state.graceTimer = Math.max(0, state.graceTimer - dt);
 
   if (state.started) state.elapsed += dt;
 
@@ -173,15 +213,13 @@ export function stepCourse(
 
   for (const hazard of course.spikes) {
     if (overlaps(playerBox, hazard)) {
-      state.misses += 1;
-      events.respawned = true;
+      registerHazard(state, events);
       return events;
     }
   }
   for (const hazard of course.hazardOrbs) {
     if (overlaps(playerBox, hazard)) {
-      state.misses += 1;
-      events.respawned = true;
+      registerHazard(state, events);
       return events;
     }
   }

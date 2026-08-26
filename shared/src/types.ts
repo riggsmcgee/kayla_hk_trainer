@@ -49,6 +49,13 @@ export interface PracticeRun {
    * survival time, for pure dodge-first practice.
    */
   observeMode?: boolean;
+  /**
+   * DEV TOOL: remove in the final build. The run was played with god mode on,
+   * so nothing could touch her. Recorded rather than dropped so the developer
+   * can still see what happened, and filtered out of every personal best the
+   * same way `observeMode` is — a run nothing could end is not a best.
+   */
+  godMode?: boolean;
   /** Nail hits landed during the run (0 in observe mode). */
   hitsLanded: number;
   /** Run length in milliseconds. */
@@ -127,4 +134,12 @@ export interface SettingsV1 {
    * the later gamepad-binding milestone.
    */
   inputBindings?: Record<string, string>;
+  /**
+   * DEV TOOL: remove in the final build. God mode — nothing can touch her, but
+   * every hit she WOULD have taken is still shown and counted. It exists so
+   * the developer can reach and test any part of the dojo without playing
+   * through it. Optional, so a settings blob written before it existed reads
+   * as off.
+   */
+  godMode?: boolean;
 }

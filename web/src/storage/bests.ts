@@ -37,6 +37,7 @@ export function courseBest(runs: readonly PracticeRun[], level: number): CourseB
   let best: CourseBest | null = null;
   for (const r of runs) {
     if (r.mode !== 'pogo') continue;
+    if (r.godMode) continue; // DEV TOOL: a run nothing could end is not a best
     if ((r.level ?? 1) !== level) continue;
     if (!runCleared(r)) continue;
     if (!best || r.durationMs < best.durationMs) best = { durationMs: r.durationMs };
@@ -53,6 +54,7 @@ function stageBest(runs: readonly PracticeRun[]): StageBest | null {
   let best: StageBest | null = null;
   for (const r of runs) {
     if (r.observeMode) continue;
+    if (r.godMode) continue; // DEV TOOL: a run nothing could end is not a best
     const candidate: StageBest = {
       hitsLanded: r.hitsLanded,
       durationMs: r.durationMs,

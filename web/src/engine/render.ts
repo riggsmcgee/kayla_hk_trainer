@@ -4,7 +4,7 @@
  * juice pass. Colors mirror the site palette in styles.css.
  */
 
-import { ENEMIES, KNIGHT, PHYSICS } from './constants';
+import { CANVAS, ENEMIES, KNIGHT, PHYSICS } from './constants';
 import type { Mover } from './course';
 import { moverBox } from './course';
 import type { Enemy, Projectile } from './enemies';
@@ -56,6 +56,47 @@ export const COLORS = {
   foamOrange: '#f08a2c',
   dogWhite: '#f4f2ec',
 } as const;
+
+/**
+ * DEV TOOL: remove in the final build.
+ *
+ * God mode's whole visible half, shared by all three modes so they say it the
+ * same way: a standing badge, so it can never be on without her knowing, and
+ * a toast on every hit she did not take.
+ *
+ * Red, because red already means "this hurts" everywhere else on the canvas
+ * (the hazard orbs), and because the point of the toast is to say the hit was
+ * real even though the consequence was not. `toast` is seconds remaining, so
+ * it fades out on its own.
+ */
+export function drawGodModeHud(
+  ctx: CanvasRenderingContext2D,
+  phantomHits: number,
+  toast: number,
+  reduceFlashing: boolean,
+): void {
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '15px system-ui, sans-serif';
+  ctx.fillStyle = COLORS.hudDim;
+  // "ignored", not "taken": the Dodge Arena HUD two lines up already says
+  // `hits N / M` meaning hits SHE landed, and a badge saying "hits taken"
+  // right under it reads as the opposite of what it counts.
+  const ignored = `${phantomHits} ${phantomHits === 1 ? 'hit' : 'hits'} ignored`;
+  ctx.fillText(`god mode · ${ignored}`, 16, CANVAS.height - 18);
+
+  if (toast > 0) {
+    // Reduce-flashing swaps the red pulse for a steady dim line: the same
+    // information, without a colour spiking in and out every grace window.
+    ctx.textAlign = 'center';
+    ctx.globalAlpha = reduceFlashing ? 0.85 : Math.min(1, toast / 0.3);
+    ctx.fillStyle = reduceFlashing ? COLORS.hudDim : COLORS.hazard;
+    ctx.font = '18px system-ui, sans-serif';
+    ctx.fillText('that would have got you', CANVAS.width / 2, 130);
+  }
+  ctx.restore();
+}
 
 export function clearCanvas(ctx: CanvasRenderingContext2D, width: number, height: number): void {
   ctx.fillStyle = COLORS.canvasBg;

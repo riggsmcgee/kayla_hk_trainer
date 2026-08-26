@@ -20,6 +20,7 @@ import { levelSkipKey } from '../storage/progress';
 import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useGodMode } from '../storage/useGodMode';
 import { afterClear, levelBestLine, nextLevelToPlay } from './playPogo.helpers';
 import '../styles/levels.css';
 
@@ -30,6 +31,7 @@ export function PlayPogo() {
   const next = nextChapter(CHAPTER_ID);
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
+  const [godMode] = useGodMode();
   const [bindings] = useBindings();
   const jumpKey = jumpKeyName(bindings);
   const attackKey = attackKeyName(bindings);
@@ -67,6 +69,7 @@ export function PlayPogo() {
       createPogoCourseSession({
         level,
         comfort,
+        godMode,
         jumpKey,
         attackKey,
         // Only offer Z a destination when there is one; without onNext the
@@ -79,7 +82,7 @@ export function PlayPogo() {
           setJustCleared(info.level);
         },
       }),
-    [level, comfort, jumpKey, attackKey, hasNextLevel, next, onNext, nextLabel, refresh],
+    [level, comfort, godMode, jumpKey, attackKey, hasNextLevel, next, onNext, nextLabel, refresh],
   );
 
   const panel = justCleared === null ? null : afterClear(justCleared, progress);

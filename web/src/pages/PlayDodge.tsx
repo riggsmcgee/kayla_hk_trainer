@@ -24,6 +24,7 @@ import { arenaCleared } from '../storage/progress';
 import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useGodMode } from '../storage/useGodMode';
 import { formatClock } from './bestLine';
 import '../styles/arena.css';
 
@@ -59,6 +60,7 @@ export function PlayDodge() {
   const next = nextChapter(CHAPTER_ID);
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
+  const [godMode] = useGodMode();
   const [bindings] = useBindings();
   const jumpKey = jumpKeyName(bindings);
   const attackKey = attackKeyName(bindings);
@@ -97,6 +99,7 @@ export function PlayDodge() {
         startIndex: 0,
         comfort,
         observe,
+        godMode,
         kind: 'roster',
         jumpKey,
         attackKey,
@@ -107,6 +110,7 @@ export function PlayDodge() {
       startIndex,
       comfort,
       observe,
+      godMode,
       kind: 'roster',
       jumpKey,
       attackKey,
@@ -122,6 +126,7 @@ export function PlayDodge() {
   }, [
     freePlay,
     observe,
+    godMode,
     comfort,
     startIndex,
     onStageCleared,
