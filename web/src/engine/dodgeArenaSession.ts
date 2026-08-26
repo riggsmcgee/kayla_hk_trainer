@@ -35,7 +35,7 @@ import { createStageState, dueCount, startStage, stepStage } from './stages';
 import type { StageDef, StageState } from './stages';
 import { recordRun } from '../storage/recordRun';
 import type { GameSession, OverlayControls } from './session';
-import { OVERLAY_LOCKOUT_SECONDS, tickDown } from './session';
+import { createOverlayGate } from './session';
 import type { InputFrame, Vec2, World } from './types';
 
 /**
@@ -52,7 +52,6 @@ export const FLOOR_Y = 600;
  */
 export const PLAYER_SPAWN_X = 450;
 /** Seconds the "Stage clear" banner hangs before the next stage steps in (Z skips it). */
-export const STAGE_CLEAR_BANNER_SECONDS = 2;
 
 /** How long "Reinforcements." stays on screen after bodies walk in. */
 export const JOIN_BANNER_SECONDS = 1.2;
@@ -259,13 +258,14 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
   let phantomHits = 0;
   let godToast = 0;
   let landSquash = 0;
-  let bannerTimer = 0;
+  const clearGate = createOverlayGate();
+  const failGate = createOverlayGate();
+  const allClearedGate = createOverlayGate();
   /** How many of this stage's reinforcements have actually walked in. */
   let joined = 0;
   /** Seconds the "Reinforcements." line stays up after an arrival. */
   let joinBanner = 0;
-  /** Seconds a fail/all-cleared screen still ignores both keys. See OVERLAY_LOCKOUT_SECONDS. */
-  let overlayLockout = 0;
+
   let allCleared = false;
   let wasGrounded = false;
 
@@ -284,10 +284,8 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
     phantomHits = 0;
     godToast = 0;
     landSquash = 0;
-    bannerTimer = 0;
     joined = 0;
     joinBanner = 0;
-    overlayLockout = 0;
     allCleared = false;
     wasGrounded = false;
     startedAtIso = '';
@@ -387,8 +385,8 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
       //
       // Z = forward, X = again, on every screen (playtest 3, note 11).
       if (allCleared) {
-        overlayLockout = tickDown(overlayLockout, dt);
-        if (overlayLockout <= 0) {
+        const pressing = rawInput.attackPressed || rawInput.jumpPressed;
+        if (allClearedGate.open(dt, pressing)) {
           // Replaying from the top is practice; the clears are already kept.
           if (rawInput.attackPressed) loadStage(0);
           else if (rawInput.jumpPressed && onNext) onNext();
@@ -396,22 +394,23 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         return;
       }
       if (stage.status === 'cleared') {
-        // X is deliberately NOT "again" here: this banner expires on its own,
-        // and replaying the stage she just passed would fire onStageCleared
-        // twice for one index and record a second run. Z skips the wait.
-        bannerTimer -= dt;
-        if (rawInput.jumpPressed || bannerTimer <= 0) advance();
+        // X is deliberately NOT "again" here: replaying the stage she just
+        // passed would fire onStageCleared twice for one index and record a
+        // second run. Z is the only way on.
+        //
+        // The 2 s auto-advance this screen used to have is DELETED (playtest
+        // 5, note 4): it was the purest form of the complaint, a screen that
+        // moved on with no input from her at all.
+        const pressing = rawInput.attackPressed || rawInput.jumpPressed;
+        if (clearGate.open(dt, pressing) && rawInput.jumpPressed) advance();
         return;
       }
       if (stage.status === 'failed') {
         // Both keys retry. There is no forward from a stage she just failed,
         // and a dead Z would read as broken after two playtests of it
         // restarting the stage.
-        //
-        // No lockout here: FEEDBACK.playerHit.hitStop is 0.15 s, and the
-        // frozen branch above already swallows a reflex press. The clear
-        // screens need one because their hit-stop is zero.
-        if (rawInput.attackPressed || rawInput.jumpPressed) {
+        const pressing = rawInput.attackPressed || rawInput.jumpPressed;
+        if (failGate.open(dt, pressing) && pressing) {
           loadStage(stageIndex); // the same stage, never the first
         }
         return;
@@ -496,6 +495,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         dt,
       );
       if (outcome === 'failed') {
+        failGate.arm();
         hitFlash = 0.5;
         juice.addTrauma(FEEDBACK.playerHit.trauma);
         juice.hitStop(FEEDBACK.playerHit.hitStop);
@@ -510,10 +510,10 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         if (!observe) config.onStageCleared?.(cleared);
         if (cleared + 1 >= stages.length) {
           allCleared = true;
-          overlayLockout = OVERLAY_LOCKOUT_SECONDS;
+          allClearedGate.arm();
           if (!observe) config.onAllCleared?.();
         } else {
-          bannerTimer = STAGE_CLEAR_BANNER_SECONDS;
+          clearGate.arm();
         }
       }
 
@@ -635,7 +635,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         ctx.font = '19px system-ui, sans-serif';
         ctx.fillStyle = COLORS.hudDim;
         ctx.fillText(
-          `${stage.hits} ${stage.hits === 1 ? 'hit' : 'hits'} · ${formatClock(stage.elapsed)} — next one stepping in. Press ${jumpKey} to go now.`,
+          `${stage.hits} ${stage.hits === 1 ? 'hit' : 'hits'} · ${formatClock(stage.elapsed)} — press ${jumpKey} for the next one.`,
           CANVAS.width / 2,
           CANVAS.height / 2 + 8,
         );

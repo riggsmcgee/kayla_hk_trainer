@@ -45,6 +45,7 @@ import {
 import { formatClock } from './clock';
 import { FLOOR_Y, PLAYER_SPAWN_X, bossWorld } from './dodgeArenaSession';
 import { recordRun } from '../storage/recordRun';
+import { createOverlayGate } from './session';
 import type { GameSession, OverlayControls } from './session';
 import type { InputFrame, Vec2 } from './types';
 
@@ -135,6 +136,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   let godToast = 0;
   let landSquash = 0;
   let wasGrounded = true;
+  const overGate = createOverlayGate();
   let startedAtIso = '';
 
   const prevFeet: Vec2 = { ...player.position };
@@ -142,6 +144,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   const prevDogFeet: Vec2 = { x: 0, y: 0 };
 
   function restart(): void {
+    overGate.arm();
     boss = createBossState();
     arena = createArenaState(false, godMode);
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
@@ -259,10 +262,14 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       }
 
       // Both keys retry. There is no forward from a run she just lost, and a
-      // dead Z would read as broken. No lockout: FEEDBACK.playerHit.hitStop
-      // is 0.15 s and the frozen branch above already ate the reflex press.
+      // dead Z would read as broken.
+      //
+      // This screen used to trust the 0.15 s hit-stop to eat her reflex press
+      // and had no guard of its own. It loses to a mashing thumb, so it goes
+      // through the same gate as every other end screen now (playtest 5).
       if (boss.phase === 'over') {
-        if (rawInput.attackPressed || rawInput.jumpPressed) restart();
+        const pressing = rawInput.attackPressed || rawInput.jumpPressed;
+        if (overGate.open(dt, pressing) && pressing) restart();
         return;
       }
 
@@ -334,6 +341,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           config.onPassed?.();
           break;
         case 'over':
+          overGate.arm();
           hitFlash = 0.5;
           juice.addTrauma(FEEDBACK.playerHit.trauma);
           juice.hitStop(FEEDBACK.playerHit.hitStop);

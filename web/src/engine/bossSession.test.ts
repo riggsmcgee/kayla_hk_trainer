@@ -181,9 +181,12 @@ describe('the run it records', () => {
 describe('the Bills, over a long run', () => {
   it('never take a hit, however many times she swings and dies', () => {
     const session = afterEntrance({ comfort: COMFORT });
-    // A hundred seconds of mashing: swing, die, X, swing again.
+    // A hundred seconds of it: mash for a second, breathe for a second, over
+    // and over. The breath matters — playtest 5's fail screen waits for one,
+    // so a bot that never stops mashing only ever gets one run.
     for (let i = 0; i < 60 * 100; i++) {
-      session.step(press({ attackPressed: i % 25 === 0, down: true }), FIXED_DT);
+      const mashing = i % 120 < 60;
+      session.step(press({ attackPressed: mashing && i % 25 === 0, down: true }), FIXED_DT);
     }
     expect(recorded.length).toBeGreaterThan(1);
     for (const run of recorded) {

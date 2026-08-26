@@ -16,6 +16,7 @@ import {
   joinX,
   spawnX,
 } from './dodgeArenaSession';
+import { FEEDBACK } from './juice';
 import { OVERLAY_LOCKOUT_SECONDS } from './session';
 import { ATTACKS, ENEMY_SIZES, createEnemy, enemyBox, rallyBall, stepEnemy } from './enemies';
 import type { Enemy } from './enemies';
@@ -585,6 +586,16 @@ describe('arena session (staged game)', () => {
   };
   const COMFORT = { reduceShake: false, reduceFlashing: false };
   const press = (partial: Partial<InputFrame>): InputFrame => ({ ...IDLE, ...partial });
+  /**
+   * Idle until an end screen will listen. Two waits, in this order: the
+   * hit-stop freeze (during which step() returns before the gate is even
+   * ticked), then the gate's own lockout, which playtest 5 derived from
+   * PHYSICS.nailCadence so it outlasts one mash period.
+   */
+  const waitOutTheGate = (s: { step: (i: InputFrame, dt: number) => void }) => {
+    const seconds = FEEDBACK.playerHit.hitStop + OVERLAY_LOCKOUT_SECONDS;
+    for (let i = 0; i < Math.ceil(seconds / FIXED_DT) + 2; i++) s.step(IDLE, FIXED_DT);
+  };
   /** Stages that clear by standing still for a moment (no hits needed). */
   const quick = (n: number) =>
     rosterStages()
@@ -612,7 +623,7 @@ describe('arena session (staged game)', () => {
     expect(recorded[0]!.wave).toBeUndefined();
     expect(recorded[0]!.observeMode).toBeUndefined();
     expect(cleared).toEqual([]);
-    for (let i = 0; i < 10; i++) s.step(IDLE, FIXED_DT); // the hit-stop freeze
+    waitOutTheGate(s); // the hit-stop freeze, then the end-screen gate
     s.step(press({ jumpPressed: true }), FIXED_DT); // Z: the flier again, not the walker
     steps = 0;
     while (recorded.length === 1 && steps < 60 * 30) {
@@ -639,7 +650,8 @@ describe('arena session (staged game)', () => {
     expect(cleared).toEqual([0]);
     expect(all).toBe(0);
     expect(recorded[0]).toMatchObject({ enemyId: 'walker', cleared: true });
-    // The banner holds; Z skips it; the next stage waits for input again.
+    // The banner holds until she presses Z; the next stage waits for input.
+    waitOutTheGate(s);
     s.step(press({ jumpPressed: true }), FIXED_DT);
     for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
     expect(cleared).toEqual([0]);
@@ -650,13 +662,19 @@ describe('arena session (staged game)', () => {
     expect(recorded[1]).toMatchObject({ enemyId: 'flier', cleared: true });
   });
 
-  it('the banner advances on its own after two seconds', () => {
+  it('the wave-clear banner never advances on its own — she presses Z', () => {
+    // Playtest 5 DELETES the 2 s auto-advance outright: "the end screen
+    // automatically start the level again with no input". It was the purest
+    // form of the complaint, because it needed no input whatsoever.
     recorded.length = 0;
     const cleared: number[] = [];
     const s = createDodgeArenaSession({ stages: quick(2), comfort: COMFORT });
     s.step(press({ attackPressed: true }), FIXED_DT);
-    for (let i = 0; i < 60 * 3; i++) s.step(IDLE, FIXED_DT); // 0.5 s clear + 2 s banner
-    s.step(press({ attackPressed: true }), FIXED_DT); // starts stage 2
+    for (let i = 0; i < 60 * 10; i++) s.step(IDLE, FIXED_DT); // ten idle seconds
+    expect(recorded.map((r) => r.enemyId)).toEqual(['walker']); // stage 2 never began
+
+    s.step(press({ jumpPressed: true }), FIXED_DT); // Z: on to the flier
+    s.step(press({ attackPressed: true }), FIXED_DT); // and it starts on input
     for (let i = 0; i < 60; i++) s.step(IDLE, FIXED_DT);
     expect(recorded.map((r) => r.enemyId)).toEqual(['walker', 'flier']);
     expect(cleared).toEqual([]); // no callback wired: free play records, never marks
@@ -722,7 +740,8 @@ describe('arena session (staged game)', () => {
     for (let i = 0; i < 9; i++) s.step(press({ attackPressed: i === 1 }), FIXED_DT);
     s.step(IDLE, FIXED_DT);
     expect(hudText(s)).toContain('Got you.');
-    // A fresh press after the freeze restarts it.
+    // A fresh press, once the gate has opened, restarts it.
+    waitOutTheGate(s);
     s.step(press({ attackPressed: true }), FIXED_DT);
     expect(hudText(s)).not.toContain('Got you.');
   });
@@ -730,10 +749,25 @@ describe('arena session (staged game)', () => {
   it('retries a failed stage on either key — there is no forward from a fail', () => {
     for (const key of ['attackPressed', 'jumpPressed'] as const) {
       const { s } = failOnce();
-      for (let i = 0; i < 12; i++) s.step(IDLE, FIXED_DT); // out of the hit-stop
+      waitOutTheGate(s); // past the hit-stop and the end-screen gate
       s.step(press({ [key]: true }), FIXED_DT);
       expect(hudText(s)).not.toContain('Got you.');
     }
+  });
+
+  it('survives a thumb still mashing X at the nail cadence', () => {
+    // THE BUG playtest 5 reported, as a test. She reaches every end screen in
+    // the rhythm the fight put her in, and PHYSICS.nailCadence is that
+    // rhythm: 0.41 s between presses. The old guard was a flat 0.35 s, so her
+    // very next press landed 0.06 s inside the screen and it was gone.
+    //
+    // Mash for a full second and the screen must still be there.
+    const { s } = failOnce();
+    const period = Math.round(PHYSICS.nailCadence / FIXED_DT);
+    for (let i = 0; i < 60; i++) {
+      s.step(press({ attackPressed: i % period === 0 }), FIXED_DT);
+    }
+    expect(hudText(s)).toContain('Got you.');
   });
 
   it('the fail screen names the again key, and never a dead forward key', () => {
@@ -747,7 +781,7 @@ describe('arena session (staged game)', () => {
     const { s, started, failed } = failOnce();
     expect(started).toEqual([1]); // once at construction
     expect(failed).toEqual([1]);
-    for (let i = 0; i < 10; i++) s.step(IDLE, FIXED_DT);
+    waitOutTheGate(s);
     s.step(press({ jumpPressed: true }), FIXED_DT);
     expect(started).toEqual([1, 1]); // the same stage again
   });
@@ -815,10 +849,9 @@ describe('arena session (staged game)', () => {
     expect(copy).toContain('J to run it again');
   });
 
-  it('an X pressed the instant the last stage clears does not skip the screen', () => {
+  it('an X still mashing when the last stage clears does not skip the screen', () => {
     // The clear screens have no hit-stop (FEEDBACK.courseClear.hitStop is 0),
-    // so OVERLAY_LOCKOUT_SECONDS is the only thing between her and a screen
-    // she never read.
+    // so the gate is the only thing between her and a screen she never read.
     const started: number[] = [];
     const s = createDodgeArenaSession({
       stages: quick(2),
@@ -834,14 +867,17 @@ describe('arena session (staged game)', () => {
     }
     expect(started).toEqual([1]);
 
-    const lockoutSteps = Math.ceil(OVERLAY_LOCKOUT_SECONDS / FIXED_DT);
-    for (let i = 0; i < lockoutSteps - 1; i++) {
-      s.step(press({ attackPressed: true }), FIXED_DT);
+    const period = Math.round(PHYSICS.nailCadence / FIXED_DT);
+    for (let i = 0; i < 60 * 3; i++) {
+      s.step(press({ attackPressed: i % period === 0 }), FIXED_DT);
     }
-    expect(started).toEqual([1]); // held down the whole way, still reading it
+    expect(started).toEqual([1]); // three seconds of mashing, still reading it
 
+    for (let i = 0; i < Math.ceil(OVERLAY_LOCKOUT_SECONDS / FIXED_DT) + 1; i++) {
+      s.step(IDLE, FIXED_DT);
+    }
     s.step(press({ attackPressed: true }), FIXED_DT);
-    expect(started).toEqual([1, 0]); // and it answers the moment it is allowed to
+    expect(started).toEqual([1, 0]); // she stopped, then chose — that one lands
   });
 
   it('observe mode never fails into the progression either', () => {

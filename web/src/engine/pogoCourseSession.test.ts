@@ -10,7 +10,7 @@
  * the screen.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { FIXED_DT } from './constants';
+import { FIXED_DT, PHYSICS } from './constants';
 import { createPogoCourseSession } from './pogoCourseSession';
 import type { PogoCourseOptions } from './pogoCourseSession';
 import { OVERLAY_LOCKOUT_SECONDS } from './session';
@@ -155,19 +155,28 @@ describe('pogo course clear screen (playtest 3, note 11)', () => {
     expect(hudText(s)).toContain('clear, Kayla!');
   });
 
-  it('ignores an X held across the goal line, so the screen cannot be skipped unread', () => {
+  it('outlasts a thumb still mashing X, then answers the first press after it', () => {
     // This session has NO hit-stop on a clear (FEEDBACK.courseClear.hitStop
     // is 0) and course.ts sets `finished` on the same step the goal is
-    // touched — so she arrives here mid pogo-mash with X going. The lockout
-    // is the only thing protecting the screen.
+    // touched — so she arrives here mid pogo-mash with X going. The gate is
+    // the only thing protecting the screen.
+    //
+    // Playtest 5: a countdown alone cannot do it, because her next press is
+    // always on the far side of one. Every press restarts the quiet period,
+    // so the screen survives the mash however long it goes on.
     const s = runToClear({ level: 1, comfort: COMFORT });
-    const lockoutSteps = Math.ceil(OVERLAY_LOCKOUT_SECONDS / FIXED_DT);
-    for (let i = 0; i < lockoutSteps - 1; i++) {
-      s.step(press({ attackPressed: true, down: true }), FIXED_DT);
+    const period = Math.round(PHYSICS.nailCadence / FIXED_DT);
+    for (let i = 0; i < 60 * 3; i++) {
+      s.step(press({ attackPressed: i % period === 0, down: true }), FIXED_DT);
     }
     expect(hudText(s)).toContain('clear, Kayla!');
 
-    // And it answers the moment it is allowed to.
+    // She stops. One quiet mash-period later the screen is listening, and the
+    // next press — the first one she aims at it — is the one that works.
+    for (let i = 0; i < Math.ceil(OVERLAY_LOCKOUT_SECONDS / FIXED_DT) + 1; i++) {
+      s.step(IDLE, FIXED_DT);
+    }
+    expect(hudText(s)).toContain('clear, Kayla!');
     s.step(press({ attackPressed: true }), FIXED_DT);
     expect(hudText(s)).not.toContain('clear, Kayla!');
   });

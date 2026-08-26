@@ -36,7 +36,7 @@ import {
 } from './render';
 import { recordRun } from '../storage/recordRun';
 import type { GameSession, OverlayControls } from './session';
-import { OVERLAY_LOCKOUT_SECONDS, tickDown } from './session';
+import { createOverlayGate } from './session';
 import type { InputFrame, Vec2, World } from './types';
 
 export interface PogoClearInfo {
@@ -116,7 +116,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
   let phantomHits = 0;
   let godToast = 0;
   /** Seconds the clear screen still ignores both keys. See OVERLAY_LOCKOUT_SECONDS. */
-  let clearLockout = 0;
+  const clearGate = createOverlayGate();
 
   function resetRun(): void {
     player = createPlayer(course.spawn.x, course.spawn.y);
@@ -129,7 +129,6 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
     landSquash = 0;
     wasGrounded = false;
     recorded = false;
-    clearLockout = 0;
     phantomHits = 0;
     godToast = 0;
   }
@@ -155,8 +154,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
         // lockout is the other half of that: this session has no hit-stop on
         // a clear at all and `finished` is set on the step the goal is
         // touched, so she gets here with X still going from the pogo mash.
-        clearLockout = tickDown(clearLockout, dt);
-        if (clearLockout <= 0) {
+        if (clearGate.open(dt, rawInput.attackPressed || rawInput.jumpPressed)) {
           if (rawInput.attackPressed) resetRun();
           else if (rawInput.jumpPressed && onNext) onNext();
         }
@@ -209,7 +207,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
       if (events.checkpointReached !== null) {
         checkpointToast = 1.6;
       }
-      if (events.finishedNow) clearLockout = OVERLAY_LOCKOUT_SECONDS;
+      if (events.finishedNow) clearGate.arm();
       if (events.finishedNow && !recorded) {
         recorded = true;
         juice.addTrauma(FEEDBACK.courseClear.trauma);
