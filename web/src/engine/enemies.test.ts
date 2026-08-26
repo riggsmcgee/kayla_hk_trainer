@@ -13,7 +13,7 @@ import { enemyHurtsBox } from './arena';
 import { arenaWorld, bossWorld, spawnX } from './dodgeArenaSession';
 import {
   ATTACKS,
-  ENEMY_SIZES,
+  DEFAULT_ROLL_VARIANT,
   ROLL_VARIANTS,
   applyNailHit,
   createEnemy,
@@ -494,57 +494,112 @@ describe('thrown bones', () => {
 // the picking happens inside, so a variant that gets tuned into a corner
 // fails here rather than in her hands.
 // ---------------------------------------------------------------------------
-describe('the five roll behaviours', () => {
+describe('the roll behaviours', () => {
   const A = ATTACKS.dog;
   const apexOf = (launch: number) => (launch * launch) / (2 * A.rollGravity);
 
-  it('offers five of them, each with a name and a feel', () => {
-    expect(ROLL_VARIANTS).toHaveLength(5);
-    expect(new Set(ROLL_VARIANTS.map((v) => v.name)).size).toBe(5);
+  /**
+   * THE VOLLEY STRIP, corrected. `activeNailHitbox`'s up case builds its box
+   * at `y − KNIGHT.spriteHeight − PHYSICS.nailReachUp`, and `y` is her FEET —
+   * so standing on the floor that box spans 48–128 px above the FLOOR, which
+   * is 0–80 px above her 48 px head and not 48–128 above it.
+   *
+   * The test this replaces built the band 48 px too high. It scored Loper's
+   * tall arc at 0.468 s where the real figure is 0.124 s, and PLAN.md quoted
+   * it as making it impossible to "quietly delete the mechanic" — it would
+   * have passed the exact change playtest 5 asked for.
+   */
+  const STRIP_LOW = KNIGHT.hurtboxHeight; // 47: below this it has already got her
+  const STRIP_HIGH = KNIGHT.spriteHeight + PHYSICS.nailReachUp; // 128: top of the nail box
+
+  /**
+   * How long a ball falling from `apex` spends inside that strip.
+   *
+   * ONE crossing, not two. The test this replaces doubled it — a second error
+   * on top of the 48 px one, and in the same direction: it counted the pass up
+   * through the strip and the pass back down as one window, when they are two
+   * separate chances split by however long the ball spends above her nail.
+   * Against the contract's own figures the single crossing is what checks out:
+   * a 147 px apex gives 0.205 s and a 188.9 px apex gives exactly the 0.15 s
+   * that kills the mechanic.
+   */
+  const volleyWindow = (apex: number) => {
+    if (apex < STRIP_LOW) return 0; // never reaches her nail at all
+    const speedAt = (h: number) => Math.sqrt(Math.max(0, 2 * A.rollGravity * (apex - h)));
+    return (speedAt(STRIP_LOW) - speedAt(Math.min(apex, STRIP_HIGH))) / A.rollGravity;
+  };
+
+  it('is the five from playtest 4 plus the one playtest 5 ratified', () => {
+    expect(ROLL_VARIANTS).toHaveLength(6);
+    expect(new Set(ROLL_VARIANTS.map((v) => v.name)).size).toBe(6);
     for (const v of ROLL_VARIANTS) expect(v.feel.length).toBeGreaterThan(20);
   });
 
-  it('never towers: a tall arc deletes the volley AND widens the tunnel', () => {
+  it('plays the ratified one by default, and it is LAST so no index moves', () => {
+    // Inserting it at the front would have re-pointed every stored index at a
+    // different behaviour — on a picker whose whole job is comparison, that is
+    // the one thing it must not do.
+    expect(rollVariant(DEFAULT_ROLL_VARIANT).name).toBe('Lopes');
+    expect(rollVariant(3).name).toBe('Loper'); // Loper-as-it-was, still at 3
+  });
+
+  it('rolls at one height now, and 180 px is not a round number', () => {
+    // Playtest 5, note 1: "all the bounces can just be the same height, and I
+    // want that height to be higher, about the max jump height".
+    const lopes = rollVariant(DEFAULT_ROLL_VARIANT);
+    expect(lopes.launches).toHaveLength(1);
+    // Jumping over the ball dies at apex 175.3; the volley dies at 188.9. The
+    // two are 13.6 px apart, so this sits in the only band that serves both.
+    const apex = apexOf(lopes.launches[0]!);
+    expect(apex).toBeGreaterThan(175.3);
+    expect(apex).toBeLessThan(A.rollVolleyApexMax);
+  });
+
+  it('rolls fast enough that she cannot simply outrun it', () => {
+    // At Loper's 205 her 332 px/s run walks away from it, and outrunning it
+    // was the whole counter once the low bounce went.
+    expect(rollVariant(DEFAULT_ROLL_VARIANT).speedX).toBe(300);
+    expect(rollVariant(DEFAULT_ROLL_VARIANT).speedXHot).toBeGreaterThan(300);
+  });
+
+  it('never towers past the point the floor-standing volley dies', () => {
+    // This replaces playtest 4's rollApexMax of 150, which playtest 5 strikes.
+    // The ceiling is the derived one now: above rollVolleyApexMax the ball
+    // crosses the strip in under one nail window and the mechanic is gone.
     for (const v of ROLL_VARIANTS) {
       for (const launch of v.launches) {
-        expect(apexOf(launch)).toBeLessThanOrEqual(A.rollApexMax);
+        expect(apexOf(launch)).toBeLessThanOrEqual(A.rollVolleyApexMax);
       }
     }
   });
 
-  it('alternates — every variant keeps a phase she can run under', () => {
+  it('keeps at least one phase the volley can live on, strip measured right', () => {
+    // NOT every phase: a low skitter only grazes the bottom of the strip and
+    // is gone in a fraction of a nail window, which is right — you do not
+    // volley a skitter, you jump it. What every variant must keep is ONE
+    // phase she can rally on, or the volley is locked out of a behaviour.
     for (const v of ROLL_VARIANTS) {
-      expect(v.launches.length).toBeGreaterThan(1);
-      const headroom = v.launches.map((l) => apexOf(l) - KNIGHT.spriteHeight);
-      // At least one phase clears her head with room to walk through...
-      expect(Math.max(...headroom)).toBeGreaterThan(KNIGHT.spriteHeight / 4);
-      // ...and at least one does not, or it would not be alternating at all.
-      expect(Math.min(...headroom)).toBeLessThan(0);
+      const best = Math.max(...v.launches.map((l) => volleyWindow(apexOf(l))));
+      expect(best, `${v.name}: ${best.toFixed(3)} s`).toBeGreaterThanOrEqual(
+        PHYSICS.nailActiveTime,
+      );
     }
   });
 
-  it('keeps at least one phase the volley can live on', () => {
-    // The ball is volleyable while any part of it is inside the band 48–128
-    // px above her head, and the window is how long it spends there against
-    // a nail that is live for PHYSICS.nailActiveTime.
-    //
-    // NOT every phase: a low skitter only grazes the bottom of the band and
-    // is gone in 0.12 s, which is right — you do not volley a skitter, you
-    // jump it. What every variant must keep is ONE phase she can rally on,
-    // because the volley must never be locked out of a whole behaviour.
-    const bandLow = KNIGHT.spriteHeight + 48;
-    const bandHigh = KNIGHT.spriteHeight + 48 + PHYSICS.nailReachUp;
-    const windowOf = (launch: number) => {
-      const apex = apexOf(launch);
-      const enter = Math.max(0, bandLow - ENEMY_SIZES.dog.height);
-      if (apex < enter) return 0; // never reaches her nail at all
-      const speedAt = (h: number) => Math.sqrt(Math.max(0, 2 * A.rollGravity * (apex - h)));
-      return (2 * (speedAt(enter) - speedAt(Math.min(apex, bandHigh)))) / A.rollGravity;
-    };
-    for (const v of ROLL_VARIANTS) {
-      const best = Math.max(...v.launches.map(windowOf));
-      expect(best).toBeGreaterThanOrEqual(PHYSICS.nailActiveTime);
-    }
+  it("spends nearly all of the volley's comfort to do it, knowingly", () => {
+    // The number the interview turned on, kept where a future tuning pass has
+    // to look at it: at 180 px the window is about ONE nail, where Loper's
+    // tall arc gave a third more. That was the accepted price of killing the
+    // jump-over, not an oversight.
+    const window = volleyWindow(apexOf(rollVariant(DEFAULT_ROLL_VARIANT).launches[0]!));
+    expect(window / PHYSICS.nailActiveTime).toBeGreaterThanOrEqual(1);
+    expect(window / PHYSICS.nailActiveTime).toBeLessThan(1.15);
+  });
+
+  it('holds the cycle near 12 s: a longer roll bought with a shorter gap', () => {
+    expect(A.rollTime).toBe(7.0);
+    expect(A.rollEvery).toBe(5.0);
+    expect(A.rollTime + A.rollEvery).toBeLessThanOrEqual(12.0);
   });
 
   it('actually cycles its pattern, one launch per floor bounce', () => {
@@ -574,9 +629,9 @@ describe('the five roll behaviours', () => {
     }
   });
 
-  it('falls back to the first variant for an index that does not exist', () => {
-    expect(rollVariant(99)).toBe(ROLL_VARIANTS[0]);
-    expect(rollVariant(-1)).toBe(ROLL_VARIANTS[0]);
+  it('falls back to the ratified variant for an index that does not exist', () => {
+    expect(rollVariant(99)).toBe(ROLL_VARIANTS[DEFAULT_ROLL_VARIANT]);
+    expect(rollVariant(-1)).toBe(ROLL_VARIANTS[DEFAULT_ROLL_VARIANT]);
   });
 });
 

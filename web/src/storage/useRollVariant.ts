@@ -19,15 +19,21 @@
  * and its setting come out with the rest of the dev tools.
  */
 import { useCallback, useState } from 'react';
-import { ROLL_VARIANTS } from '../engine/enemies';
+import { DEFAULT_ROLL_VARIANT, ROLL_VARIANTS } from '../engine/enemies';
 import { createLocalStore } from './local';
 
 const store = createLocalStore();
 
-/** Clamp anything a stale or hand-edited settings blob might hold. */
+/**
+ * Clamp anything a stale or hand-edited settings blob might hold.
+ *
+ * An unset or out-of-range value means the RATIFIED roll, not index 0 — a
+ * fresh browser must play what playtest 5 chose, not the first entry in a
+ * list that only exists so the two can be compared.
+ */
 function clamp(value: unknown): number {
-  const n = typeof value === 'number' ? Math.floor(value) : 0;
-  return n >= 0 && n < ROLL_VARIANTS.length ? n : 0;
+  const n = typeof value === 'number' ? Math.floor(value) : DEFAULT_ROLL_VARIANT;
+  return n >= 0 && n < ROLL_VARIANTS.length ? n : DEFAULT_ROLL_VARIANT;
 }
 
 export function useRollVariant(): [number, (next: number) => void] {

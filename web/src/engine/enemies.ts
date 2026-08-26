@@ -313,7 +313,7 @@ export const ATTACKS = {
     boneBounces: 3,
     /** Radians per second the bone tumbles. Drawing only — its hitbox is round. */
     boneSpin: 11,
-    rollEvery: 6.5,
+    rollEvery: 5.0,
     rollEveryHot: 4.5,
     rollTelegraph: 0.45,
     /**
@@ -322,8 +322,11 @@ export const ATTACKS = {
      * bouncing; the roll ends on the next floor contact, so he never
      * uncurls in mid-air and the floor never moves up to meet him.
      *
+     * Raised 5.0 -> 7.0 with `rollEvery` cut 6.5 -> 5.0, because the ratified
+     * pressure knob is the GAP between rolls: lengthening the roll on its own
+     * would have stretched the cycle to 14 s and loosened it.
      */
-    rollTime: 5.0,
+    rollTime: 7.0,
     /**
      * The landing animation, from ball to four feet. He is LETHAL for every
      * frame of it — playtest 5 rejected a harmless punish window outright:
@@ -369,36 +372,66 @@ export const ATTACKS = {
     rallyEscalation: 26,
     rallyLaunchMax: 620,
     /**
-     * The apex no arc may exceed, in px above the floor. See ROLL_VARIANTS:
-     * a towering arc deletes the volley, so this is a hard ceiling on the
-     * whole family rather than a per-variant number.
+     * The apex above which the FLOOR-STANDING volley stops being possible, in
+     * px above the floor. Derived, and it replaces playtest 4's `rollApexMax`
+     * of 150 — which playtest 5 strikes outright.
+     *
+     * Above this the ball crosses the 81 px strip her up-nail can reach
+     * ([47, 128] above the floor: her hurtbox top up to the top of the nail
+     * box) in less than `nailActiveTime`, so there is no longer a whole nail
+     * window to catch it in. Solve 2·(v(47) − v(128))/g = 0.15 for the apex
+     * and it comes out at 188.9 px.
+     *
+     * This is a CEILING on the family, not a target. The ratified roll sits
+     * at 180 px, 8.9 px under it, and that gap is the whole margin the volley
+     * has left — see ROLL_VARIANTS.
      */
-    rollApexMax: 150,
+    rollVolleyApexMax: 188.9,
   },
 } as const;
 
 /**
- * FIVE ROLL BEHAVIOURS, for the user to choose between (playtest 4, note 2).
+ * THE ROLL BEHAVIOURS. Five from playtest 4's portfolio, plus the one
+ * playtest 5 ratified out of them — `ROLL_VARIANTS[LOPES]` is what the fight
+ * plays now, and the other five stay one more round so the new shape can be
+ * compared against Loper-as-it-was before anything is baked in.
  *
- * > "I think this is a situation where I just need to try out five different
- * > examples and then go off that."
+ * PLAYTEST 5 STRIKES THE ALTERNATION RULE. Playtest 4 required every variant
+ * to alternate — _"so each one keeps a low phase the volley can live on"_ —
+ * and note 1 overrides it: "I just don't like the double bounce, the small
+ * one. I think all the bounces can just be the same height, and I want that
+ * height to be higher, about the max jump height of the character."
  *
- * Every one of them ALTERNATES, and that is not decoration — it is what keeps
- * two different answers alive at once:
+ * The arithmetic that follows from that note, because the two goals in it
+ * cannot both be comfortable:
  *
- * - A HIGH phase (apex over ~95 px) lifts the ball's underside clear of her
- *   47 px head, so she can run under it. It is also slow near its apex, so
- *   it is the phase the volley is easiest on.
+ *   her max jump, fully held                 233.3 px
+ *   JUMPING OVER THE BALL dies at apex       175.3 px  (the ball is 58 tall)
+ *   THE FLOOR-STANDING VOLLEY dies at apex   188.9 px  (rollVolleyApexMax)
+ *
+ * The two thresholds are 13.6 px apart, so no height serves both — 180 px is
+ * inside that band, and the price is that the volley becomes near
+ * frame-perfect rather than comfortable. That was chosen knowingly.
+ *
+ * SO IS THE ROLL BEING LESS DANGEROUS. The 30 px skitter was the only part of
+ * the cycle a Knight standing still was not safe under, and deleting it takes
+ * most of the roll's standing threat with it. Ratified on the grounds that
+ * BILL THE MAN is the pressure and the roll is a positioning-and-rhythm beat
+ * — with `speedX` raised to 300, because at 205 her 332 px/s run simply
+ * outruns it, and outrunning it was the whole counter once the low bounce
+ * went.
+ *
+ * The five older ones still alternate, and that shape is described here
+ * because it is what they are:
+ *
+ * - A HIGH phase lifts the ball's underside clear of her 47 px head, so she
+ *   can run under it. It is also slow near its apex, so it is the phase the
+ *   volley is easiest on.
  * - A LOW phase skitters along the floor. There is no running under that
  *   one: she jumps it, or she volleys it, or she is somewhere else.
  *
- * Nothing here goes above `rollApexMax`. A towering arc gives her a BIGGER
- * tunnel to walk through AND deletes the volley (the ball crosses her nail
- * band too fast to hit), so the knobs that actually raise pressure are
- * horizontal speed and the gap between rolls. That is what varies below.
- *
- * `launches` is cycled per floor bounce, so a two-entry pattern alternates
- * and a three-entry one gives low, low, high.
+ * `launches` is cycled per floor bounce, so a one-entry pattern is uniform,
+ * a two-entry one alternates, and a three-entry one gives low, low, high.
  */
 export interface RollVariant {
   name: string;
@@ -446,10 +479,31 @@ export const ROLL_VARIANTS: readonly RollVariant[] = [
     speedX: 400,
     speedXHot: 470,
   },
+  {
+    name: 'Lopes',
+    feel: 'Loper’s lazy rhythm with every bounce as tall as her jump. No skitter, and no jumping over it.',
+    // One entry, so every bounce is the same. 735 px/s against rollGravity
+    // 1500 is a 180.07 px apex: above the 175.3 px that kills the jump-over,
+    // below the 188.9 px that kills the volley.
+    launches: [735],
+    speedX: 300,
+    speedXHot: 380,
+  },
 ];
 
+/**
+ * The roll the fight plays, and what an unset or out-of-range setting means.
+ *
+ * Playtest 5 picked Loper's movement and then changed its shape; `Lopes` is
+ * that change. It is LAST rather than first on purpose — inserting it at the
+ * front would have silently re-pointed every stored `rollVariant` index at a
+ * different behaviour, which on a picker whose whole job is comparison is the
+ * one thing it must not do.
+ */
+export const DEFAULT_ROLL_VARIANT = ROLL_VARIANTS.length - 1;
+
 export function rollVariant(index: number): RollVariant {
-  return ROLL_VARIANTS[index] ?? ROLL_VARIANTS[0]!;
+  return ROLL_VARIANTS[index] ?? ROLL_VARIANTS[DEFAULT_ROLL_VARIANT]!;
 }
 
 /** Full simulation state for one enemy. */
