@@ -84,44 +84,107 @@ under a new test; if you pick a smooth one, the rule has a documented exception 
 
 ## What I did
 
-| #   | Change                                                                                                                                                                     | Commit          | How to check it                                                                                | Risk                                                      |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 0   | Committed the finished god-mode feature (see "Needs you" #1)                                                                                                               | `5073c4a`       | Settings → "Dev tools" drawer                                                                  | see above                                                 |
-| 1   | **The waves.** Two waves, not three; both double from 2 bodies to 4 at 0:30. Hits stay 10 / 6. Respawn bug fixed, `joinX` placement, twins de-synced.                      | `fc6d087`       | Well → the waves. Survive to 0:30 and count the bodies.                                        | Medium — new bodies mid-stage; every path is tested       |
-| 2   | **The roll has no safe face.** Pogo cap struck; ball always lethal; a downslash on it does not bounce. Pale cap → the hazard orbs’ dark ring.                              | `1bef570`       | Boss → wait for the ball. Try to pogo it: you die. Try running under the high phase: you live. | Medium — it is a strike of a ratified line, on purpose    |
-| 3   | **The volley.** Up-slash the ball from below and it goes back up, keeping its horizontal speed, escalating and then capping at one nail window.                            | `ebdaf9e`       | Boss → stand under the ball’s high phase and press up+attack.                                  | Low — additive; she can clear the fight never finding it  |
-| 4   | **The bones are thrown.** Rebound off any surface, budget of 3, tumbling silhouette. Boss-only ceiling via `bossWorld()`.                                                  | `15c5e3f`       | Boss → let the dog throw. Watch one hit a wall.                                                | Low — shared `arenaWorld()` is pinned at 3 solids by test |
-| 5   | **Five roll behaviours + a picker.** `ROLL_VARIANTS` in the engine, switched from the dev drawer, persisted. Three invariants pinned as tests.                             | `d15c07d`       | Settings → Dev tools → pick one → fight the Bills.                                             | Low — data plus a dev switch; the default is the old feel |
-| 6   | **PLAN.md corrected**, not appended to: the two struck lines, four new §3 decisions, §8 continuations. Skills log rows 23–24 + observations.                               | `5e9e4a1`       | Read `PLAN.md` §3 and §5 mode 3.                                                               | None — documentation                                      |
-| 7   | **Bill's entrance.** Thumps off-frame → he walks in from the right → name card, on a frozen clock; hold jump for 2.5×; replays on retry. Visual barking on the dog's card. | `(this commit)` | Boss → watch. Then die and watch it replay. Hold Z to hurry it.                                | Medium — a new phase in front of every attempt            |
+Ten commits on `proactive/2026-08-25-2008`. Every one of them left the suite, lint, typecheck and
+build green — I never committed onto red.
 
-| 8 | **Three entrances to choose between**, covering BOTH Bills — the man's footfalls and walk, and then the dog's shout, barking and walk-in. | `55b489a` | Settings → Dev tools → pick one → fight the Bills, twice. | Low — data plus a dev switch |
-| 9 | **Three looks for the ball and the bones.** One of them fixes a real rule violation — see "Needs you" #4. | `96c7488` | Settings → Dev tools → pick one → watch the ball roll and a bone fly. | Low — drawing only; the hitboxes never move |
+| #   | Change                                                                                                                                                             | Commit       | How to check it                                                                 | Risk                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ | ------------------------------------------------------------------------------- | ------------------------------------------------ |
+| 0   | Committed the finished god-mode feature. **Read "Needs you" #1 first.**                                                                                            | `5073c4a`    | Settings → Dev tools drawer                                                     | see #1                                           |
+| 1   | **The waves.** Two, not three, each doubling 2 → 4 bodies at 0:30. Hits stay 10 / 6. Respawn bug fixed, `joinX` placement, twin fliers de-synced.                  | `fc6d087`    | Well → the waves. Survive to 0:30 and count the bodies.                         | Medium — new bodies mid-stage, every path tested |
+| 2   | **The roll has no safe face.** Cap struck, ball always lethal, a downslash on it does not bounce. Pale cap → the hazard orb's dark ring.                           | `1bef570`    | Boss → wait for the ball. Pogo it: you die. Run under the high phase: you live. | Medium — a deliberate strike of a ratified line  |
+| 3   | **The volley.** Up-slash it from below and it goes back up, keeping its drift, escalating and then stopping at one nail window.                                    | `ebdaf9e`    | Boss → stand under the high phase, press up + attack.                           | Low — additive, and she can win without it       |
+| 4   | **The bones are thrown.** Rebound off any surface, budget of three, tumbling. Boss-only ceiling via `bossWorld()`.                                                 | `15c5e3f`    | Boss → let the dog throw, watch one come off a wall.                            | Low — shared `arenaWorld()` pinned at 3 solids   |
+| 5   | **Five roll behaviours + a picker.** Three invariants pinned as tests.                                                                                             | `d15c07d`    | Settings → Dev tools → pick → fight the Bills.                                  | Low — data plus a dev switch                     |
+| 6   | **PLAN.md corrected**, not appended to. Skills log rows + observations.                                                                                            | `5e9e4a1`    | Read `PLAN.md` §3 and §5 mode 3.                                                | None                                             |
+| 7   | **Bill's entrance.** Thumps off-frame → walks in from the right → name card, clock frozen; hold jump for 2.5×; replays on retry. Visual barking on the dog's card. | `52e018c`    | Boss → watch. Then die and watch it replay. Hold Z to hurry.                    | Medium — a new phase in front of every attempt   |
+| 8   | **Three entrances to choose between**, each covering BOTH Bills.                                                                                                   | `55b489a`    | Settings → Dev tools → pick → fight the Bills twice.                            | Low — data plus a dev switch                     |
+| 9   | **Three looks for the ball and the bones.** One of them fixes a real rule violation — **"Needs you" #3.**                                                          | `96c7488`    | Settings → Dev tools → pick → watch the ball roll and a bone fly.               | Low — drawing only, hitboxes never move          |
+| 10  | **PLAN.md §8 re-corrected** — it said the entrances were unbuilt; an hour later they were not.                                                                     | `(with #11)` | `PLAN.md` §8                                                                    | None                                             |
+| 11  | **Measured what the simplest dodge is worth in each variant**, and pinned the invariant it implies.                                                                | `96f306f`    | `attackers.test.ts`, "every roll variant is survivable without the volley"      | None — tests only                                |
+
+### The contract, item by item
+
+Every numbered item in `docs/feedback/2026-08-25-playtest-4.md` is built, tested and watched in a
+real browser.
+
+| The contract's priority                                 | Status                                                |
+| ------------------------------------------------------- | ----------------------------------------------------- |
+| 1. The waves (T10)                                      | ✅ built, and seen at 0:33 with four bodies on screen |
+| 2. The roll: cap out, always lethal, not a pogo surface | ✅                                                    |
+| 3. The volley                                           | ✅                                                    |
+| 4. The bones: ceiling, bouncing, spin, budget of three  | ✅                                                    |
+| 5. The entrances                                        | ✅ both Bills, and as a portfolio of three            |
+| Portfolio: five roll behaviours                         | ✅                                                    |
+| Portfolio: the ball's new look                          | ✅ three                                              |
+| Portfolio: the bone's tumble                            | ✅ folded into the same three                         |
+| Portfolio: both entrances                               | ✅ three                                              |
 
 ---
 
 ## Baseline (before I touched anything)
 
-| Check            | Result                                 |
-| ---------------- | -------------------------------------- |
-| `npm test`       | **green** — exit 0, 534 web + 1 server |
-| lint / typecheck | **green**                              |
-| End-to-end       | not yet                                |
+| Check            | Result                                      |
+| ---------------- | ------------------------------------------- |
+| `npm test`       | **green** — 534 web + 1 server              |
+| lint · typecheck | **green**                                   |
+| End-to-end       | not run at baseline; run at the end (below) |
 
 ---
 
 ## Final check
 
-(nothing yet)
+| Check                    | Result                                                                                                                                                                                                         |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`               | **green** — **608 web** + 1 server (534 → 608, +74)                                                                                                                                                            |
+| lint                     | **green**                                                                                                                                                                                                      |
+| typecheck                | **green**                                                                                                                                                                                                      |
+| build                    | **green**                                                                                                                                                                                                      |
+| End-to-end, real browser | **green** — Settings pickers, the waves at 0:33, the boss through 0:40 including the entrance, the dog's card, the ball and the bones. **Zero console errors and zero page errors across five separate runs.** |
+
+Screenshots of every one of those are in `.proactive/scratch/p4/` and `p4-final/`.
+
+Nothing that was green at baseline is red now.
 
 ---
 
 ## Environment changes
 
-(none yet)
+- **Nothing installed.** No packages, no tools, no browsers. The Playwright in the previous
+  session's scratchpad was reused, driving your own Edge via `channel: 'msedge'`.
+- **`eslint.config.js` ignores `.proactive/**`.** The sprint's own scratch directory is
+  git-excluded but eslint was still linting the patch scripts in it and failing the build. One line.
+- A dev server ran on **5180** throughout, never 5174.
 
 ---
 
 ## Left for next time
 
-(nothing yet)
+In `PLAN.md` §8, written out properly there rather than only here:
+
+- **Pick from the three portfolios**, then do the step that pays: ask what the near-misses had in
+  common with the winner. That is how "the Bills must not be smoothed" stopped being a preference
+  and became a constraint the code enforces.
+- **Audio as its own milestone.** There is still no sound anywhere in this project, which is why the
+  barking is drawn. The moment sound exists it needs a mute in Comfort and a decision about what
+  else gets it.
+- **The boss's first tuning pass** (§8 already). This round changed several of its numbers and did
+  not replace that pass. Knobs are `ATTACKS.bill.lanceSpeed` and `lanceHeight` — never `PHYSICS`.
+- **A competent survival bot.** The dodger I wrote is deliberately the dumbest thing that works; the
+  real one is still open, and it is what would turn the forgiveness numbers above into something you
+  could trust as difficulty ratings.
+- **T6 slice 3, T8, T9** — untouched by this round and still outstanding.
+
+Two live findings from the previous sprint are still live: a standing Knight is caught at ~0:02, and
+clearing the lance needs a **held** jump because HK's jump cutoff puts a tapped hop under Bill's
+160 px head. Both are for the tuning pass.
+
+---
+
+## How to take this
+
+```
+git checkout main && git merge proactive/2026-08-25-2008    # keep it all
+git revert 5073c4a                                          # keep the sprint, drop god mode
+```
+
+Or don't merge: `proactive/2026-08-25-1527` is byte-identical to how you left it.
