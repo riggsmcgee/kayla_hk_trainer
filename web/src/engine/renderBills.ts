@@ -12,45 +12,42 @@
  * If the art is ever replaced again, this file is the only thing that has to
  * agree with both sides.
  */
-import { ATTACKS, ENEMY_SIZES, type Enemy } from './enemies';
+import { ENEMY_SIZES, type Enemy } from './enemies';
+import { CANVAS_BG } from './constants';
 import { paintBillDog, type BillDogPose } from './renderBillDog';
 import { paintBillMan, type BillPose } from './renderBillMan';
 import type { Vec2 } from './types';
 
 /**
- * The pale band on top of the rolling ball: the pogo-safe cap, drawn.
+ * The dark ring around the rolling ball: "bounce off this and it still
+ * hurts", drawn.
  *
- * The rule it shows is real — `enemyHurtsBox` (arena.ts) removes exactly
- * these pixels from the damage box, so the top of the ball can be ridden and
- * the sides cannot. Both read `ATTACKS.dog.rollSafeCap`, so the picture and
- * the hitbox cannot drift apart.
+ * This REPLACES the pale pogo-safe cap that used to sit on top. Playtest 4
+ * struck the cap: the ball is lethal everywhere now, and a marker that says
+ * "ride me here" would be a lie that costs her a run.
  *
- * It is drawn HERE rather than in `renderBillDog`, on top of whatever the
- * art painted, for the reason the plan gives: the marker has to survive the
- * painting being replaced, including by a single static image.
+ * The ring is not invented for this. It is exactly the marker the red hazard
+ * orbs already wear in course level 2 (`drawHazardOrbs`) — same thin stroke
+ * in the canvas's own background colour, same meaning — so the ball is
+ * speaking a vocabulary she has been reading since the Bounce Bog rather
+ * than a new one at the very bottom of the well.
  *
- * Precedent, and the reason it looks like this: the red hazard orb's thin
- * dark ring (`drawHazardOrbs`). A rule the simulation enforces but the
- * picture never mentions is the exact bug that shipped the warden's
- * invisible telegraph.
+ * Drawn HERE rather than inside `renderBillDog`, on top of whatever the art
+ * painted, for the reason the plan gives: the marker has to survive the
+ * painting being replaced, including by a single static image. A rule the
+ * simulation enforces but the picture never mentions is the exact bug that
+ * shipped the warden's invisible telegraph.
  */
-function drawRollSafeCap(ctx: CanvasRenderingContext2D, feet: Vec2): void {
+function drawRollHazardRing(ctx: CanvasRenderingContext2D, feet: Vec2): void {
   const size = ENEMY_SIZES.dog;
-  const cap = ATTACKS.dog.rollSafeCap;
-  const cx = feet.x;
-  const top = feet.y - size.height;
   const radius = size.height / 2;
 
   ctx.save();
-  // Clip to the top band, then fill the ball's own circle through it, so the
-  // cap follows the silhouette instead of sitting on it as a rectangle.
+  ctx.strokeStyle = CANVAS_BG;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.rect(cx - size.width / 2, top, size.width, cap);
-  ctx.clip();
-  ctx.fillStyle = 'rgba(233, 228, 213, 0.5)';
-  ctx.beginPath();
-  ctx.arc(cx, top + radius, radius, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(feet.x, feet.y - radius, radius - 3, 0, Math.PI * 2);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -117,6 +114,8 @@ export function drawBillDog(
   timeS = 0,
 ): void {
   paintBillDog(ctx, feet, billDogPose(enemy), timeS, enemy.facing);
-  // Only while he is actually a ball — a standing dog hurts everywhere.
-  if (enemy.roll) drawRollSafeCap(ctx, feet);
+  // Only while he is actually a ball. A standing dog hurts everywhere too,
+  // but the ring is the ROLL’s marker: it says “this one is coming at you
+  // and there is no safe face on it”.
+  if (enemy.roll) drawRollHazardRing(ctx, feet);
 }

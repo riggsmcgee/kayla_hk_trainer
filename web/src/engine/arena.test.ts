@@ -939,48 +939,96 @@ describe('arena session (staged game)', () => {
     expect(dog.hp).toBe(ENEMIES.dog.hp);
   });
 
-  it('the rolling dog is safe on top and lethal on the sides', () => {
+  const roller = () => {
+    const d = createEnemy('dog', 800, FLOOR_Y);
+    d.attackKind = 'roll';
+    d.roll = true;
+    return d;
+  };
+
+  it('the rolling ball is lethal everywhere — the safe cap is struck', () => {
     const dog = createEnemy('dog', 800, FLOOR_Y);
-    // Not rolling: the hurt box is the whole body, like everyone else.
     expect(enemyHurtsBox(dog)).toEqual(enemyBox(dog));
 
+    // Playtest 4: no safe face, rising or falling, no immunity window. The
+    // answer the cap was hiding is that she can simply run under it.
     dog.attackKind = 'roll';
     dog.roll = true;
-    const body = enemyBox(dog);
-    const hurts = enemyHurtsBox(dog);
-    expect(hurts.y).toBe(body.y + ATTACKS.dog.rollSafeCap);
-    expect(hurts.height).toBe(body.height - ATTACKS.dog.rollSafeCap);
-    expect(hurts.x).toBe(body.x);
-    expect(hurts.width).toBe(body.width);
+    expect(enemyHurtsBox(dog)).toEqual(enemyBox(dog));
   });
 
-  it('every other enemy hurts with its whole body', () => {
-    for (const id of ['walker', 'flier', 'spitter', 'duelist', 'warden', 'bill'] as const) {
+  it('every enemy hurts with its whole body', () => {
+    for (const id of ['walker', 'flier', 'spitter', 'duelist', 'warden', 'bill', 'dog'] as const) {
       const e = createEnemy(id, 500, FLOOR_Y);
       expect(enemyHurtsBox(e)).toEqual(enemyBox(e));
     }
   });
 
-  it('riding the top cap of the rolling ball is survivable; 30 px lower is not', () => {
-    const roller = () => {
-      const d = createEnemy('dog', 800, FLOOR_Y);
-      d.attackKind = 'roll';
-      d.roll = true;
-      return d;
-    };
+  it('touching the top of the rolling ball now kills, where it used to be a perch', () => {
     const top = enemyBox(roller()).y;
+    const state = createArenaState(false);
+    state.started = true;
+    // Exactly where the pale cap used to make her safe.
+    const perched = createPlayer(800, top + 1);
+    expect(stepArena(state, perched, [roller()], FIXED_DT).playerHit).toBe(true);
+  });
 
-    const perched = createArenaState(false);
-    perched.started = true;
-    // Her feet just inside the cap, so her hurtbox bottom is above the
-    // lethal band — riding the ball, which is what the cap is for.
-    const safe = createPlayer(800, top + ATTACKS.dog.rollSafeCap - 1);
-    expect(stepArena(perched, safe, [roller()], FIXED_DT).playerHit).toBe(false);
+  it('a downslash onto the ball does not bounce her — she just dies', () => {
+    const ball = roller();
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(ball.position.x, enemyBox(ball).y - 30);
+    player.grounded = false;
+    player.pogoedThisSwing = false;
+    player.nailDir = 'down';
+    player.nailTimer = PHYSICS.nailStartup + PHYSICS.nailActiveTime / 2;
+    player.swingId += 1;
 
-    const sunk = createArenaState(false);
-    sunk.started = true;
-    const caught = createPlayer(800, top + ATTACKS.dog.rollSafeCap + 30);
-    expect(stepArena(sunk, caught, [roller()], FIXED_DT).playerHit).toBe(true);
+    // applyPogoBounce fires on nail contact with EVERY enemy. Without this
+    // exception she would ring UP off the ball and die on the same frame,
+    // which reads as a bug rather than as a rule. She gets no bounce, so
+    // she keeps falling — and the next test is what she falls into.
+    stepArena(state, player, [ball], FIXED_DT);
+    expect(player.totalPogos).toBe(0);
+    expect(player.velocity.y).toBe(0);
+  });
+
+  it('and the ball she failed to bounce off kills her on contact', () => {
+    const ball = roller();
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(ball.position.x, enemyBox(ball).y + 10);
+    player.grounded = false;
+    player.pogoedThisSwing = false;
+    player.nailDir = 'down';
+    player.nailTimer = PHYSICS.nailStartup + PHYSICS.nailActiveTime / 2;
+    player.swingId += 1;
+    expect(stepArena(state, player, [ball], FIXED_DT).playerHit).toBe(true);
+    expect(player.totalPogos).toBe(0);
+  });
+
+  it('still bounces off a dog who is NOT a ball', () => {
+    const standing = createEnemy('dog', 800, FLOOR_Y);
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(standing.position.x, enemyBox(standing).y - 30);
+    player.grounded = false;
+    player.pogoedThisSwing = false;
+    player.nailDir = 'down';
+    player.nailTimer = PHYSICS.nailStartup + PHYSICS.nailActiveTime / 2;
+    player.swingId += 1;
+    stepArena(state, player, [standing], FIXED_DT);
+    expect(player.totalPogos).toBe(1);
+  });
+
+  it('leaves 81 px of headroom under the ball at its apex — she can run under', () => {
+    // The answer the cap was hiding. rollLaunch 620 against rollGravity 1500
+    // is a 128 px apex; the ball is 58 px tall and she is KNIGHT.spriteHeight
+    // tall, so the gap under it is real and she fits through it standing.
+    const apex = (ATTACKS.dog.rollLaunch * ATTACKS.dog.rollLaunch) / (2 * ATTACKS.dog.rollGravity);
+    const underside = apex - ENEMY_SIZES.dog.height;
+    expect(Math.round(underside)).toBe(70);
+    expect(underside).toBeGreaterThan(KNIGHT.spriteHeight);
   });
 });
 

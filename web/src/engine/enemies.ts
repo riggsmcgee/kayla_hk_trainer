@@ -300,8 +300,6 @@ export const ATTACKS = {
      */
     rollLaunch: 620,
     rollGravity: 1500,
-    /** The pogo-safe cap on top of the ball. Drawn, so the rule is visible. */
-    rollSafeCap: 26,
   },
 } as const;
 

@@ -16,7 +16,7 @@
 import { activeNailHitbox, applyPogoBounce, playerHurtbox } from './player';
 import type { Player } from './player';
 import { PHYSICS } from './constants';
-import { ATTACKS, enemyAttackHitbox, enemyBox, resolveNailHit } from './enemies';
+import { enemyAttackHitbox, enemyBox, resolveNailHit } from './enemies';
 import type { Enemy, Projectile } from './enemies';
 import type { AABB } from './types';
 
@@ -121,22 +121,39 @@ function projectileBox(p: Projectile): AABB {
 }
 
 /**
- * The part of an enemy that DAMAGES her, which is not always its whole body.
+ * The part of an enemy that DAMAGES her: its whole body, for everything.
  *
- * Only the rolling dog differs: the top `rollSafeCap` pixels of the ball are
- * safe to ride, so a downslash onto it is rewarded and a shoulder-first
- * approach is not. That is deliberately the red orb's rule from course level
- * 2 (render.ts draws the same pale cap that the orb's dark ring draws), so
- * the boss teaches nothing new — it asks for something she already learned.
+ * The rolling dog used to be the exception — the top 26 px of the ball were
+ * safe to ride, deliberately the red orb's rule from course level 2. That
+ * was STRUCK in playtest 4: the ball is lethal everywhere, rising or
+ * falling, with no immunity window.
  *
- * The BOUNCE check still uses the full `enemyBox`, so her nail rings off the
- * whole ball while only the lower band can kill her.
+ * The reason is not that riding it was too easy. It is that pogoing the top
+ * was free, so nobody — the user included — ever noticed she could simply
+ * RUN UNDER it: at the current apex the ball's underside sits 81 px above
+ * her head and she is 47 px tall. Deleting the cap does not remove an
+ * answer, it reveals the one that was there all along.
+ *
+ * The function stays (rather than collapsing into `enemyBox` at the call
+ * sites) because "the part that hurts" and "the body" are different
+ * questions that happen to have the same answer today, and the bones are
+ * about to want one of them.
  */
 export function enemyHurtsBox(e: Enemy): AABB {
-  const box = enemyBox(e);
-  if (e.id !== 'dog' || e.attackKind !== 'roll') return box;
-  const cap = ATTACKS.dog.rollSafeCap;
-  return { x: box.x, y: box.y + cap, width: box.width, height: box.height - cap };
+  return enemyBox(e);
+}
+
+/**
+ * Is this enemy something her nail can ring off?
+ *
+ * Everything is, except the rolling ball. `applyPogoBounce` fires on nail
+ * contact with EVERY enemy, unconditionally — so without this exception a
+ * downslash onto the ball would bounce her and kill her on the same frame,
+ * which reads as a bug rather than as a rule. Ratified in playtest 4: "the
+ * dog ball isn't really meant to be pogoed off of." She simply dies.
+ */
+function isPogoSurface(e: Enemy): boolean {
+  return !(e.id === 'dog' && e.attackKind === 'roll');
 }
 
 export function stepArena(
@@ -216,8 +233,9 @@ export function stepArena(
       // an enemy acts as a pogo surface — the session never lists them in
       // world.pogoables, so there is exactly one contact check. The bounce
       // dedupes itself per swing, so two bodies under one downslash give
-      // two hits and one bounce.
-      applyPogoBounce(player);
+      // two hits and one bounce. The rolling ball is the one exception —
+      // see isPogoSurface.
+      if (isPogoSurface(enemy)) applyPogoBounce(player);
     }
 
     // An active attack (lunge, swipe, riposte) that catches the body, or

@@ -15,7 +15,7 @@
  * another design, so it is worth a test rather than an eyeball.
  */
 import { describe, expect, it } from 'vitest';
-import { ATTACKS, ENEMY_SIZES, createEnemy, type AttackKind, type Enemy } from './enemies';
+import { ENEMY_SIZES, createEnemy, type AttackKind, type Enemy } from './enemies';
 import { drawBill, drawBillDog, billDogPose, billPose } from './renderBills';
 
 /**
@@ -191,24 +191,27 @@ describe('the rolling ball shows its own rule', () => {
     return ops;
   }
 
-  it('caps exactly the pixels enemyHurtsBox takes out of the damage box', () => {
-    const size = ENEMY_SIZES.dog;
-    const top = 600 - size.height;
-    // The clip is the cap: the same rollSafeCap the arena removes.
-    const expected = `rect(${400 - size.width / 2},${top},${size.width},${ATTACKS.dog.rollSafeCap})`;
-    expect(paintDog(true)).toContain(expected);
-  });
+  /** The hazard ring: a full circle stroked around the ball’s silhouette. */
+  const RING = `arc(400,${600 - ENEMY_SIZES.dog.height / 2},${ENEMY_SIZES.dog.height / 2 - 3},`;
+  const rings = (ops: string[]) => ops.filter((op) => op.startsWith(RING));
 
-  it('does not cap a dog who is standing — he hurts everywhere', () => {
-    expect(paintDog(false).some((op) => op.startsWith('rect('))).toBe(false);
-  });
-
-  it('draws the cap ON TOP, so a replacement painting cannot bury it', () => {
+  it('rings the whole ball — playtest 4 struck the pogo-safe cap', () => {
+    // The cap used to clip a pale band across the top and say "ride here".
+    // The ball is lethal everywhere now, so that marker would be a lie that
+    // costs her a run. No clip, no band; a ring all the way round instead.
     const ops = paintDog(true);
-    const clip = ops.findIndex((op) => op === 'clip()');
-    expect(clip).toBeGreaterThan(0);
+    expect(rings(ops)).toHaveLength(1);
+    expect(ops.some((op) => op === 'clip()')).toBe(false);
+  });
+
+  it('does not ring a dog who is standing — the ring is the ROLL’s marker', () => {
+    expect(rings(paintDog(false))).toHaveLength(0);
+  });
+
+  it('draws the ring ON TOP, so a replacement painting cannot bury it', () => {
+    const ops = paintDog(true);
     // Everything the art drew came first; the marker is the last thing said.
-    expect(ops.slice(clip).some((op) => op.startsWith('rect('))).toBe(false);
+    expect(ops.findIndex((op) => op.startsWith(RING))).toBeGreaterThan(0);
     expect(ops[ops.length - 1]).toBe('restore()');
   });
 });

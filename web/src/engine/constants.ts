@@ -174,3 +174,16 @@ export const ENEMIES: Record<EnemyId, EnemyTuning> = {
   /** Bill the dog: arrives at 0:30, spits bones and rolls. Also unkillable. */
   dog: { hp: 1, damage: 1, speed: 120, telegraph: 0.45, invulnerable: true },
 } as const;
+
+/**
+ * The canvas’s own background, and the ONE palette value that lives
+ * outside render.ts’s COLORS.
+ *
+ * Two things stroke a thin ring in this colour to mean “bounce off this and
+ * it still hurts”: the red hazard orbs in course level 2, and the rolling
+ * ball at the bottom of the well. Their painters sit on opposite sides of an
+ * import (render.ts draws the Bills, so the Bills cannot import render.ts),
+ * so the shared value is here — where neither has to reach through the
+ * other for it.
+ */
+export const CANVAS_BG = '#070912';

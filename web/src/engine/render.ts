@@ -4,7 +4,7 @@
  * juice pass. Colors mirror the site palette in styles.css.
  */
 
-import { CANVAS, ENEMIES, KNIGHT, PHYSICS } from './constants';
+import { CANVAS, CANVAS_BG, ENEMIES, KNIGHT, PHYSICS } from './constants';
 import type { Mover } from './course';
 import { moverBox } from './course';
 import type { Enemy, Projectile } from './enemies';
@@ -14,7 +14,7 @@ import { drawBill, drawBillDog } from './renderBills';
 import type { AABB, Vec2, World } from './types';
 
 export const COLORS = {
-  canvasBg: '#070912',
+  canvasBg: CANVAS_BG,
   platform: '#1a2136',
   platformEdge: '#2c3654',
   knightBody: '#e9e4d5',
