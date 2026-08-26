@@ -17,7 +17,7 @@ import {
   spawnX,
 } from './dodgeArenaSession';
 import { OVERLAY_LOCKOUT_SECONDS } from './session';
-import { ATTACKS, ENEMY_SIZES, createEnemy, enemyBox } from './enemies';
+import { ATTACKS, ENEMY_SIZES, createEnemy, enemyBox, rallyBall, stepEnemy } from './enemies';
 import type { Enemy } from './enemies';
 import { createPlayer } from './player';
 import { rosterStages, waveStages } from './stages';
@@ -1343,5 +1343,138 @@ describe('identical twins do not become one body (playtest 4)', () => {
         apartThisWindow = false;
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4, note 2, round 2 — THE VOLLEY.
+//
+// "If she hits it from below, she can bounce it back up. The ball won't
+// actually hit her, so she can bounce the dog and keep him in the air."
+//
+// She is never told it exists. It is a flourish, never the answer — so the
+// roll has to stay survivable by position alone, which is what the
+// run-under test above pins.
+// ---------------------------------------------------------------------------
+describe('the volley', () => {
+  /** A rolling ball at `above` px over her head, moving right. */
+  function rally(above: number) {
+    const player = createPlayer(600, FLOOR_Y);
+    player.grounded = true;
+    const ball = createEnemy('dog', 600, FLOOR_Y);
+    ball.attackKind = 'roll';
+    ball.roll = true;
+    ball.velocity.x = ATTACKS.dog.rollSpeedX;
+    ball.velocity.y = 300; // falling toward her
+    ball.position.y = FLOOR_Y - KNIGHT.spriteHeight - above;
+    player.nailDir = 'up';
+    player.nailTimer = PHYSICS.nailStartup + PHYSICS.nailActiveTime / 2;
+    player.swingId += 1;
+    const state = createArenaState(false);
+    state.started = true;
+    return { state, player, ball };
+  }
+
+  it('sends the ball back up and keeps its horizontal speed', () => {
+    const { state, player, ball } = rally(60);
+    const events = stepArena(state, player, [ball], FIXED_DT);
+    expect(events.rallied).toBe(true);
+    expect(ball.velocity.y).toBe(-ATTACKS.dog.rallyLaunch);
+    // Straight up would make it a stationary minigame; the pleasure is the chase.
+    expect(ball.velocity.x).toBe(ATTACKS.dog.rollSpeedX);
+    expect(state.over).toBe(false);
+  });
+
+  it('does not save her once the ball has reached her', () => {
+    // Her up-nail covers 48–128 px above her head and her hurtbox starts at
+    // 47, so there is a strip where the ball is inside BOTH. Ratified: the
+    // target is the air above her, not a swat off her own face.
+    const { state, player, ball } = rally(-10);
+    const events = stepArena(state, player, [ball], FIXED_DT);
+    expect(events.rallied).toBe(false);
+    expect(events.playerHit).toBe(true);
+  });
+
+  it('rallies once per swing, however long the nail is live', () => {
+    const { state, player, ball } = rally(60);
+    expect(stepArena(state, player, [ball], FIXED_DT).rallied).toBe(true);
+    ball.velocity.y = 300; // pretend it fell back into the band
+    expect(stepArena(state, player, [ball], FIXED_DT).rallied).toBe(false);
+    player.swingId += 1;
+    expect(stepArena(state, player, [ball], FIXED_DT).rallied).toBe(true);
+  });
+
+  it('escalates each return, then stops at exactly one nail window', () => {
+    const { state, player, ball } = rally(60);
+    const speeds: number[] = [];
+    for (let i = 0; i < 8; i++) {
+      player.swingId += 1;
+      ball.velocity.y = 300;
+      stepArena(state, player, [ball], FIXED_DT);
+      speeds.push(-ball.velocity.y);
+    }
+    // Monotone up, and capped: a rally that keeps getting away from her is
+    // the point; one that becomes impossible is a broken mechanic.
+    for (let i = 1; i < speeds.length; i++) {
+      expect(speeds[i]!).toBeGreaterThanOrEqual(speeds[i - 1]!);
+    }
+    expect(speeds[0]).toBe(ATTACKS.dog.rallyLaunch);
+    expect(Math.max(...speeds)).toBe(ATTACKS.dog.rallyLaunchMax);
+  });
+
+  it('keeps the volley window at or above one nail window at every escalation', () => {
+    const A = ATTACKS.dog;
+    // The safe strip is her nail band above her head: 48 px up to 128 px.
+    const strip = PHYSICS.nailReachUp;
+    for (let n = 0; n * A.rallyEscalation <= A.rallyLaunchMax - A.rallyLaunch; n++) {
+      const launch = Math.min(A.rallyLaunch + n * A.rallyEscalation, A.rallyLaunchMax);
+      // Falling back from an apex `launch` high, how fast is it entering the
+      // strip, and how long does it take to cross the strip's depth?
+      const apex = (launch * launch) / (2 * A.rollGravity);
+      const enter = Math.sqrt(Math.max(0, 2 * A.rollGravity * Math.max(0, apex - strip)));
+      const cross = (Math.sqrt(enter * enter + 2 * A.rollGravity * strip) - enter) / A.rollGravity;
+      expect(cross).toBeGreaterThanOrEqual(PHYSICS.nailActiveTime);
+    }
+  });
+
+  it('does not rally a dog who is not a ball', () => {
+    const { state, player, ball } = rally(60);
+    ball.roll = false;
+    ball.attackKind = null;
+    expect(stepArena(state, player, [ball], FIXED_DT).rallied).toBe(false);
+  });
+
+  it('does not rally on a side or down slash', () => {
+    for (const dir of ['side', 'down'] as const) {
+      const { state, player, ball } = rally(60);
+      player.nailDir = dir;
+      expect(stepArena(state, player, [ball], FIXED_DT).rallied).toBe(false);
+    }
+  });
+});
+
+describe('a rally delays where the dog lands, but can never stall the fight', () => {
+  it('does not extend the 5 s roll', () => {
+    const world = arenaWorld();
+    const ball = createEnemy('dog', 600, FLOOR_Y);
+    ball.attackKind = 'roll';
+    ball.roll = true;
+    ball.leapGroundY = FLOOR_Y;
+    ball.phase = 'active';
+    ball.phaseTimer = ATTACKS.dog.rollTime;
+    ball.velocity.x = ATTACKS.dog.rollSpeedX;
+    ball.velocity.y = -ATTACKS.dog.rollLaunch;
+
+    const target = { position: { x: 100, y: FLOOR_Y }, grounded: true };
+    let steps = 0;
+    // Volley it every half second for the whole roll; it must still uncurl
+    // on schedule. The rally moves where he lands, never whether he lands.
+    while (ball.roll && steps < Math.round(12 / FIXED_DT)) {
+      if (steps % 30 === 0) rallyBall(ball, steps);
+      stepEnemy(ball, world, FIXED_DT, target);
+      steps += 1;
+    }
+    expect(ball.roll).toBe(false);
+    expect(steps * FIXED_DT).toBeLessThanOrEqual(ATTACKS.dog.rollTime + 0.1);
   });
 });

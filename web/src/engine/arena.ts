@@ -16,7 +16,7 @@
 import { activeNailHitbox, applyPogoBounce, playerHurtbox } from './player';
 import type { Player } from './player';
 import { PHYSICS } from './constants';
-import { enemyAttackHitbox, enemyBox, resolveNailHit } from './enemies';
+import { enemyAttackHitbox, enemyBox, rallyBall, resolveNailHit } from './enemies';
 import type { Enemy, Projectile } from './enemies';
 import type { AABB } from './types';
 
@@ -62,6 +62,8 @@ export interface ArenaEvents {
   enemyDied: boolean;
   /** Indices of enemies whose respawn delay just expired — replace them now. */
   respawn: number[];
+  /** The rolling ball was volleyed back up this step. Feedback only. */
+  rallied: boolean;
   /**
    * DEV TOOL: remove in the final build. God mode only: this step would have
    * ended the run. Deliberately a SECOND flag rather than a lie told through
@@ -169,6 +171,7 @@ export function stepArena(
     hits: 0,
     enemyDied: false,
     respawn: [],
+    rallied: false,
     wouldHaveHit: false,
   };
   if (state.over) return events;
@@ -236,6 +239,20 @@ export function stepArena(
       // two hits and one bounce. The rolling ball is the one exception —
       // see isPogoSurface.
       if (isPogoSurface(enemy)) applyPogoBounce(player);
+
+      // THE VOLLEY. An up-slash that catches the ball BEFORE it reaches her
+      // sends it back up (playtest 4).
+      //
+      // "Before it reaches her" is the whole rule, and it is enforced by the
+      // `!overlaps` below rather than by geometry: her up-nail covers a band
+      // 48–128 px above her head while her own hurtbox starts at 47, so
+      // there is a 57 px strip where the ball is inside both. Connecting in
+      // THAT strip does not save her — it has already got her, and the body
+      // check a few lines down still ends the run. Ratified deliberately:
+      // the target is the air above her, not a swat off her own face.
+      if (player.nailDir === 'up' && !overlaps(hurtbox, enemyBox(enemy))) {
+        if (rallyBall(enemy, player.swingId)) events.rallied = true;
+      }
     }
 
     // An active attack (lunge, swipe, riposte) that catches the body, or

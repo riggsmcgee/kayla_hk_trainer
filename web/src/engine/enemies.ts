@@ -300,6 +300,29 @@ export const ATTACKS = {
      */
     rollLaunch: 620,
     rollGravity: 1500,
+    /**
+     * THE VOLLEY (playtest 4, note 2, round 2). Up-slash the ball from below
+     * and it goes back up instead of reaching you — a rally that keeps the
+     * dog airborne.
+     *
+     * These three numbers are load-bearing, and the constraint runs the
+     * opposite way to intuition: the HIGHER the ball goes, the FASTER it is
+     * moving when it falls back through her nail band, and the shorter the
+     * window to hit it again. Measured against a nail that is live for 0.15 s:
+     *
+     *   apex above the strike   speed entering the band   time to cross it
+     *   90 px  (rally 1)        367 px/s                  0.22 s
+     *   128 px (rally 5+)       499 px/s                  0.15 s  ← the floor
+     *   295 px                  708 px/s                  0.11 s  ← deletes it
+     *
+     * So the first return is generous and each one after it comes back a
+     * little faster, until it settles at exactly one nail window and stops
+     * escalating. A rally that keeps getting away from her is the point; a
+     * rally that becomes impossible is a broken mechanic.
+     */
+    rallyLaunch: 520,
+    rallyEscalation: 26,
+    rallyLaunchMax: 620,
   },
 } as const;
 
@@ -352,6 +375,10 @@ export interface Enemy extends EnemyState {
   sinceBounce: number;
   /** Dog: true while it is balled up and rolling. */
   roll: boolean;
+  /** Dog: how many times the ball has been volleyed back up during this roll. */
+  rallies: number;
+  /** Dog: the swing that last volleyed the ball, so one up-slash rallies once. */
+  lastRallySwingId: number;
   /** Bill: lance passes still owed after the current one (1 while hot). */
   lancePasses: number;
   /**
@@ -413,6 +440,8 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     hot: false,
     sinceBounce: 0,
     roll: false,
+    rallies: 0,
+    lastRallySwingId: 0,
     lancePasses: 0,
     rollTimer: ATTACKS.dog.rollEvery,
   };
@@ -1189,6 +1218,34 @@ function stepBill(e: Enemy, world: World, dt: number, t: Target | undefined): vo
  * floor bounce re-launches to exactly the same speed, so the arcs never decay
  * into an unreadable skitter — six identical hops across the five seconds.
  */
+/**
+ * THE VOLLEY: send the rolling ball back up (playtest 4, note 2, round 2).
+ *
+ * > "If she hits it from below, she can bounce it back up. The ball won't
+ * > actually hit her, so she can bounce the dog and keep him in the air.
+ * > That would actually be really fun."
+ *
+ * Horizontal speed is deliberately PRESERVED, not zeroed: a ball that went
+ * straight up would make the rally a stationary minigame, and the whole
+ * pleasure of it is chasing the thing across the arena. Nothing else in the
+ * dojo has ever rewarded the up-slash.
+ *
+ * She is never told this exists. It is not the answer to the roll — running
+ * under the high phase is — so a Kayla who never finds it clears the fight
+ * anyway, and a Kayla who does feel like she found a secret.
+ *
+ * Returns false when this swing has already rallied (one up-slash, one
+ * return, however long the nail stays live) or the ball is not a ball.
+ */
+export function rallyBall(e: Enemy, swingId: number): boolean {
+  if (!e.roll || e.lastRallySwingId === swingId) return false;
+  const A = ATTACKS.dog;
+  e.lastRallySwingId = swingId;
+  e.velocity.y = -Math.min(A.rallyLaunch + e.rallies * A.rallyEscalation, A.rallyLaunchMax);
+  e.rallies += 1;
+  return true;
+}
+
 function stepRoll(e: Enemy, world: World, dt: number): void {
   const A = ATTACKS.dog;
   const half = ENEMY_SIZES[e.id].width / 2;
@@ -1269,6 +1326,7 @@ function stepDog(e: Enemy, world: World, dt: number, t: Target | undefined): Pro
       if (e.phaseTimer > 0) return null;
       if (e.attackKind === 'roll') {
         e.roll = true;
+        e.rallies = 0;
         e.velocity.x = e.lockedDir * (e.hot ? A.rollSpeedXHot : A.rollSpeedX);
         e.velocity.y = -A.rollLaunch;
         setPhase(e, 'active', A.rollTime);

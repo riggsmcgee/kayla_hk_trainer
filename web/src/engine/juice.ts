@@ -135,4 +135,12 @@ export const FEEDBACK = {
   playerHit: { trauma: 0.55, hitStop: 0.15 },
   /** Course cleared. */
   courseClear: { trauma: 0.25, hitStop: 0 },
+  /**
+   * The volley: the rolling ball sent back up (playtest 4).
+   *
+   * Punchier than a nail hit and softer than a kill. She is never TOLD the
+   * volley exists, so the feel is the only confirmation she gets that
+   * something deliberate just happened — which makes it the whole tutorial.
+   */
+  rally: { trauma: 0.2, hitStop: 0.06 },
 } as const;

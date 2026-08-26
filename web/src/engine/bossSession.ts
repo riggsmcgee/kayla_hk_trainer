@@ -233,6 +233,12 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         juice.addTrauma(FEEDBACK.pogo.trauma);
         juice.hitStop(FEEDBACK.pogo.hitStop);
       }
+      // The volley is a secret, so the FEEL is the only thing that tells her
+      // it worked. It is the loudest confirmation in the fight for that reason.
+      if (events.rallied) {
+        juice.addTrauma(FEEDBACK.rally.trauma);
+        juice.hitStop(FEEDBACK.rally.hitStop);
+      }
 
       switch (stepBoss(boss, { playerHit: events.playerHit }, dt)) {
         case 'dog-arrives':
