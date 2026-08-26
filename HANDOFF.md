@@ -182,6 +182,11 @@ clearing the lance needs a **held** jump because HK's jump cutoff puts a tapped 
 
 ## How to take this
 
+The branch is **pushed**. There is no PR because `gh` is not installed on this machine; GitHub
+printed a create link on the push:
+`https://github.com/riggsmcgee/kayla_hk_trainer/pull/new/proactive/2026-08-25-2008`. Note the base
+would be `proactive/2026-08-25-1527`, not `main` — that branch is still unmerged too.
+
 ```
 git checkout main && git merge proactive/2026-08-25-2008    # keep it all
 git revert 5073c4a                                          # keep the sprint, drop god mode
