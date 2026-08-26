@@ -12,6 +12,7 @@ import { RESPAWN_DELAY, createArenaState, enemyHurtsBox, stepArena } from './are
 import {
   PLAYER_SPAWN_X,
   arenaWorld,
+  bossWorld,
   createDodgeArenaSession,
   JOIN_SPREAD,
   joinX,
@@ -1543,6 +1544,27 @@ describe('a rally can keep the dog in the air indefinitely', () => {
       stepEnemy(b, world, FIXED_DT, target);
     }
     expect(b.roll).toBe(true);
+  });
+
+  it('bounces the ball off the lid instead of snapping it out of the arena', () => {
+    // stepRoll had no ceiling test, which was safe only while nothing could
+    // send the ball that high. Sanctioning the juggle makes the lid
+    // reachable — and the horizontal probe would have read that lid as a WALL
+    // and put the ball at x = -232, outside the arena entirely.
+    const world = bossWorld();
+    const b = ball();
+    b.velocity.y = -2000; // straight at the lid
+    const half = ENEMY_SIZES.dog.width / 2;
+    let touchedTheLid = false;
+    for (let i = 0; i < Math.round(2 / FIXED_DT); i++) {
+      stepEnemy(b, world, FIXED_DT, target);
+      if (b.position.y - ENEMY_SIZES.dog.height <= 1) touchedTheLid = true;
+      expect(b.position.x).toBeGreaterThanOrEqual(half);
+      expect(b.position.x).toBeLessThanOrEqual(CANVAS.width - half);
+      expect(b.position.y).toBeGreaterThan(0);
+    }
+    expect(touchedTheLid).toBe(true);
+    expect(b.roll).toBe(true); // and it is still a ball afterwards
   });
 
   it('lands him on the next floor contact the moment she stops', () => {

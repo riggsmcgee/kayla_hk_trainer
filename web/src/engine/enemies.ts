@@ -1438,6 +1438,22 @@ function stepRoll(e: Enemy, world: World, dt: number): void {
 
   e.velocity.y += A.rollGravity * dt;
   e.position.y += e.velocity.y * dt;
+
+  // THE LID, and it bounces off it the way the bones already do.
+  //
+  // `stepRoll` had no ceiling test at all, which was safe only because
+  // nothing could send the ball that high. Playtest 5 sanctioned the
+  // indefinite juggle, so a hard enough rally now reaches bossWorld()'s lid —
+  // and the horizontal probe below would have found that lid, read it as a
+  // WALL, and snapped the ball to x = -232, outside the arena.
+  if (e.velocity.y < 0) {
+    const lid = blockerOf(world, bodyAt(e.id, e.position.x, e.position.y));
+    if (lid) {
+      e.position.y = lid.y + lid.height + ENEMY_SIZES[e.id].height;
+      e.velocity.y = -e.velocity.y;
+    }
+  }
+
   if (e.position.y >= e.leapGroundY) {
     e.position.y = e.leapGroundY;
     // THE ONLY PLACE THE ROLL ENDS. Once `rollTime` has elapsed he is looking
