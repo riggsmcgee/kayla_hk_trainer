@@ -280,6 +280,22 @@ export const ATTACKS = {
     swatHeight: 150,
     /** She counts as above him inside this horizontal half-width. */
     overheadHalfWidth: 90,
+    /**
+     * How much of the lance telegraph he can still abort into a swat, as a
+     * share of it (playtest 5, note 6).
+     *
+     * > "She obviously is meant to jump over the dash attack, but if he's in
+     * > the wind-up for it and she's already trying to jump over him, he
+     * > should react to that and do a proper anti-air."
+     *
+     * EARLY, and it re-tells. Half means he reads a jump she has already
+     * committed to at the start of his wind-up, and she then gets the whole
+     * swatTelegraph before the swat lands — so the tell she is acting on is
+     * never a lie. A conversion later than this was considered and rejected
+     * for exactly that reason: it would have been a shorter tell in disguise,
+     * and heat is speed and gaps, never a shorter tell.
+     */
+    antiAirConvertShare: 0.5,
     cooldown: 0.8,
     cooldownHot: 0.5,
   },
@@ -1160,6 +1176,25 @@ export function overheadOf(e: Enemy, t: Target, halfWidth: number): boolean {
   );
 }
 
+/**
+ * Is she in the air somewhere this lance would pass underneath?
+ *
+ * Ahead of the direction he committed to, or straight over his head — but
+ * never behind him, where a jump is a retreat rather than a vault and swatting
+ * at it would be swatting at nothing.
+ */
+function vaultingTheLance(e: Enemy, t: Target): boolean {
+  if (t.grounded) return false;
+  const dx = t.position.x - e.position.x;
+  // Close enough that the jump is a VAULT OVER HIM and not a hop somewhere
+  // else in the arena. Reading it wider than this is worse than not having it:
+  // a far-away hop would cancel the pass, and cancelling the pass is exactly
+  // the thing jumping was not supposed to buy for free.
+  return (
+    Math.abs(dx) < ATTACKS.bill.overheadHalfWidth && dx * e.lockedDir > -ENEMY_SIZES.bill.width
+  );
+}
+
 /** The warden's overhead test, at its own reach. */
 function overhead(e: Enemy, t: Target): boolean {
   return overheadOf(e, t, ATTACKS.warden.overheadHalfWidth);
@@ -1355,11 +1390,24 @@ function stepBill(e: Enemy, world: World, dt: number, t: Target | undefined): vo
       setPhase(e, 'telegraph', telegraph);
       break;
     }
-    case 'telegraph':
+    case 'telegraph': {
+      // ANTI-AIR. Jumping the lance is still the right answer; playtest 5
+      // stops it being a free one. Catch her in the air early in the wind-up
+      // and he abandons the lance and starts the swat's OWN telegraph from
+      // the top, so she is answering a tell rather than a surprise.
+      const early = e.phaseTimer > telegraph * (1 - A.antiAirConvertShare);
+      if (e.attackKind === 'lance' && t && early && vaultingTheLance(e, t)) {
+        e.attackKind = 'swat';
+        e.lancePasses = 0;
+        e.lockedDir = e.facing;
+        setPhase(e, 'telegraph', A.swatTelegraph);
+        break;
+      }
       if (e.phaseTimer <= 0) {
         setPhase(e, 'active', e.attackKind === 'lance' ? LANCE_MAX_SECONDS : A.swatActive);
       }
       break;
+    }
     case 'active':
       if (e.attackKind === 'lance') {
         if (chargeIntoWall(e, world, dt) || e.phaseTimer <= 0) {
@@ -1371,7 +1419,13 @@ function stepBill(e: Enemy, world: World, dt: number, t: Target | undefined): vo
       break;
     case 'recovery': {
       if (e.phaseTimer > 0) break;
-      if (e.attackKind === 'lance' && e.lancePasses > 0) {
+      // The second pass used to re-enter 'telegraph' straight from here,
+      // never passing through 'idle' — so the "never lance while she is over
+      // his head" gate below never ran on it, and he would lance out from
+      // under a Knight standing on his head, which PLAN.md forbids. Falling
+      // through to the end-of-attack path hands her back to that gate.
+      const overheadNow = t !== undefined && overheadOf(e, t, A.overheadHalfWidth);
+      if (e.attackKind === 'lance' && e.lancePasses > 0 && !overheadNow) {
         // Hot: straight back the other way. He still winds up first — heat is
         // speed and gaps, never a shorter tell (ratified).
         e.lancePasses -= 1;

@@ -959,6 +959,106 @@ describe('Bill the man', () => {
     expect(bill.phaseTimer).toBeCloseTo(ATTACKS.bill.lanceStuck, 5);
   });
 
+  /**
+   * Wind him up into a lance aimed at `t`, then report what he is doing after
+   * `frames` more steps against `during`. The two targets are separate so a
+   * test can commit him on the ground and then put her in the air.
+   */
+  function windUpThen(bill: Enemy, w: World, t: Target, during: Target, frames: number) {
+    stepEnemy(bill, w, FIXED_DT, t); // idle → telegraph, direction locked
+    for (let i = 0; i < frames; i++) stepEnemy(bill, w, FIXED_DT, during);
+    return bill;
+  }
+
+  // -------------------------------------------------------------------------
+  // Playtest 5, note 6 — jumping the lance stops being free.
+  //
+  // > "She obviously is meant to jump over the dash attack, but if he's in the
+  // > wind-up for it and she's already trying to jump over him, he should
+  // > react to that and do a proper anti-air."
+  // -------------------------------------------------------------------------
+  it('converts the lance into a swat when she is already over him', () => {
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.cooldownTimer = 0;
+    windUpThen(bill, w, targetAt(660, FLOOR_Y), targetAt(640, 370, false), 1);
+    expect(bill.attackKind).toBe('swat');
+    // A FRESH tell, from the top. She is answering a telegraph, never a
+    // surprise — heat is speed and gaps, never a shorter tell (ratified).
+    // Within one step of the full swat tell: the frame that converted also
+    // ticks the new timer down once.
+    expect(bill.phase).toBe('telegraph');
+    expect(bill.phaseTimer).toBeGreaterThan(ATTACKS.bill.swatTelegraph - 2 * FIXED_DT);
+  });
+
+  it('lances anyway at a Knight who stays on the ground', () => {
+    // The conversion answers a JUMP, not a distance. Standing where she would
+    // have jumped from must still get the lance.
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.cooldownTimer = 0;
+    windUpThen(bill, w, targetAt(660, FLOOR_Y), targetAt(640, FLOOR_Y), 2);
+    expect(bill.attackKind).toBe('lance');
+  });
+
+  it('lances anyway at a hop on the far side of the arena', () => {
+    // Reading it wider than a vault over HIM would be worse than not having
+    // it: a distant hop would cancel the pass, and cancelling the pass is the
+    // exact thing jumping was not supposed to buy for free.
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.cooldownTimer = 0;
+    windUpThen(bill, w, targetAt(1000, FLOOR_Y), targetAt(1000, 370, false), 2);
+    expect(bill.attackKind).toBe('lance');
+  });
+
+  it('will not convert once she has already committed to the tell', () => {
+    // Late in the wind-up he is locked in. A conversion here would be a
+    // shorter tell wearing a different hat: she read a lance and would get a
+    // swat with no warning left to spend.
+    const A = ATTACKS.bill;
+    const telegraph = ENEMIES.bill.telegraph ?? 0.6;
+    const late = Math.ceil((telegraph * A.antiAirConvertShare) / FIXED_DT) + 2;
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.cooldownTimer = 0;
+    // She stays on the ground through the convertible half, then jumps.
+    windUpThen(bill, w, targetAt(660, FLOOR_Y), targetAt(640, FLOOR_Y), late);
+    for (let i = 0; i < 3; i++) stepEnemy(bill, w, FIXED_DT, targetAt(640, 370, false));
+    expect(bill.attackKind).toBe('lance');
+  });
+
+  it('never lances out from under her on the SECOND pass either', () => {
+    // The live defect this closes: the second pass re-entered 'telegraph'
+    // straight from 'recovery', never passing through 'idle', so the "never
+    // lance while she is over his head" gate never ran on it — and he would
+    // lance out from under a Knight standing on his head, which PLAN.md
+    // forbids and which makes the shake-off unreachable.
+    const w = arenaWorld();
+    const bill = createEnemy('bill', 600, FLOOR_Y);
+    bill.hot = true; // hot is what buys the second pass
+    bill.cooldownTimer = 0;
+    const onTheGround = targetAt(300, FLOOR_Y);
+
+    // Run the first pass out on a grounded Knight.
+    let steps = 0;
+    while (!(bill.attackKind === 'lance' && bill.phase === 'recovery') && steps < 60 * 12) {
+      stepEnemy(bill, w, FIXED_DT, onTheGround);
+      steps += 1;
+    }
+    expect(bill.phase).toBe('recovery');
+    expect(bill.lancePasses).toBe(1); // the second pass is still owed
+
+    // Now she is on his head when the recovery ends.
+    const onHisHead = targetAt(bill.position.x, bill.position.y - 250, false);
+    let startedALance = false;
+    for (let i = 0; i < 60 * 2; i++) {
+      stepEnemy(bill, w, FIXED_DT, onHisHead);
+      if (bill.attackKind === 'lance' && bill.phase === 'telegraph') startedALance = true;
+    }
+    expect(startedALance).toBe(false);
+  });
+
   it('leaves no safe ground — every corner of the floor is inside the pass', () => {
     for (const x of [30, 584, 1138]) {
       const w = arenaWorld();
