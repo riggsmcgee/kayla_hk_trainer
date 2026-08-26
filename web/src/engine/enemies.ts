@@ -1665,9 +1665,11 @@ export function enemyAttackHitbox(e: Enemy): AABB | null {
     case 'bones':
       return null; // the projectiles carry the threat, same as the volley
     case 'roll':
+    case 'uncurl':
       // The ball's threat is its BODY, and only its lower band at that —
       // arena.ts's enemyHurtsBox owns that rule so the pogo-safe cap and the
-      // damage check can never drift apart.
+      // damage check can never drift apart. The uncurl is the same: he is
+      // lethal because he is a dog, not because a box is out.
       return null;
   }
 }
