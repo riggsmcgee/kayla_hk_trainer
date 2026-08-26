@@ -273,6 +273,27 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
     all the way down with his chin out and his ear back.
   - **Then the near-miss question**, which the page already asks in the three-step form: which won,
     which came second and what it nearly had, and what those two share that the third does not.
+- **The boss win phase — NOT STARTED, and it is the next thing to build** _(Session 11 analysis)_.
+  Priority 5 of the playtest-6 contract. It is not blocked on the portfolio pick: the phase is the
+  substrate and the celebration choreography sits on top of it. The seams, read and written down so
+  the next session does not have to re-derive them:
+  - `BossPhase` is a closed union in `boss.ts` and `stepBoss` returns early for anything that is
+    not `'fighting'`, so adding `'won'` stops the clock for free — no new freeze machinery.
+  - **The touch gate needs a third input.** `stepBoss` currently takes `{ playerHit }`. God mode
+    routes hits through `events.wouldHaveHit` into `phantomHits` instead, and a god-mode run took
+    29 hits and still reached 1:30, so the win has to be told the run is genuinely untouched rather
+    than inferring it from `playerHit` alone.
+  - **`record()` has to move.** It fires only in the `'over'` branch today. Once 1:30 ends the
+    fight, `'over'` is unreachable after it, so a win that does not record is a win that leaves no
+    `PracticeRun` at all — which is the second half of the bug fixed in `819c0ea`.
+  - **The 0.78 wash is in the `'over'` branch**, so anything drawn before it is 78 % hidden. Free
+    upside already in the file: `simTime += dt` runs before every early return, so a held pose
+    animates its own step clock on a frozen screen with no new machinery.
+  - **All six celebration poses already exist** on both Bills (`bow`, `applaud`, `kneel` /
+    `lieDown`), so the phase can drive whichever the user picks without any new art.
+  - Strike `PLAN.md`'s "1:30 marks the stop done, and the fight keeps escalating after that for her
+    best time" **in the same commit as this**, not before — and the same line in `boss.ts`'s and
+    `bossSession.ts`'s own doc comments, which both still state it.
 
 ### Planned, needs its own design conversation
 

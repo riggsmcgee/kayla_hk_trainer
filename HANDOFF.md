@@ -117,6 +117,14 @@ Nothing that was green at baseline is red now.
 
 ## Started, sliced, continued in PLAN.md
 
+- **The boss win phase (priority 5) — not started, but its seams are written into
+  PLAN.md** rather than re-derived next time: adding `won` to a closed union that
+  already returns early for every non-fighting phase, the third input `stepBoss`
+  needs so god mode cannot earn it, the `record()` call that has to move once
+  `over` is unreachable after 1:30, and the 0.78 wash. It is NOT blocked on your
+  pick — the phase is the substrate and all six poses already exist. I left it
+  because it is the finale's state machine and it deserves the front of a
+  session rather than the last forty minutes of one.
 - **The ending (notes 6 and 7)** — the portfolio shipped; the win phase and the
   ending sequence are the next slice and are blocked on your pick. The new sixth
   `BossPhase`, the damage-off rule and the confetti-from-the-spitters plan are
