@@ -31,7 +31,17 @@ type Expr = 'flat' | 'angry' | 'up' | 'dazed';
 type FingerDir = 'up' | 'fwd' | 'down' | 'back' | 'bent';
 
 /** The six poses the fight actually asks for. */
-export type BillPose = 'idle' | 'lanceTell' | 'lanceDash' | 'stuck' | 'swatTell' | 'swat';
+export type BillPose =
+  | 'idle'
+  | 'lanceTell'
+  | 'lanceDash'
+  | 'stuck'
+  | 'swatTell'
+  | 'swat'
+  // The three celebration candidates. Exactly one survives the portfolio.
+  | 'bow'
+  | 'applaud'
+  | 'kneel';
 
 /**
  * "Two-Bit Bill" -- art direction: BIG SOFT PIXELS.
@@ -618,8 +628,155 @@ function poseSwat(ctx: Ctx, t: number): void {
   foamHand(ctx, 1.5, -5.5, 'up');
 }
 
+// --- the celebration candidates (playtest 6, notes 6 and 7) -----------------
 /**
- * Paint Bill the man, feet-anchored at `feet`, in one of his six poses.
+ * Three ways for Bill to concede the fight, for the user to choose between in
+ * the Artifact gallery (scripts/build-bill-gallery.mjs). They are written as
+ * real poses in the shipped painter rather than in a concept fork, so the one
+ * he picks is already in the engine and the other two are a deletion.
+ *
+ * All three obey the file's motion doctrine: whole animation frames on a
+ * floored clock, every offset a multiple of 4 px, nothing interpolated.
+ */
+
+/**
+ * BOW -- the deep courtly fold. He breaks at the waist into a staircase of two
+ * torso blocks running forward and down, his head hangs level with his own
+ * belt, and the foam finger sweeps the floor in front of him. The silhouette
+ * is the opposite of every fighting pose he has: those are all tall or wide,
+ * and this one is an L lying on its side.
+ *
+ * A held pose still has to breathe or it reads as a freeze, so the whole fold
+ * settles 4 px on a slow 1.5 Hz flip.
+ */
+function poseBow(ctx: Ctx, t: number): void {
+  const b = flip(t, 1.5) ? 0.5 : 0; // settling deeper into the bow
+
+  // far arm hangs straight down from the folded shoulder, ahead of the body
+  farArm(ctx, 2.5, 6.5 + b, 2, 8.5 + b, 1.5, 11.5 + b);
+
+  jeans(ctx, -2, 11.5, 2, 7.5); // legs stay straight: he folds, he does not squat
+  shoe(ctx, -2, 19, 2.5);
+  jeans(ctx, -2, 10.5, 5, 1);
+  jeans(ctx, 1, 11.5, 2, 7.5);
+  shoe(ctx, 1, 19, 3);
+  belt(ctx, -2, 10, 5);
+
+  // the fold: two blocks stepping forward and up out of the waist. The step is
+  // the same trick lanceTell uses for its lean-back, run the other way.
+  torso(ctx, -1.5, 7 + b, 4, 3);
+  torso(ctx, 2, 6 + b, 3.5, 3);
+
+  ctx.fillStyle = P.skin;
+  r(ctx, 4, 9 + b, 0.5, 0.5); // neck, coming out of the front of the fold
+  head(ctx, 3.5, 9.5 + b, 'flat'); // head hanging under the front of the fold
+
+  // The near arm sweeps the foam finger BACK over his own spine, not down in
+  // front: down in front puts a 24 px mitt exactly where the bowed head is,
+  // and the two shapes fight. Back, it is a long orange bar trailing the fold
+  // — a silhouette nothing else in his range has.
+  ctx.fillStyle = P.shirt;
+  r(ctx, 1.5, 6 + b, 1.5, 2);
+  ctx.fillStyle = P.skin;
+  r(ctx, -0.5, 6.5 + b, 2, 1.5);
+  r(ctx, -2, 6 + b, 1.5, 1.5);
+  foamHand(ctx, -5.5, 5.5 + b, 'back', 3.5);
+}
+
+/**
+ * APPLAUD -- he stays standing and claps, the foam mitt meeting his bare hand
+ * in front of his chest. A two-frame clap at 5 Hz: the hands close the 8 px
+ * between them and open again, and his shoulders ride the same beat, which is
+ * what stops it reading as a hand vibrating in place.
+ *
+ * The 'up' face does the work here -- raised brow, jutting chin, open mouth --
+ * because at 36 sub-cells that is the only expression in his whole range that
+ * can carry a cheer.
+ */
+function poseApplaud(ctx: Ctx, t: number): void {
+  const clap = flip(t, 5); // 1 = hands together
+  const c = clap ? 0.5 : 0; // the near hand travels in to meet the far one
+  const b = clap ? -0.5 : 0; // and the whole chest lifts on the same frame
+
+  jeans(ctx, -2, 11.5, 2, 7.5);
+  shoe(ctx, -2, 19, 2.5);
+  jeans(ctx, -2, 10.5, 5, 1);
+  jeans(ctx, 1, 11.5, 2, 7.5);
+  shoe(ctx, 1, 19, 3);
+
+  torso(ctx, -2, 3.5 + b, 5, 6.5 - b);
+  ctx.fillStyle = P.shirtShade;
+  r(ctx, -0.5, 3.5 + b, 1.5, 0.5); // collar
+  belt(ctx, -2, 10, 5);
+
+  ctx.fillStyle = P.skin;
+  r(ctx, -0.5, 3 + b, 1, 0.5); // neck
+  head(ctx, -0.5, 0 + b, 'up');
+
+  // far arm brought round to the front, its hand waiting at chest height
+  ctx.fillStyle = P.shirtShade;
+  r(ctx, -1, 4 + b, 1, 2);
+  ctx.fillStyle = P.skinShade;
+  r(ctx, 0, 5.5 + b, 1.5, 1.5);
+  r(ctx, 1.5, 6 + b, 1.5, 1.5);
+
+  // near arm folded across, carrying the mitt in to meet it
+  ctx.fillStyle = P.shirt;
+  r(ctx, 2.5, 4 + b, 1, 2);
+  ctx.fillStyle = P.skin;
+  r(ctx, 2.5, 6 + b, 1, 2);
+  foamHand(ctx, 3 - c, 5 + b, 'back', 2);
+}
+
+/**
+ * KNEEL -- he goes down on the back knee and holds the foam finger straight up
+ * to her, which is the pose that says the belt changed hands rather than that
+ * the round is over. He loses a quarter of his height doing it: the crown
+ * lands at row 3.5 instead of row 0, so a 160 px man reads as about 120.
+ *
+ * Slower breathing than idle (2 Hz, half of idle's beat) because the whole
+ * point of the pose is that he has stopped.
+ */
+function poseKneel(ctx: Ctx, t: number): void {
+  const b = flip(t, 2) ? -0.5 : 0;
+
+  farArm(ctx, -3, 7.5 + b, -3.5, 9.5 + b, -3.5, 12.5 + b);
+
+  // The back leg folded under him. The thigh runs all the way down to the
+  // knee and the shin starts where it ends: leave a row between them and the
+  // two blocks read as debris on the floor rather than as a folded leg.
+  jeans(ctx, -3, 14.5, 2, 3);
+  jeans(ctx, -5.5, 17.5, 3.5, 1.5);
+  shoe(ctx, -5.5, 19, 2);
+
+  jeans(ctx, -2, 13.5, 5, 1); // hips, three cells lower than standing
+  // The front leg makes the pose legible: thigh HORIZONTAL out of the hip,
+  // shin straight down, foot flat. Hip -> forward -> down -> floor is a Z,
+  // and a Z beside a folded leg is the only thing at this resolution that
+  // says "one knee down" rather than "standing in something".
+  jeans(ctx, 1, 14.5, 3, 1.5);
+  jeans(ctx, 2.5, 16, 1.5, 3);
+  shoe(ctx, 2.5, 19, 2.5);
+
+  torso(ctx, -2, 7 + b, 5, 6.5 - b);
+  ctx.fillStyle = P.shirtShade;
+  r(ctx, -0.5, 7 + b, 1.5, 0.5); // collar
+  belt(ctx, -2, 13.5, 5);
+
+  ctx.fillStyle = P.skin;
+  r(ctx, -0.5, 6.5 + b, 1, 0.5); // neck
+  head(ctx, -0.5, 3.5 + b, 'up'); // looking up at her, because she is standing
+
+  // the arm goes vertical and the finger clears his own crown
+  ctx.fillStyle = P.shirt;
+  r(ctx, 2.5, 7 + b, 1.5, 2);
+  ctx.fillStyle = P.skin;
+  r(ctx, 3, 4.5 + b, 1.5, 3);
+  foamHand(ctx, 2.5, 1 + b, 'up');
+}
+
+/**
+ * Paint Bill the man, feet-anchored at `feet`, in one of his poses.
  *
  * `t` is a free-running clock in seconds, not per-pose progress: every tell
  * is a two-frame vibration, so it reads as "winding up" wherever in the
@@ -650,6 +807,9 @@ export function paintBillMan(
   else if (pose === 'stuck') poseStuck(ctx, t);
   else if (pose === 'swatTell') poseSwatTell(ctx, t);
   else if (pose === 'swat') poseSwat(ctx, t);
+  else if (pose === 'bow') poseBow(ctx, t);
+  else if (pose === 'applaud') poseApplaud(ctx, t);
+  else if (pose === 'kneel') poseKneel(ctx, t);
   else poseIdle(ctx, t);
 
   ctx.restore();

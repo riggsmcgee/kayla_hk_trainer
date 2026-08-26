@@ -258,6 +258,25 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ## 8. Later / on the radar
 
+- **The Bills' celebration portfolio — HALF SHIPPED, waiting on the user** _(Session 11)_.
+  `scripts/build-bill-gallery.mjs` compiles `web/src/engine/renderBillMan.ts` with the repo's own
+  esbuild into one self-contained page, published at
+  <https://claude.ai/code/artifact/5abb4d4f-96c2-42e9-8a56-8433ca62d443>. Three candidates for how
+  Bill the man concedes — **A. The Bow**, **B. The Applause**, **C. The Knee** — loop in step. They
+  are real `BillPose` values in the shipped painter, not a concept fork (playtest 6 ratified this
+  after Session 8's gallery turned out to be a fork with nothing keeping it in sync), so choosing
+  one is deleting the other two.
+  - **Slice 2, not done: Bill the dog's three.** Cheap, because `renderBillDog.ts` drives every
+    standing pose from one `Rig` parameter block (`lift`, `headDX`, `snoutUp`, `chestUp`,
+    `rumpDY`, `tailF`, `earDX`, `mouth`, four `legs`) — a new pose is a branch in `standRig`,
+    not new geometry. The pairings that match the man's three: a play-bow with the chest down and
+    the rump up (must stay distinct from `bones`, which is already a play-bow heave — keep the
+    jaw closed and the eyes soft), sitting up on the haunches with the front paws patting, and a
+    low crouch with the head between the paws. Add them to `build-bill-gallery.mjs` as a second
+    row and republish the same URL.
+  - **Then the near-miss question**, which the page already asks in the three-step form: which won,
+    which came second and what it nearly had, and what those two share that the third does not.
+
 ### Planned, needs its own design conversation
 
 - **The boss's first tuning pass** — every number in the fight is derived against the shipped physics and **none of it has been played by a person**. The knobs are `ATTACKS.bill.lanceSpeed` and `lanceHeight`; never `PHYSICS`, whose gravity is the one estimated value in the engine and which prices the pogo course's ceiling too. Two specific things to watch: a standing Knight is caught at about **0:02**, which may be too fast for a first meeting; and a mashed pogo chain is ended by Bill's **body** rather than by the shake-off, because the 0.41 s nail cadence desyncs from the ~0.6 s bounce and he has no pogo-safe cap (ratified).

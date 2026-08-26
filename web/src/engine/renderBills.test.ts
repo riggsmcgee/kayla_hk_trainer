@@ -17,6 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_SIZES, createEnemy, type AttackKind, type Enemy } from './enemies';
 import { drawBill, drawBillDog, billDogPose, billPose } from './renderBills';
+import { paintBillMan, type BillPose } from './renderBillMan';
 import { DEFAULT_DOG_LOOK, DOG_LOOKS, boneAngle, dogLook } from './dogLook';
 
 /**
@@ -306,5 +307,55 @@ describe('the dog’s hazard looks', () => {
   it('falls back to the picked look for an index that does not exist', () => {
     expect(dogLook(99)).toBe(DOG_LOOKS[DEFAULT_DOG_LOOK]);
     expect(dogLook(-1)).toBe(DOG_LOOKS[DEFAULT_DOG_LOOK]);
+  });
+});
+
+/**
+ * The three celebration candidates (playtest 6, notes 6 and 7).
+ *
+ * They are covered here rather than through `billPose`, because nothing in
+ * the fight maps to them yet: the sixth BossPhase that drives them is the
+ * next piece of work. Without this, three shipped poses would sit in the
+ * painter with no test at all — which is exactly how 'uncurl' went a whole
+ * round uncovered.
+ */
+describe('Bill concedes', () => {
+  const CANDIDATES: BillPose[] = ['bow', 'applaud', 'kneel'];
+
+  it('draws three pictures, none of them his idle', () => {
+    const shots = [...CANDIDATES, 'idle' as BillPose].map((pose) => {
+      const { ops, ctx } = recordingCtx();
+      paintBillMan(ctx, { x: 400, y: 600 }, pose, 0, -1);
+      expect(ops.length).toBeGreaterThan(0);
+      return ops.join('\n');
+    });
+    // A candidate that quietly fell through to the idle branch would
+    // collapse this set, and would look like a considered choice on the page.
+    expect(new Set(shots).size).toBe(4);
+  });
+
+  it('leaves the canvas state balanced, like every other pose', () => {
+    for (const pose of CANDIDATES) {
+      const { ops, ctx } = recordingCtx();
+      paintBillMan(ctx, { x: 400, y: 600 }, pose, 0, -1);
+      expect(ops.filter((o) => o === 'save()').length).toBe(
+        ops.filter((o) => o === 'restore()').length,
+      );
+    }
+  });
+
+  it('animates every one of them, in whole frames', () => {
+    // The file's motion doctrine: nothing interpolates, everything snaps
+    // between whole frames on a floored clock. A held picture reads as a
+    // freeze, and a smoothed one stops looking like pixels — so each
+    // candidate has to differ somewhere across its own loop.
+    for (const pose of CANDIDATES) {
+      const frames = [0, 0.34, 0.67, 1.01].map((t) => {
+        const { ops, ctx } = recordingCtx();
+        paintBillMan(ctx, { x: 400, y: 600 }, pose, t, -1);
+        return ops.join('\n');
+      });
+      expect(new Set(frames).size).toBeGreaterThan(1);
+    }
   });
 });
