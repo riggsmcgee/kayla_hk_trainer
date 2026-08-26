@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { ENEMY_SIZES, createEnemy, type AttackKind, type Enemy } from './enemies';
 import { drawBill, drawBillDog, billDogPose, billPose } from './renderBills';
 import { paintBillMan, type BillPose } from './renderBillMan';
+import { paintBillDog, type BillDogPose } from './renderBillDog';
 import { DEFAULT_DOG_LOOK, DOG_LOOKS, boneAngle, dogLook } from './dogLook';
 
 /**
@@ -321,6 +322,7 @@ describe('the dog’s hazard looks', () => {
  */
 describe('Bill concedes', () => {
   const CANDIDATES: BillPose[] = ['bow', 'applaud', 'kneel'];
+  const DOG_CANDIDATES: BillDogPose[] = ['bow', 'applaud', 'lieDown'];
 
   it('draws three pictures, none of them his idle', () => {
     const shots = [...CANDIDATES, 'idle' as BillPose].map((pose) => {
@@ -353,6 +355,33 @@ describe('Bill concedes', () => {
       const frames = [0, 0.34, 0.67, 1.01].map((t) => {
         const { ops, ctx } = recordingCtx();
         paintBillMan(ctx, { x: 400, y: 600 }, pose, t, -1);
+        return ops.join('\n');
+      });
+      expect(new Set(frames).size).toBeGreaterThan(1);
+    }
+  });
+
+  it('gives the dog three of his own, none of them his idle or his heave', () => {
+    // 'bones' is ALREADY a play-bow heave, so the dog's bow is the one pose
+    // here at real risk of being a duplicate: it is held rather than thrown,
+    // jaw shut, back legs still standing.
+    const shots = [...DOG_CANDIDATES, 'idle' as BillDogPose, 'bones' as BillDogPose].map((pose) => {
+      const { ops, ctx } = recordingCtx();
+      paintBillDog(ctx, { x: 400, y: 600 }, pose, 0, -1);
+      expect(ops.length).toBeGreaterThan(0);
+      return ops.join('\n');
+    });
+    expect(new Set(shots).size).toBe(5);
+  });
+
+  it('animates the dog too, and leaves his canvas balanced', () => {
+    for (const pose of DOG_CANDIDATES) {
+      const frames = [0, 0.34, 0.67, 1.01].map((t) => {
+        const { ops, ctx } = recordingCtx();
+        paintBillDog(ctx, { x: 400, y: 600 }, pose, t, -1);
+        expect(ops.filter((o) => o === 'save()').length).toBe(
+          ops.filter((o) => o === 'restore()').length,
+        );
         return ops.join('\n');
       });
       expect(new Set(frames).size).toBeGreaterThan(1);

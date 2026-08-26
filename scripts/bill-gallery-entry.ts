@@ -10,10 +10,13 @@
  * than that.
  */
 import { paintBillMan, type BillPose } from '../web/src/engine/renderBillMan';
+import { paintBillDog, type BillDogPose } from '../web/src/engine/renderBillDog';
 
 /** One candidate: the pose to draw, and what to call it on the page. */
 interface Candidate {
   pose: BillPose;
+  /** What the dog does beside him. Both Bills concede, so both are shown. */
+  dogPose: BillDogPose;
   /** The letter is how he refers back to one — "I pick B" — not a running order. */
   letter: string;
   title: string;
@@ -30,34 +33,43 @@ interface Candidate {
 const CANDIDATES: readonly Candidate[] = [
   {
     pose: 'bow',
+    dogPose: 'bow',
     letter: 'A',
     stillAt: 0.7, // the deeper of the two settle frames
     title: 'The Bow',
     claim:
-      'He breaks at the waist and sweeps the foam finger along the floor. The silhouette is an L on its side — the opposite of every fighting pose he has, all of which are tall or wide. Reads as ceremony.',
+      'He breaks at the waist and sweeps the foam finger back over his spine; the dog holds a play bow beside him, elbows down and back legs still standing. The silhouette is an L on its side — the opposite of every fighting pose either of them has. Reads as ceremony.',
   },
   {
     pose: 'applaud',
+    dogPose: 'applaud',
     letter: 'B',
     stillAt: 0.1, // hands together, which is the frame that reads as a clap
     title: 'The Applause',
     claim:
-      'He stays standing and claps, the mitt meeting his bare hand at 5 Hz. The only one of the three where he is still looking at her the whole time. Reads as delight rather than deference.',
+      'He stays standing and claps, the mitt meeting his bare hand at 5 Hz; the dog sits up on his haunches and pats his front paws on the same beat. The only one of the three where both of them are still looking at her. Reads as delight rather than deference.',
   },
   {
     pose: 'kneel',
+    dogPose: 'lieDown',
     letter: 'C',
     stillAt: 0,
     title: 'The Knee',
     claim:
-      'Down on the back knee, foam finger held straight up to her, face turned up because she is the one standing now. Loses a quarter of his height. Reads as handing over the belt.',
+      'Down on the back knee, foam finger held straight up to her, face turned up because she is the one standing now; the dog goes all the way down beside him, chin out and ear back. He loses a quarter of his height. Reads as handing over the belt.',
   },
 ];
 
 /** Canvas size per card. He is 160 px tall and the finger can clear his crown. */
-const CARD = { width: 260, height: 300 };
-/** Where his feet sit inside a card, leaving room above for a raised finger. */
-const FEET = { x: 120, y: 268 };
+const CARD = { width: 280, height: 300 };
+/**
+ * Where each Bill stands. The measurements are the DRAWN ink, not the
+ * collision boxes: the man is 88 wide and the dog 68, and sizing a tableau
+ * from ENEMY_SIZES is exactly the hitbox-as-a-visual-number mistake that put
+ * a 48 px error into a shipped test.
+ */
+const FEET = { x: 100, y: 268 };
+const DOG_FEET = { x: 208, y: 268 };
 
 /** The arena's own ground and floor, so the cards look like the game. */
 const BACKDROP = '#070912';
@@ -90,7 +102,12 @@ function buildCard(candidate: Candidate): HTMLElement {
 }
 
 /** One frame of a card: the backdrop, the floor line, and Bill on it. */
-function paintCard(ctx: CanvasRenderingContext2D, pose: BillPose, t: number): void {
+function paintCard(
+  ctx: CanvasRenderingContext2D,
+  pose: BillPose,
+  dogPose: BillDogPose,
+  t: number,
+): void {
   ctx.fillStyle = BACKDROP;
   ctx.fillRect(0, 0, CARD.width, CARD.height);
   // The floor he is standing on, so a pose that loses height is visibly
@@ -98,6 +115,8 @@ function paintCard(ctx: CanvasRenderingContext2D, pose: BillPose, t: number): vo
   ctx.fillStyle = FLOOR;
   ctx.fillRect(0, FEET.y, CARD.width, CARD.height - FEET.y);
   paintBillMan(ctx, FEET, pose, t, -1);
+  // The dog stands to his right and faces back toward him and the Knight.
+  paintBillDog(ctx, DOG_FEET, dogPose, t, -1);
 }
 
 /**
@@ -107,11 +126,11 @@ function paintCard(ctx: CanvasRenderingContext2D, pose: BillPose, t: number): vo
  */
 function draw(ctx: CanvasRenderingContext2D, candidate: Candidate): void {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    paintCard(ctx, candidate.pose, candidate.stillAt);
+    paintCard(ctx, candidate.pose, candidate.dogPose, candidate.stillAt);
     return;
   }
   const frame = (nowMs: number): void => {
-    paintCard(ctx, candidate.pose, nowMs / 1000);
+    paintCard(ctx, candidate.pose, candidate.dogPose, nowMs / 1000);
     requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);

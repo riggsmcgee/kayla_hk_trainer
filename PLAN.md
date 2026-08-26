@@ -258,7 +258,7 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ## 8. Later / on the radar
 
-- **The Bills' celebration portfolio — HALF SHIPPED, waiting on the user** _(Session 11)_.
+- **The Bills' celebration portfolio — SHIPPED, waiting on the user** _(Session 11)_.
   `scripts/build-bill-gallery.mjs` compiles `web/src/engine/renderBillMan.ts` with the repo's own
   esbuild into one self-contained page, published at
   <https://claude.ai/code/artifact/5abb4d4f-96c2-42e9-8a56-8433ca62d443>. Three candidates for how
@@ -266,14 +266,11 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
   are real `BillPose` values in the shipped painter, not a concept fork (playtest 6 ratified this
   after Session 8's gallery turned out to be a fork with nothing keeping it in sync), so choosing
   one is deleting the other two.
-  - **Slice 2, not done: Bill the dog's three.** Cheap, because `renderBillDog.ts` drives every
-    standing pose from one `Rig` parameter block (`lift`, `headDX`, `snoutUp`, `chestUp`,
-    `rumpDY`, `tailF`, `earDX`, `mouth`, four `legs`) — a new pose is a branch in `standRig`,
-    not new geometry. The pairings that match the man's three: a play-bow with the chest down and
-    the rump up (must stay distinct from `bones`, which is already a play-bow heave — keep the
-    jaw closed and the eyes soft), sitting up on the haunches with the front paws patting, and a
-    low crouch with the head between the paws. Add them to `build-bill-gallery.mjs` as a second
-    row and republish the same URL.
+  - **Both Bills are in every card.** The dog's three came out of `renderBillDog.ts`'s `Rig`
+    parameter block rather than out of new geometry: a play bow held rather than thrown (jaw shut
+    and back legs standing, which is what keeps it distinct from `bones`, already a play-bow
+    heave), sitting up on the haunches patting his front paws on the man's own 5 Hz clap beat, and
+    all the way down with his chin out and his ear back.
   - **Then the near-miss question**, which the page already asks in the three-step form: which won,
     which came second and what it nearly had, and what those two share that the third does not.
 

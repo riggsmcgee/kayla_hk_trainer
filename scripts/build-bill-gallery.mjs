@@ -175,7 +175,7 @@ function page(script) {
     <h1>Bill concedes</h1>
     <p class="lede">
       Kayla has just survived 1:30 without being touched, so the fight is over rather than paused.
-      This is the beat where Bill the man stops being a wall — three ways he could do it, looping in
+      This is the beat where the Two Bills stop being a wall — three ways they could do it, looping in
       step. Every one of them is drawn by the painter the game itself uses, not a copy of it.
     </p>
   </header>
@@ -198,8 +198,7 @@ function page(script) {
 
   <footer>
     Built by <code>node scripts/build-bill-gallery.mjs</code> from
-    <code>web/src/engine/renderBillMan.ts</code>. Bill the dog's three are not drawn yet — they are
-    the next slice, written up in PLAN.md. Rebuild and republish whenever a pose changes.
+    <code>web/src/engine/renderBillMan.ts</code>. Rebuild and republish whenever a pose changes.
   </footer>
 </div>
 <script>${script}</script>

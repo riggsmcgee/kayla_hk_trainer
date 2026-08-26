@@ -23,7 +23,15 @@ type Cells = readonly (readonly number[])[];
 type Leg = [number, number];
 
 /** The four poses that share the standing rig. */
-type DogPose = 'idle' | 'walkIn' | 'bonesTell' | 'bones';
+type DogPose =
+  | 'idle'
+  | 'walkIn'
+  | 'bonesTell'
+  | 'bones'
+  // The three celebration candidates. Exactly one survives the portfolio.
+  | 'bow'
+  | 'applaud'
+  | 'lieDown';
 
 /** Every pose the fight asks for, including the two that leave the rig. */
 export type BillDogPose = DogPose | 'rollTell' | 'roll';
@@ -273,6 +281,74 @@ function standRig(pose: DogPose, t: number): Rig {
       [-4, 0],
       [-4, 0],
       [-4, 0],
+    ];
+    return rig;
+  }
+
+  // --- the celebration candidates (playtest 6, notes 6 and 7) --------------
+  // Three ways for the dog to concede, paired with Bill the man's three in
+  // the Artifact gallery. They are cheap because this rig is a parameter
+  // block: a new pose is a branch here, not new geometry.
+
+  if (pose === 'bow') {
+    // A HELD play bow, and it has to stay distinct from 'bones', which is
+    // already a play-bow heave. The heave is a jaw wide open and a rump
+    // snapping up; this is deeper, quieter and going nowhere: elbows on the
+    // floor, mouth shut, ear forward, soft eyes, tail going hard.
+    rig.rumpDY = -8; // rump higher than the heave's -4
+    rig.headDY = 8; // head lower than the heave's 4
+    rig.earDX = 4; // ear forward, not pinned
+    rig.brow = false; // soft, not smug
+    rig.tailF = Math.floor(t * 14) % 2; // the fast happy wag from walkIn
+    rig.legs = [
+      [8, 8], // front legs stretched forward with the elbows down
+      [8, 8],
+      [-4, 0], // back legs still standing, which is what makes it a BOW
+      [-4, 0],
+    ];
+    // Settles a whole pixel deeper on a slow flip so a held pose still breathes.
+    rig.lift = Math.floor(t * 1.5) % 2 ? 2 : 0;
+    return rig;
+  }
+
+  if (pose === 'applaud') {
+    // Sitting up on his haunches with both front paws off the floor, patting
+    // them together on the same 5 Hz beat Bill the man claps on. The pat is
+    // the two front legs closing the gap between them, which at this scale
+    // is the only way a dog can be seen to applaud.
+    const clap = Math.floor(t * 5) % 2;
+    rig.rumpDY = 8; // sitting down on it
+    rig.chestUp = 8; // and up through the chest, which is what sitting looks like
+    rig.headDY = -4;
+    rig.snoutUp = 4; // nose up at her
+    rig.mouth = clap ? 4 : 0; // a small pant on the beat
+    rig.wideEye = true;
+    rig.brow = false;
+    rig.tailShift = 2; // he is sitting on most of it
+    rig.legs = [
+      [clap ? 8 : 12, 12], // near front paw, in and out
+      [clap ? 8 : 4, 12], // far front paw, meeting it
+      [-4, 0], // back legs folded under the sitting rump
+      [-4, 0],
+    ];
+    return rig;
+  }
+
+  if (pose === 'lieDown') {
+    // All the way down, head between the paws, looking up at her — the dog's
+    // version of Bill's knee. Everything drops: the body sits on the floor,
+    // so every leg is lifted almost out of sight and only the paws show.
+    rig.rumpDY = 8;
+    rig.headDY = 8;
+    rig.headDX = 4; // chin out in front
+    rig.earDX = -4; // ear back: this is deference, not alertness
+    rig.brow = false;
+    rig.tailF = Math.floor(t * 7) % 2; // a slower wag than the bow's
+    rig.legs = [
+      [8, 12], // paws forward, legs folded away under him
+      [6, 12],
+      [-4, 12],
+      [-4, 12],
     ];
     return rig;
   }
