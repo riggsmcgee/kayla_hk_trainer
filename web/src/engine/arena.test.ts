@@ -13,6 +13,7 @@ import {
   PLAYER_SPAWN_X,
   arenaWorld,
   createDodgeArenaSession,
+  JOIN_SPREAD,
   joinX,
   spawnX,
 } from './dodgeArenaSession';
@@ -1260,6 +1261,22 @@ describe('joinX — where a body that walks in mid-fight lands', () => {
     for (let x = 0; x <= CANVAS.width; x++) {
       expect(Math.abs(joinX(x) - x)).toBeGreaterThanOrEqual(474);
     }
+  });
+
+  it('steps bodies arriving on the same frame apart from each other', () => {
+    // Playtest 5, note 5 puts a spitter and a warden on one arrival. Before
+    // this they landed on the identical pixel — and a spitter bobs only
+    // vertically, so two on one spot would read as one body forever.
+    for (const x of [0, 300, 584, 900, CANVAS.width]) {
+      expect(joinX(x, 1)).not.toBe(joinX(x, 0));
+      expect(Math.abs(joinX(x, 1) - joinX(x, 0))).toBe(JOIN_SPREAD);
+      // The second one gives up 90 px of clearance and no more.
+      expect(Math.abs(joinX(x, 1) - x)).toBeGreaterThanOrEqual(474 - JOIN_SPREAD);
+    }
+  });
+
+  it('leaves a lone arrival exactly where it always stood', () => {
+    for (let x = 0; x <= CANVAS.width; x += 8) expect(joinX(x, 0)).toBe(joinX(x));
   });
 
   it('places a body clear of the walls, unlike a third spawnX slot', () => {

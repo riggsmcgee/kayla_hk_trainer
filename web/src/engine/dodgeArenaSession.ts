@@ -168,19 +168,38 @@ export function spawnX(index: number, awayFromX: number): number {
 export const WALL_INSET = 110;
 
 /**
+ * How far apart two bodies arriving on the SAME frame stand.
+ *
+ * Playtest 5, note 5 put a spitter and a warden on the same arrival, and
+ * before this they landed on the identical pixel: `joinX` had no slot term,
+ * so simultaneous reinforcements stacked into one silhouette. A spitter is
+ * the worst case for that — unlike the flier twins, whose bob is horizontal
+ * and pulls them apart on its own, a spitter only bobs vertically, so two of
+ * them on one spot would read as one body forever.
+ *
+ * 90 px is a body and a half. It costs the second arrival 90 px of the 474 px
+ * clearance floor below, which leaves 384 px — still most of the arena.
+ */
+export const JOIN_SPREAD = 90;
+
+/**
  * Where an enemy that arrives mid-stage appears: hard against the wall on
- * the far side from the Knight.
+ * the far side from the Knight, stepped `order` places along it.
  *
  * Deliberately NOT `spawnX`, which steps inward 170 px per slot. With a
  * third and fourth body that walks the last slot to within 56 px of her —
  * a reinforcement (or a respawn) materialising on top of her, which in a
- * one-hit mode is not a difficulty spike, it is a bug. `joinX` has no slot
- * term at all, so its clearance is a floor and not an average:
- * (1168 - 220) / 2 = 474 px, whichever half of the arena she is standing in.
+ * one-hit mode is not a difficulty spike, it is a bug. The clearance here is
+ * a floor and not an average: (1168 - 220) / 2 = 474 px, whichever half of
+ * the arena she is standing in.
+ *
+ * `order` counts arrivals on THIS frame, not slots, so a lone reinforcement
+ * is always flush against the wall exactly as before.
  * @internal exported for the tests
  */
-export function joinX(awayFromX: number): number {
-  return awayFromX < CANVAS.width / 2 ? CANVAS.width - WALL_INSET : WALL_INSET;
+export function joinX(awayFromX: number, order = 0): number {
+  const inward = order * JOIN_SPREAD;
+  return awayFromX < CANVAS.width / 2 ? CANVAS.width - WALL_INSET - inward : WALL_INSET + inward;
 }
 
 /**
@@ -200,8 +219,8 @@ function spawnEnemy(id: EnemyId, index: number, awayFromX: number): Enemy {
 }
 
 /** A reinforcement or a respawn: same body, placed at the wall instead of a slot. */
-function joinEnemy(id: EnemyId, index: number, awayFromX: number): Enemy {
-  return placeEnemy(createEnemy(id, joinX(awayFromX), spawnHeight(id)), index);
+function joinEnemy(id: EnemyId, index: number, awayFromX: number, order = 0): Enemy {
+  return placeEnemy(createEnemy(id, joinX(awayFromX, order), spawnHeight(id)), index);
 }
 
 function placeEnemy(enemy: Enemy, index: number): Enemy {
@@ -331,12 +350,16 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
    */
   function joinDue(): void {
     const cap = def.maxAlive ?? def.enemies.length;
+    // Everything this loop admits arrives on the same frame, so the count is
+    // what keeps two of them off the same pixel.
+    let arrivals = 0;
     while (joined < dueCount(def, stage.elapsed)) {
       const id = def.reinforcements?.[joined]?.id;
       joined += 1;
       if (id === undefined || enemies.length >= cap) continue;
       const slot = enemies.length;
-      enemies.push(joinEnemy(id, slot, player.position.x));
+      enemies.push(joinEnemy(id, slot, player.position.x, arrivals));
+      arrivals += 1;
       prevEnemyFeet.push({ ...enemies[slot]!.position });
       juice.addTrauma(FEEDBACK.enemyDeath.trauma);
       joinBanner = JOIN_BANNER_SECONDS;

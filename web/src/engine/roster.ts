@@ -77,9 +77,16 @@ export const FINALE_WAVES: readonly FinaleWave[] = [
   {
     name: 'The real ones',
     enemies: ['duelist', 'spitter'],
+    /**
+     * Playtest 5, note 5: "let's have the reinforcement spread be two
+     * spitters, a duelist and a warden". That is the cast at 0:30 — the
+     * opening pair plus these two — not four arrivals on top of the pair,
+     * which would be six alive against an ARENA_MAX_ALIVE of 4 and would see
+     * the runtime silently drop the last two while every test stayed green.
+     */
     reinforcements: [
+      { at: 30, id: 'spitter' },
       { at: 30, id: 'warden' },
-      { at: 30, id: 'duelist' },
     ],
   },
 ];

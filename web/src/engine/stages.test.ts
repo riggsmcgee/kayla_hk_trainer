@@ -95,6 +95,29 @@ describe('stage definitions', () => {
   });
 });
 
+describe('wave 2, "The real ones" (playtest 5, note 5)', () => {
+  const wave = FINALE_WAVES[1]!;
+
+  it('stands at two spitters, a duelist and a warden once everyone is in', () => {
+    // The note names the cast, not the arrivals: "let's have the
+    // reinforcement spread be two spitters, a duelist and a warden".
+    const cast = [...wave.enemies, ...wave.reinforcements.map((r) => r.id)].sort();
+    expect(cast).toEqual(['duelist', 'spitter', 'spitter', 'warden']);
+  });
+
+  it('fills the arena exactly, so nothing is silently dropped', () => {
+    // The rejected reading — four arrivals ON TOP of the opening pair — is
+    // six alive against a cap of four, and joinDue() CONSUMES over the cap:
+    // the duelist and the warden would have vanished with every test green.
+    expect(wave.enemies.length + wave.reinforcements.length).toBe(ARENA_MAX_ALIVE);
+  });
+
+  it('still asks for six hits — they are summed over the opening cast alone', () => {
+    const stage = waveStages()[1]!;
+    expect(stage.hitsRequired).toBe(6);
+  });
+});
+
 describe('dueCount — the reinforcement schedule', () => {
   const scripted: StageDef = {
     enemies: ['walker'],
