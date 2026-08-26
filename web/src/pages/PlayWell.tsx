@@ -34,6 +34,7 @@ import { useBindings } from '../storage/useBindings';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
+import { useRollVariant } from '../storage/useRollVariant';
 import { levelBestLine } from './playPogo.helpers';
 import {
   BEATS,
@@ -284,6 +285,10 @@ function WavesBeat({
  * time survived rather than hits landed.
  */
 function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refresh }: BeatProps) {
+  // DEV TOOL: remove in the final build. Which of the five roll behaviours
+  // the dog uses — read here rather than threaded through BeatProps, because
+  // the boss is the only beat with a dog in it.
+  const [rollVariant] = useRollVariant();
   /**
    * DEV TOOL: remove in the final build. God mode makes the fight unlosable,
    * and the only way out of the canvas is the fail screen (bossSession's
@@ -303,6 +308,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
       createBossSession({
         comfort,
         godMode,
+        rollVariant,
         jumpKey,
         attackKey,
         cleared: progress.finaleBossCleared,
@@ -310,7 +316,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
         // A touch records the run, and her best time comes from those.
         onFailed: refresh,
       }),
-    [comfort, godMode, jumpKey, attackKey, progress.finaleBossCleared, onPassed, refresh],
+    [comfort, godMode, rollVariant, jumpKey, attackKey, progress.finaleBossCleared, onPassed, refresh],
   );
 
   return (

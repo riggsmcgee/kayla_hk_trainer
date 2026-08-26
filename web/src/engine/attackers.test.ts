@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
 import {
   ATTACKS,
+  ROLL_VARIANTS,
   ENEMY_SIZES,
   createEnemy,
   enemyAttackHitbox,
@@ -1113,31 +1114,39 @@ describe('Bill the dog', () => {
     expect(shots.every((sh) => !sh.dead && sh.radius > 0)).toBe(true);
   });
 
-  it('bounces in even arcs — every hop reaches the same height', () => {
+  it('alternates its arcs, and never decays — playtest 4 replaced the even hops', () => {
+    // It USED to re-launch to the same speed off every floor bounce: six
+    // identical hops across the 5 s roll. Playtest 4 replaced that with five
+    // behaviours to choose between, every one of which ALTERNATES, so that a
+    // phase she can run under and a phase she cannot both stay on the table.
     const { dog, w, t } = rolling();
+    const variant = ROLL_VARIANTS[dog.rollVariantIndex]!;
+    // One apex per arc, delimited by the floor bounces themselves. (The old
+    // running-minimum version of this loop only worked because every arc
+    // used to be the same height — it carried the previous apex forward.)
     const apexes: number[] = [];
     let arcTop = dog.position.y;
-    let rising = true;
+    let bounces = dog.rollBounces;
     for (let i = 0; i < 60 * 5 && dog.roll; i++) {
-      const before = dog.position.y;
       stepEnemy(dog, w, FIXED_DT, t);
-      if (dog.position.y < before) {
-        rising = true;
-        arcTop = Math.min(arcTop, dog.position.y);
-      } else if (rising) {
-        apexes.push(arcTop);
-        rising = false;
+      if (dog.rollBounces !== bounces) {
+        bounces = dog.rollBounces;
+        apexes.push(FLOOR_Y - arcTop);
         arcTop = dog.position.y;
+      } else {
+        arcTop = Math.min(arcTop, dog.position.y);
       }
     }
-    // 620 up against 1500 down is a 128 px apex; six arcs fit in the 5 s roll.
     expect(apexes.length).toBeGreaterThanOrEqual(5);
-    const analytic = ATTACKS.dog.rollLaunch ** 2 / (2 * ATTACKS.dog.rollGravity);
+
+    // Every arc is one of the variant's launches, landed exactly — no decay,
+    // ever, which is what keeps the pattern readable however long it runs.
+    const wanted = variant.launches.map((l) => l ** 2 / (2 * ATTACKS.dog.rollGravity));
     for (const apex of apexes) {
-      expect(apex).toBeCloseTo(apexes[0]!, 6); // no decay, ever
-      expect(FLOOR_Y - apex).toBeGreaterThan(analytic - 10);
-      expect(FLOOR_Y - apex).toBeLessThanOrEqual(analytic);
+      expect(wanted.some((h) => Math.abs(h - apex) < 10)).toBe(true);
     }
+    // And it really alternates: a high hop and a low skitter both happened.
+    expect(Math.max(...apexes) - Math.min(...apexes)).toBeGreaterThan(30);
   });
 
   it('never leaves the arena, and comes off both walls', () => {

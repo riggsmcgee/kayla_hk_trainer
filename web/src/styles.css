@@ -1083,3 +1083,37 @@ a {
     transition: none;
   }
 }
+
+/* DEV TOOL: remove in the final build. The five roll behaviours to try. */
+.roll-variants {
+  margin: 1rem 0 0.4rem;
+  padding: 0.6rem 0.9rem 0.7rem;
+  border: 1px dashed var(--rock);
+  border-radius: 8px;
+}
+
+.roll-variants > legend {
+  padding: 0 0.4rem;
+  font-variant-caps: small-caps;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.roll-variant {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  padding: 0.3rem 0;
+  cursor: pointer;
+}
+
+.roll-variant > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.roll-variant strong {
+  color: var(--text);
+  font-weight: 600;
+}

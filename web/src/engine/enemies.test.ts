@@ -8,14 +8,17 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { EnemyId } from '@dojo/shared';
-import { CANVAS, ENEMIES, FIXED_DT } from './constants';
+import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
 import { arenaWorld, bossWorld, spawnX } from './dodgeArenaSession';
 import {
   ATTACKS,
+  ENEMY_SIZES,
+  ROLL_VARIANTS,
   applyNailHit,
   createEnemy,
   enemyAttackHitbox,
   enemyBox,
+  rollVariant,
   stepEnemy,
   stepProjectile,
   type Enemy,
@@ -473,5 +476,102 @@ describe('thrown bones', () => {
       expect(b.radius).toBe(7);
     }
     expect(new Set(thrown.map((b) => Math.sign(b.spin!))).size).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4, note 2 — five roll behaviours for the user to choose between.
+//
+// "I just need to try out five different examples and then go off that."
+//
+// The choice is a taste call. What is NOT a taste call is that every one of
+// them must leave both answers alive: a phase she can run under, and a
+// volley window her nail can actually hit. These tests are the guard rails
+// the picking happens inside, so a variant that gets tuned into a corner
+// fails here rather than in her hands.
+// ---------------------------------------------------------------------------
+describe('the five roll behaviours', () => {
+  const A = ATTACKS.dog;
+  const apexOf = (launch: number) => (launch * launch) / (2 * A.rollGravity);
+
+  it('offers five of them, each with a name and a feel', () => {
+    expect(ROLL_VARIANTS).toHaveLength(5);
+    expect(new Set(ROLL_VARIANTS.map((v) => v.name)).size).toBe(5);
+    for (const v of ROLL_VARIANTS) expect(v.feel.length).toBeGreaterThan(20);
+  });
+
+  it('never towers: a tall arc deletes the volley AND widens the tunnel', () => {
+    for (const v of ROLL_VARIANTS) {
+      for (const launch of v.launches) {
+        expect(apexOf(launch)).toBeLessThanOrEqual(A.rollApexMax);
+      }
+    }
+  });
+
+  it('alternates — every variant keeps a phase she can run under', () => {
+    for (const v of ROLL_VARIANTS) {
+      expect(v.launches.length).toBeGreaterThan(1);
+      const headroom = v.launches.map((l) => apexOf(l) - KNIGHT.spriteHeight);
+      // At least one phase clears her head with room to walk through...
+      expect(Math.max(...headroom)).toBeGreaterThan(KNIGHT.spriteHeight / 4);
+      // ...and at least one does not, or it would not be alternating at all.
+      expect(Math.min(...headroom)).toBeLessThan(0);
+    }
+  });
+
+  it('keeps at least one phase the volley can live on', () => {
+    // The ball is volleyable while any part of it is inside the band 48–128
+    // px above her head, and the window is how long it spends there against
+    // a nail that is live for PHYSICS.nailActiveTime.
+    //
+    // NOT every phase: a low skitter only grazes the bottom of the band and
+    // is gone in 0.12 s, which is right — you do not volley a skitter, you
+    // jump it. What every variant must keep is ONE phase she can rally on,
+    // because the volley must never be locked out of a whole behaviour.
+    const bandLow = KNIGHT.spriteHeight + 48;
+    const bandHigh = KNIGHT.spriteHeight + 48 + PHYSICS.nailReachUp;
+    const windowOf = (launch: number) => {
+      const apex = apexOf(launch);
+      const enter = Math.max(0, bandLow - ENEMY_SIZES.dog.height);
+      if (apex < enter) return 0; // never reaches her nail at all
+      const speedAt = (h: number) => Math.sqrt(Math.max(0, 2 * A.rollGravity * (apex - h)));
+      return (2 * (speedAt(enter) - speedAt(Math.min(apex, bandHigh)))) / A.rollGravity;
+    };
+    for (const v of ROLL_VARIANTS) {
+      const best = Math.max(...v.launches.map(windowOf));
+      expect(best).toBeGreaterThanOrEqual(PHYSICS.nailActiveTime);
+    }
+  });
+
+  it('actually cycles its pattern, one launch per floor bounce', () => {
+    for (const [index, v] of ROLL_VARIANTS.entries()) {
+      const dog = createEnemy('dog', 600, FLOOR_Y);
+      dog.rollVariantIndex = index;
+      dog.attackKind = 'roll';
+      dog.phase = 'telegraph';
+      dog.phaseTimer = 0;
+      dog.lockedDir = -1;
+      dog.leapGroundY = FLOOR_Y;
+      const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target); // telegraph → the launch
+      const seen: number[] = [-dog.velocity.y];
+      let bounces = dog.rollBounces;
+      for (let i = 0; i < Math.round(A.rollTime / FIXED_DT) && dog.roll; i++) {
+        stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+        if (dog.rollBounces !== bounces) {
+          bounces = dog.rollBounces;
+          seen.push(-dog.velocity.y);
+        }
+      }
+      // It got through at least one full cycle and used every launch in it.
+      expect(seen.length).toBeGreaterThan(v.launches.length);
+      expect(new Set(seen.map(Math.round))).toEqual(new Set(v.launches.map(Math.round)));
+    }
+  });
+
+  it('falls back to the first variant for an index that does not exist', () => {
+    expect(rollVariant(99)).toBe(ROLL_VARIANTS[0]);
+    expect(rollVariant(-1)).toBe(ROLL_VARIANTS[0]);
   });
 });

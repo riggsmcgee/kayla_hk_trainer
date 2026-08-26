@@ -317,6 +317,12 @@ export const ATTACKS = {
     rollTelegraph: 0.45,
     /** Seconds the ball bounces before it uncurls. */
     rollTime: 5.0,
+    /**
+     * The Metronome variant’s numbers, kept as the family’s baseline: the
+     * rally escalation is measured against rollLaunch/rollGravity, and every
+     * variant’s arcs are checked against rollApexMax derived from the same
+     * gravity. ROLL_VARIANTS is what a fight actually rolls with.
+     */
     rollSpeedX: 260,
     rollSpeedXHot: 325,
     /**
@@ -349,8 +355,89 @@ export const ATTACKS = {
     rallyLaunch: 520,
     rallyEscalation: 26,
     rallyLaunchMax: 620,
+    /**
+     * The apex no arc may exceed, in px above the floor. See ROLL_VARIANTS:
+     * a towering arc deletes the volley, so this is a hard ceiling on the
+     * whole family rather than a per-variant number.
+     */
+    rollApexMax: 150,
   },
 } as const;
+
+/**
+ * FIVE ROLL BEHAVIOURS, for the user to choose between (playtest 4, note 2).
+ *
+ * > "I think this is a situation where I just need to try out five different
+ * > examples and then go off that."
+ *
+ * Every one of them ALTERNATES, and that is not decoration — it is what keeps
+ * two different answers alive at once:
+ *
+ * - A HIGH phase (apex over ~95 px) lifts the ball's underside clear of her
+ *   47 px head, so she can run under it. It is also slow near its apex, so
+ *   it is the phase the volley is easiest on.
+ * - A LOW phase skitters along the floor. There is no running under that
+ *   one: she jumps it, or she volleys it, or she is somewhere else.
+ *
+ * Nothing here goes above `rollApexMax`. A towering arc gives her a BIGGER
+ * tunnel to walk through AND deletes the volley (the ball crosses her nail
+ * band too fast to hit), so the knobs that actually raise pressure are
+ * horizontal speed and the gap between rolls. That is what varies below.
+ *
+ * `launches` is cycled per floor bounce, so a two-entry pattern alternates
+ * and a three-entry one gives low, low, high.
+ */
+export interface RollVariant {
+  name: string;
+  /** One line the picker shows — what this one feels like to fight. */
+  feel: string;
+  /** Re-launch speed per floor bounce, cycled. */
+  launches: readonly number[];
+  speedX: number;
+  speedXHot: number;
+}
+
+export const ROLL_VARIANTS: readonly RollVariant[] = [
+  {
+    name: 'Metronome',
+    feel: 'One big hop, one low skitter, forever. The most readable of the five.',
+    launches: [620, 350],
+    speedX: 260,
+    speedXHot: 325,
+  },
+  {
+    name: 'Hunter',
+    feel: 'The same rhythm, crossing the arena half again as fast. Less time to choose.',
+    launches: [600, 340],
+    speedX: 340,
+    speedXHot: 410,
+  },
+  {
+    name: 'Stutter',
+    feel: 'Two low skitters, then a hop. The gap you want comes every third beat.',
+    launches: [640, 330, 330],
+    speedX: 290,
+    speedXHot: 350,
+  },
+  {
+    name: 'Loper',
+    feel: 'Slow, tall, lazy arcs over long low glides. The most room, and the most waiting.',
+    launches: [665, 300],
+    speedX: 205,
+    speedXHot: 260,
+  },
+  {
+    name: 'Terrier',
+    feel: 'Quick and shallow, tearing across the floor. Barely enough gap to duck through.',
+    launches: [580, 300],
+    speedX: 400,
+    speedXHot: 470,
+  },
+];
+
+export function rollVariant(index: number): RollVariant {
+  return ROLL_VARIANTS[index] ?? ROLL_VARIANTS[0]!;
+}
 
 /** Full simulation state for one enemy. */
 export interface Enemy extends EnemyState {
@@ -401,6 +488,10 @@ export interface Enemy extends EnemyState {
   sinceBounce: number;
   /** Dog: true while it is balled up and rolling. */
   roll: boolean;
+  /** Dog: which of ROLL_VARIANTS this dog rolls with. The user picks it. */
+  rollVariantIndex: number;
+  /** Dog: floor bounces so far this roll — the cursor into the variant’s pattern. */
+  rollBounces: number;
   /** Dog: how many times the ball has been volleyed back up during this roll. */
   rallies: number;
   /** Dog: the swing that last volleyed the ball, so one up-slash rallies once. */
@@ -466,6 +557,8 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     hot: false,
     sinceBounce: 0,
     roll: false,
+    rollVariantIndex: 0,
+    rollBounces: 0,
     rallies: 0,
     lastRallySwingId: 0,
     lancePasses: 0,
@@ -1279,8 +1372,12 @@ function stepRoll(e: Enemy, world: World, dt: number): void {
   e.velocity.y += A.rollGravity * dt;
   e.position.y += e.velocity.y * dt;
   if (e.position.y >= e.leapGroundY) {
+    // Each floor bounce takes the next launch in the variant’s pattern, so a
+    // two-entry pattern alternates high, low, high, low without a timer.
+    const launches = rollVariant(e.rollVariantIndex).launches;
+    e.rollBounces += 1;
     e.position.y = e.leapGroundY;
-    e.velocity.y = -A.rollLaunch;
+    e.velocity.y = -launches[e.rollBounces % launches.length]!;
   }
 
   const nextX = e.position.x + e.velocity.x * dt;
@@ -1351,10 +1448,12 @@ function stepDog(e: Enemy, world: World, dt: number, t: Target | undefined): Pro
     case 'telegraph': {
       if (e.phaseTimer > 0) return null;
       if (e.attackKind === 'roll') {
+        const variant = rollVariant(e.rollVariantIndex);
         e.roll = true;
         e.rallies = 0;
-        e.velocity.x = e.lockedDir * (e.hot ? A.rollSpeedXHot : A.rollSpeedX);
-        e.velocity.y = -A.rollLaunch;
+        e.rollBounces = 0;
+        e.velocity.x = e.lockedDir * (e.hot ? variant.speedXHot : variant.speedX);
+        e.velocity.y = -variant.launches[0]!;
         setPhase(e, 'active', A.rollTime);
         return null;
       }

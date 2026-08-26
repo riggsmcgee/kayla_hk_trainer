@@ -17,6 +17,8 @@ import { useBindings } from '../storage/useBindings';
 import { notifyProgressChanged, progressStore } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
+import { useRollVariant } from '../storage/useRollVariant';
+import { ROLL_VARIANTS } from '../engine/enemies';
 import { captureVerdict } from './settings.helpers';
 import '../styles/settings.css';
 
@@ -38,6 +40,7 @@ export function Settings() {
   const [bindings, setBindings] = useBindings();
   const [comfort, setComfort] = useComfortSettings();
   const [godMode, setGodMode] = useGodMode();
+  const [rollVariant, setRollVariant] = useRollVariant();
   const [capturing, setCapturing] = useState<Action | null>(null);
   const [resetStage, setResetStage] = useState<ResetStage>('idle');
 
@@ -210,6 +213,29 @@ export function Settings() {
           <p className="fine-print settings-note">
             Every hit still flashes and still counts on the HUD, so you can see what would have got
             you — it just does not end the run. Runs played with it on never become a personal best.
+          </p>
+
+          <fieldset className="roll-variants">
+            <legend>The dog’s roll — five to try</legend>
+            {ROLL_VARIANTS.map((variant, i) => (
+              <label key={variant.name} className="roll-variant">
+                <input
+                  type="radio"
+                  name="roll-variant"
+                  checked={rollVariant === i}
+                  onChange={() => setRollVariant(i)}
+                />
+                <span>
+                  <strong>{variant.name}</strong>
+                  <span className="fine-print">{variant.feel}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <p className="fine-print settings-note">
+            Fight the Two Bills with each one and pick a favourite. They all alternate between a
+            hop you can run under and a skitter you cannot — what changes is the pace, the rhythm
+            and how long you get to decide.
           </p>
         </div>
       </details>

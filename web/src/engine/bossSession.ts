@@ -56,6 +56,11 @@ export interface BossSessionConfig extends OverlayControls {
    * fight nothing could end never becomes her best time.
    */
   godMode?: boolean;
+  /**
+   * DEV TOOL: remove in the final build. Which of ROLL_VARIANTS the dog
+   * rolls with. Defaults to the first.
+   */
+  rollVariant?: number;
   /** Fires live at the 1:30 crossing, not at the end of the run. */
   onPassed?: () => void;
   /** Fires once per touch, after the run is recorded. */
@@ -126,6 +131,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     dogWalkTo = fromRight ? CANVAS.width - DOG_WALK_IN_INSET : DOG_WALK_IN_INSET;
     dogWalkSpeed = (dogWalkTo - startX) / BOSS.cardSeconds;
     dog = createEnemy('dog', startX, FLOOR_Y);
+    dog.rollVariantIndex = config.rollVariant ?? 0;
     dog.facing = fromRight ? -1 : 1;
     prevDogFeet.x = startX;
     prevDogFeet.y = FLOOR_Y;

@@ -142,4 +142,12 @@ export interface SettingsV1 {
    * as off.
    */
   godMode?: boolean;
+  /**
+   * DEV TOOL: remove in the final build. Which of the five roll behaviours
+   * (engine/enemies.ts ROLL_VARIANTS) the Two Bills’ dog uses. Playtest 4
+   * asked for five to try rather than one to accept; when the user has
+   * picked, the winner becomes the only one and this goes. Optional, so a
+   * blob written before it existed reads as the first variant.
+   */
+  rollVariant?: number;
 }
