@@ -75,10 +75,10 @@ under a new test; if you pick a smooth one, the rule has a documented exception 
   her a run, and shipping nothing was not an option. **On the pixel dog it reads more subtly than
   it does on the orbs.** If you want a louder marker, that is a real alternative and it is one line
   in `renderBills.ts`.
-- **The entrances shipped as ONE, not as a portfolio.** See "Left for next time" — the machinery
-  is built and tested and everything ratified about the timing is honoured; the _set of variations_
-  is not. I judged the machinery to be the part that had to exist before variations could be shown
-  at all.
+- **The entrances cover BOTH Bills on one picker, not two.** The man’s footfalls and walk and the
+  dog’s shout, barking and walk-in are one choice, because they are one scene — picking them
+  separately invites a frantic shout answered by a leisurely dog. If you want them independent,
+  splitting the variant in two is small.
 
 ---
 
