@@ -301,6 +301,15 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
    * uses to replay a wave it is already on.
    */
   const [runCount, setRunCount] = useState(0);
+  /**
+   * Whether she had already survived 1:30 BEFORE this visit. Read once and
+   * held for the life of the beat, deliberately: `cleared` is baked into the
+   * session when it is built, so a live value rebuilds the whole fight the
+   * instant she crosses 1:30 — mid-run, with both Bills on screen. Playtest 6
+   * watched exactly that in a browser: on her first ever clear the fight
+   * dropped back to "Move to begin" and the run was never recorded.
+   */
+  const [clearedBefore] = useState(progress.finaleBossCleared);
 
   const onPassed = useCallback(() => {
     progressStore.markFinaleBossCleared();
@@ -317,7 +326,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
         dogLook: look,
         jumpKey,
         attackKey,
-        cleared: progress.finaleBossCleared,
+        cleared: clearedBefore,
         onPassed,
         // A touch records the run, and her best time comes from those.
         onFailed: refresh,
@@ -330,7 +339,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
       look,
       jumpKey,
       attackKey,
-      progress.finaleBossCleared,
+      clearedBefore,
       onPassed,
       refresh,
     ],
@@ -388,7 +397,20 @@ export function PlayWell() {
     setBeat(2);
   };
 
-  const toWaves = useCallback(() => selectBeat(2), [selectBeat]);
+  /**
+   * Walking FORWARD out of a beat she has just finished — what the running
+   * game calls when it clears. It is deliberately not `selectBeat`: this gets
+   * handed to a session factory, and `selectBeat` takes a new identity on
+   * every progress change, so clearing a beat rebuilt the very game that
+   * cleared it. No lock check is needed either, because the beat it leads to
+   * is the one she has this moment unlocked.
+   */
+  const goForward = useCallback((b: Beat) => {
+    setAsked(null);
+    setBeat(b);
+  }, []);
+
+  const toWaves = useCallback(() => goForward(2), [goForward]);
   const skipToBottom = () => {
     // Skipping the bottom means skipping every wave that still stands in the
     // way — the same "nothing ever traps her" rule the level gate follows.
@@ -401,7 +423,7 @@ export function PlayWell() {
     setBeat(3);
   };
 
-  const toBottom = useCallback(() => selectBeat(3), [selectBeat]);
+  const toBottom = useCallback(() => goForward(3), [goForward]);
   const beatProps: BeatProps = {
     progress,
     runs,
