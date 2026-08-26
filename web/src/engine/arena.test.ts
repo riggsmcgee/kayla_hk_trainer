@@ -1059,14 +1059,19 @@ describe('arena session (staged game)', () => {
     expect(player.totalPogos).toBe(1);
   });
 
-  it('leaves 81 px of headroom under the ball at its apex — she can run under', () => {
-    // The answer the cap was hiding. rollLaunch 620 against rollGravity 1500
-    // is a 128 px apex; the ball is 58 px tall and she is KNIGHT.spriteHeight
-    // tall, so the gap under it is real and she fits through it standing.
+  it('leaves 81 px of headroom over her at the baseline apex — she runs under', () => {
+    // Corrected in playtest 5. The ball is FEET-anchored, so its own y IS its
+    // underside: at a 128 px apex the gap beneath it is 128 px, not 128 minus
+    // its height. The old assertion subtracted the dog's height from a
+    // feet-anchored apex and called the result the underside, which is a
+    // point 70 px up inside the ball.
+    //
+    // 81 is what the test was always named for: the underside at 128 less her
+    // 47 px hurtbox is 81 px of clearance over her head.
     const apex = (ATTACKS.dog.rollLaunch * ATTACKS.dog.rollLaunch) / (2 * ATTACKS.dog.rollGravity);
-    const underside = apex - ENEMY_SIZES.dog.height;
-    expect(Math.round(underside)).toBe(70);
-    expect(underside).toBeGreaterThan(KNIGHT.spriteHeight);
+    expect(Math.round(apex)).toBe(128);
+    expect(Math.round(apex - KNIGHT.hurtboxHeight)).toBe(81);
+    expect(apex).toBeGreaterThan(KNIGHT.spriteHeight);
   });
 });
 

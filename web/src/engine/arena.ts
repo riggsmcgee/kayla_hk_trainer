@@ -245,8 +245,11 @@ export function stepArena(
       //
       // "Before it reaches her" is the whole rule, and it is enforced by the
       // `!overlaps` below rather than by geometry: her up-nail covers a band
-      // 48–128 px above her head while her own hurtbox starts at 47, so
-      // there is a 57 px strip where the ball is inside both. Connecting in
+      // 48–128 px above the FLOOR (activeNailHitbox anchors at her feet, so
+      // that is 0–80 px above her 48 px head, NOT 48–128 above it) while her
+      // own hurtbox tops out at 47, so there is a 57 px strip of ball
+      // positions that are inside both. The 57 was right; the prose around it
+      // said "above her head" and was not (playtest 5). Connecting in
       // THAT strip does not save her — it has already got her, and the body
       // check a few lines down still ends the run. Ratified deliberately:
       // the target is the air above her, not a swat off her own face.
