@@ -198,9 +198,15 @@ export function Settings() {
           {capturing ? `Press a key for ${ACTION_LABELS[capturing]}. Escape cancels.` : ''}
         </p>
         <div className="btn-row">
+          {/* Two buttons on this page read "Reset to defaults" — this one and
+              the controller's. Listing the page's buttons, which is how a
+              screen reader is usually driven, gave no way to tell them apart.
+              The name still STARTS with the visible text, per the same WCAG
+              "label in name" rule the Change buttons above follow. */}
           <button
             type="button"
             className="chip"
+            aria-label="Reset to defaults for keyboard controls"
             disabled={isDefault}
             onClick={() => {
               setCapturing(null);
@@ -277,6 +283,7 @@ export function Settings() {
           <button
             type="button"
             className="chip"
+            aria-label="Reset to defaults for controller buttons"
             disabled={padIsDefault}
             onClick={() => {
               setCapturingPad(null);
