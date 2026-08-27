@@ -18,6 +18,8 @@ import {
   CROWD_HOP_HEIGHT,
   castMarks,
   crowdHop,
+  HAT_HEIGHT,
+  hatGeometry,
   createEndingState,
   dogIsFlipping,
   inkWidth,
@@ -271,5 +273,45 @@ describe('the crowd hop', () => {
     for (let t = 0; t < 4; t += 0.01) {
       for (let i = 0; i < 5; i++) expect(crowdHop(t, i)).toBeGreaterThanOrEqual(0);
     }
+  });
+});
+
+describe('the party hats', () => {
+  it('sits on top of the body, never inside it', () => {
+    // PLAN.md §8's "walker and flier are present in party hats". The first
+    // attempt reached for the fields the painters already read and drew the
+    // warden's landing zone instead; these five need new DRAWING, so the hat
+    // is painted over the top and this is where its numbers live.
+    for (const entry of ROSTER) {
+      const size = ENEMY_SIZES[entry.id];
+      const hat = hatGeometry(entry.id, 600);
+      expect(hat.brim).toBe(600 - size.height);
+      expect(hat.peak).toBeLessThan(hat.brim);
+    }
+  });
+
+  it('is never wider than the head it is sitting on', () => {
+    // A hat sized to the flier's WINGSPAN would float beside its own head, so
+    // this reads ENEMY_SIZES rather than the ink table — the hat sits on the
+    // body, and the body is what the collision table describes.
+    for (const entry of ROSTER) {
+      const size = ENEMY_SIZES[entry.id];
+      expect(hatGeometry(entry.id, 600).half * 2).toBeLessThanOrEqual(size.width);
+    }
+  });
+
+  it('stands the same height on every body, so the crowd reads as one party', () => {
+    const heights = ROSTER.map((r) => {
+      const hat = hatGeometry(r.id, 600);
+      return hat.brim - hat.peak;
+    });
+    expect(new Set(heights).size).toBe(1);
+    expect(heights[0]).toBe(HAT_HEIGHT);
+  });
+
+  it('follows the body when it hops, because it is measured from the feet', () => {
+    const grounded = hatGeometry('walker', 600);
+    const hopping = hatGeometry('walker', 600 - CROWD_HOP_HEIGHT);
+    expect(grounded.peak - hopping.peak).toBe(CROWD_HOP_HEIGHT);
   });
 });

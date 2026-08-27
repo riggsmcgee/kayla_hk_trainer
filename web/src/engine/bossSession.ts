@@ -21,6 +21,7 @@ import {
   beatProgress,
   castMarks,
   crowdHop,
+  hatGeometry,
   createEndingState,
   dogIsFlipping,
   inkWidth,
@@ -74,6 +75,7 @@ import { FLOOR_Y, PLAYER_SPAWN_X, bossWorld } from './dodgeArenaSession';
 import { recordRun } from '../storage/recordRun';
 import { createOverlayGate } from './session';
 import type { GameSession, OverlayControls } from './session';
+import type { EnemyId } from '@dojo/shared';
 import type { InputFrame, Vec2 } from './types';
 
 /** Where Bill the man is waiting when she walks in. */
@@ -837,6 +839,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         drawReverent(ctx, feetAt, bow, c.enemy.facing, () =>
           drawEnemy(ctx, feetAt, c.enemy, simTime, 0),
         );
+        // Hats only once they are up and cheering. A kneeling cast in party
+        // hats would give the fake-out away nine seconds early.
+        if (partying) drawPartyHat(ctx, feetAt, c.enemy.id, i, comfort.reduceFlashing);
       }
       drawEnemy(ctx, lerpVec(prevBillFeet, bill.position, alpha), bill, simTime, 0);
       if (dog)
@@ -983,6 +988,50 @@ function drawConfetti(
     ctx.fillStyle = palette[p.color] ?? palette[0]!;
     ctx.fillRect(step(p.x), step(p.y), CONFETTI.size, CONFETTI.size);
   }
+}
+
+/**
+ * A party hat on a body, drawn OVER it rather than inside its painter.
+ *
+ * PLAN.md §8 ratified "walker and flier are present in party hats", and the
+ * first attempt at the cast's celebration tried to reach it through the fields
+ * the painters already read. That was built and rejected on sight — the
+ * warden's skyward telegraph paints its LANDING ZONE, which is a hazard marker
+ * in the middle of a party. The lesson was that these five need new DRAWING,
+ * not new state.
+ *
+ * So the hat is drawn here, over the top, exactly as `drawReverent` bows them
+ * from here: `drawEnemy` still never learns that the fight ended, and a body
+ * that is redrawn tomorrow gets the hat for free.
+ *
+ * The colours are the confetti's, so the tableau reads as one party rather than
+ * as several decorated animals — and for the same reason those were chosen,
+ * they borrow nothing that teaches her anything.
+ */
+function drawPartyHat(
+  ctx: CanvasRenderingContext2D,
+  feet: Vec2,
+  id: EnemyId,
+  index: number,
+  reduceFlashing: boolean,
+): void {
+  const palette = reduceFlashing ? CONFETTI_COLORS_SOFT : CONFETTI_COLORS;
+  const { brim, peak, half } = hatGeometry(id, feet.y);
+
+  ctx.save();
+  ctx.fillStyle = palette[index % palette.length] ?? palette[0]!;
+  ctx.beginPath();
+  ctx.moveTo(feet.x - half, brim);
+  ctx.lineTo(feet.x + half, brim);
+  ctx.lineTo(feet.x, peak);
+  ctx.closePath();
+  ctx.fill();
+  // The pom on top, in the next colour round, so no hat is one flat shape.
+  ctx.fillStyle = palette[(index + 1) % palette.length] ?? palette[0]!;
+  ctx.beginPath();
+  ctx.arc(feet.x, peak, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 /**

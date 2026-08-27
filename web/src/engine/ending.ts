@@ -306,3 +306,40 @@ export function castMarks(roster: readonly EnemyId[], taken: readonly number[]):
   }
   return marks;
 }
+
+/** How tall a party hat stands above the head it sits on. */
+export const HAT_HEIGHT = 18;
+
+/** Where a party hat sits on a body: its brim, its point, and its half-width. */
+export interface HatGeometry {
+  /** y of the brim — the top of the body it is sitting on. */
+  brim: number;
+  /** y of the point. */
+  peak: number;
+  /** Half the brim's width. */
+  half: number;
+}
+
+/**
+ * Where the hat goes on `id`, given where its feet are.
+ *
+ * The numbers live here rather than in the painter for the same reason
+ * `crowdHop` and `castMarks` do: this is the ending's tableau arithmetic, and
+ * arithmetic is the part a test can hold onto. The painting stays in the
+ * session, which is where painting lives.
+ *
+ * `ENEMY_SIZES` is the right table here and not `inkWidth`: the hat sits on the
+ * BODY, and the body's box is what the collision table describes. The ink table
+ * is wider because of the flier's wings, and a hat sized to a wingspan would
+ * float beside its own head.
+ */
+export function hatGeometry(id: EnemyId, feetY: number): HatGeometry {
+  const size = ENEMY_SIZES[id];
+  const brim = feetY - size.height;
+  return {
+    brim,
+    peak: brim - HAT_HEIGHT,
+    // Capped, so the widest body does not get a hat wider than its own head.
+    half: Math.min(11, size.width * 0.34),
+  };
+}
