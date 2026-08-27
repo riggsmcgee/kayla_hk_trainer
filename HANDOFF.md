@@ -23,9 +23,13 @@ and I integrate it. Then the plan continues from PLAN.md §8.
 
 ## Change ledger
 
-| #   | Commit    | What                                                      | How to try it      | Risk |
-| --- | --------- | --------------------------------------------------------- | ------------------ | ---- |
-| 1   | `e6278e8` | Correct the skills log: agent-browser is slow, not broken | `git show e6278e8` | none |
+| #   | Commit    | What                                                                                      | How to try it                                             | Risk |
+| --- | --------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---- |
+| 1   | `e6278e8` | Correct the skills log: `agent-browser` is slow, not broken                               | `git show e6278e8`                                        | none |
+| 2   | `ebf5313` | Open the sprint                                                                           | this file                                                 | none |
+| 3   | `38e9a53` | PLAN.md said T10 (the two reinforced waves) was still to build; it shipped a while ago    | `git show 38e9a53`                                        | none |
+| 4   | `1da91cf` | The baseline nobody had run: every route, in a browser, console open                      | `node .proactive/scratch/route-walk.mjs`                  | none |
+| 5   | `709a70f` | **Two buttons on Settings both said "Reset to defaults"** — now named for what they reset | `#/settings`, tab to either reset; or the new render test | low  |
 
 Merge everything: `git checkout proactive/2026-08-27-1130 && git merge proactive/2026-08-27-1426`
 Drop one: `git revert <hash>` on the sprint branch first, then merge.
