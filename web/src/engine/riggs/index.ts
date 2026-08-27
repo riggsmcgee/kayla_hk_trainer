@@ -28,17 +28,23 @@ import type { Vec2 } from '../types';
 type Ctx = CanvasRenderingContext2D;
 
 /**
- * The bow tie's yellow, UNPICKED.
+ * The bow tie's yellow: **Citron**, picked off the gallery's shortlist of six.
  *
- * Ratified out: `punishGold #e8c76a`. The Reading Enemies lesson teaches that
- * exact hex in so many words as "the punish window", and it is every forward
- * button on the site — a tie in it is the picture telling her to hit him. What
- * replaces it is a colour the user should SEE rather than name, so the gallery
- * offers a shortlist and this holds a placeholder from it until he answers.
+ * Ratified out was `punishGold #e8c76a` — the Reading Enemies lesson teaches
+ * that exact hex as "the punish window" and it is every forward button on the
+ * site, so a tie in it would be the picture telling her to hit him.
  *
- * It is one constant in one place precisely so answering costs one line.
+ * Citron is the shortlist's own dark horse: acid, almost green, the most
+ * legible of the six at 10.9 contrast on the arena ground, AND the nearest to
+ * punishGold at a distance of 96 — which the gallery flagged in so many words
+ * as "the reason this one is a question rather than a recommendation". He read
+ * that and picked it, so the narrow gap is a decision and not an oversight.
+ * What makes it survive the gap is that the tie is 5 blocks on a white shirt
+ * and punishGold is a button under running text; they are never side by side.
+ *
+ * It is one constant in one place precisely so answering cost one line.
  */
-export const RIGGS_TIE = '#a8891c';
+export const RIGGS_TIE = '#d9c02b';
 
 /**
  * Draw Riggs, waist-up, anchored at the centre of his waist cut.

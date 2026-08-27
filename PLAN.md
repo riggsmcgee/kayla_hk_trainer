@@ -265,19 +265,24 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ## 8. Later / on the radar
 
-- **The controller hole, and the ten-second check that gates it** _(playtest 8 note 5; sharpened in
-  Session 16 without the board in hand)_. `progress.controller` is written when she picks and
-  configures nothing. Before any of the fix is built, find out **whether her leverless reports as a
-  keyboard or as a gamepad** — the two answers send the work to different files and one of them
-  collapses most of it. What the code can say without the hardware:
+- **The controller hole — UNBLOCKED** _(playtest 8 note 5; the gating question answered 2026-08-27)_.
+  **Her leverless reports as a GAMEPAD, not a keyboard.** The user has tested it and is certain. That
+  ends four sessions of PLAN calling it "ten seconds to find out", and it means **nothing collapses**:
+  the gamepad path runs, and `DEFAULT_GAMEPAD_BINDINGS` is the table a preset rewrites.
+  `progress.controller` is still written when she picks and still configures nothing, so the whole of
+  note 5 is live work. What the code says, now that the branch is known:
   - `DEFAULT_GAMEPAD_BINDINGS` (`engine/gamepad.ts:72`) binds `jump → faceDown` and
-    `attack → faceLeft`. Those are **different fingers on a pad**, so the clash the leverless
-    diagram warns about is a claim about that board's physical layout, not about this table. If she
-    reports as a keyboard, this table is never consulted and the fix is in the keyboard bindings.
-  - Nothing outside `PracticeCanvas` calls `navigator.getGamepads()`, so **no screen on the site
-    can currently tell anyone what her board reports as.** A diagnostic in Settings printing
-    connected pads' `id` strings would let her answer it herself instead of it waiting on the two
-    of them being in the same room — proposed, not built, because it is a feature nobody asked for.
+    `attack → faceLeft` — different fingers on a normal pad. The clash the leverless diagram warns
+    about is therefore a claim about **that board's physical layout**, and the preset's job is to
+    move Attack off whichever position sits under the same finger as Jump on a leverless.
+  - **The board's button INDEX MAP is still unknown**, and "it enumerates as a gamepad" does not
+    supply it. This is what makes the ratified _preset then offer_ shape load-bearing rather than
+    polite: the preset is a good guess, and the four-button capture is how her real hardware
+    overrules a guess. Build the capture as a first-class path.
+  - A one-screen diagnostic in Settings printing connected pads' `id` and button count would let
+    her confirm the index map herself in one sitting instead of it waiting on the two of them being
+    in the same room. Still proposed rather than built — but it is now the cheapest way to de-risk
+    the preset, not just a curiosity.
   - Setup's completion is `progress.controller !== undefined` (`storage/progress.ts:111`) and
     nothing else, so the sandbox's seven checklist ticks have nowhere to live in `ProgressV1` yet.
 
