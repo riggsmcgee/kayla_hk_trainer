@@ -22,6 +22,7 @@ import {
   castMarks,
   crowdHop,
   createEndingState,
+  dogIsFlipping,
   inkWidth,
   promptIsUp,
   reverence,
@@ -612,6 +613,12 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
         if (ending.beat === 'gather') walkTheCastOn(beatProgress(ending));
         if (ending.beat === 'rise') liftHer(beatProgress(ending), riseFrom);
+        // The punchline, three seconds into the applause. He claps with
+        // everybody first so the flip lands as a joke rather than as texture,
+        // and it gives the held tableau a beat change instead of one picture.
+        if (dog && dog.celebrating === 'applaud' && dogIsFlipping(ending)) {
+          dog.celebrating = 'flip';
+        }
 
         // The gate is armed by the PROMPT, not by the cheer — she is not asked
         // to press anything until she has been told what to press. That is

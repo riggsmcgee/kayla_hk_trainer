@@ -65,7 +65,7 @@ export interface Projectile {
  * announces the win, and the walk-on that follows has nothing left to
  * frighten her with.
  */
-export type Celebration = 'summon' | 'concede' | 'applaud';
+export type Celebration = 'summon' | 'concede' | 'applaud' | 'flip';
 
 export type AttackKind =
   | 'lunge'

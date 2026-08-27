@@ -445,3 +445,34 @@ describe('Bill concedes', () => {
     }
   });
 });
+
+/**
+ * The backflip (playtest 7): "Can we just have Bill the dog doing celebratory
+ * back flips? That sounds funny."
+ *
+ * It is the last thing that happens in the whole dojo, and it is the dog's
+ * alone — the man applauds straight through it.
+ */
+describe('the dog’s backflip', () => {
+  it('leaves the standing rig, like the roll does', () => {
+    const d = dog('bones', 'active', false);
+    d.celebrating = 'flip';
+    expect(billDogPose(d)).toBe('flip');
+  });
+
+  it('outranks the ball, so a dog who won mid-roll still flips', () => {
+    // `roll` is checked before the phase because the ball outlives its own
+    // attack. The celebration has to come before both.
+    const rolling = dog('roll', 'active', true);
+    rolling.celebrating = 'flip';
+    expect(billDogPose(rolling)).toBe('flip');
+  });
+
+  it('leaves the man applauding through it', () => {
+    // He is the steady one, the dog is the idiot, and that contrast is the
+    // joke. A man who flipped too would just be noise.
+    const man = bill('swat', 'active');
+    man.celebrating = 'flip';
+    expect(billPose(man)).toBe('applaud');
+  });
+});

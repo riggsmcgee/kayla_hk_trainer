@@ -33,8 +33,17 @@ type DogPose =
   | 'applaud'
   | 'lieDown';
 
-/** Every pose the fight asks for, including the two that leave the rig. */
-export type BillDogPose = DogPose | 'rollTell' | 'roll';
+/**
+ * Every pose the fight asks for, including the three that leave the rig.
+ *
+ * `flip` is the ending's punchline (playtest 7): he applauds with everybody
+ * first, and only after a beat starts backflipping, and never stops. It leaves
+ * the standing rig for the same reason `roll` does — the rig has no way to say
+ * "upside down" — but unlike `roll` it keeps his whole DOG silhouette rather
+ * than becoming a ball. That is the joke: an ordinary-looking dog doing a
+ * gymnastics routine, not a shape that turns into a different object first.
+ */
+export type BillDogPose = DogPose | 'rollTell' | 'roll' | 'flip';
 
 /** The standing rig: what each pose moves, relative to a neutral stand. */
 interface Rig {
@@ -692,6 +701,51 @@ function drawRoll(ctx: Ctx, t: number): void {
  * `t` is a free-running clock in seconds; like the man, every tell is a
  * two-frame vibration rather than a progress bar.
  */
+/** Seconds per backflip: hop, turn, land, and immediately go again. */
+const FLIP_CYCLE = 1.1;
+/** How high off the floor the top of the flip takes him. */
+const FLIP_HEIGHT = 42;
+/**
+ * Where he pivots, measured up from his feet — about half his 58 px height,
+ * so he turns about his own middle rather than about his paws.
+ */
+const FLIP_PIVOT = 28;
+/**
+ * Whole turns per cycle, quantised to this many steps.
+ *
+ * Stepped, like every other thing either Bill does: the rotation lands on
+ * thirty-degree marks rather than sweeping. A dog that turned smoothly while
+ * the man beside him claps in whole 4 px jumps would be the one place the
+ * ending stops honouring the medium (PLAN.md §3).
+ */
+const FLIP_STEPS = 12;
+
+/**
+ * One backflip, looping.
+ *
+ * Reuses `drawStanding('idle')` whole and wraps it in a hop and a rotation:
+ * the flip is a TRANSFORM, not a new set of geometry, which is the same move
+ * the ending's reverence makes on the five roster enemies. It means his ears,
+ * his snout and his tail all come along for free, and it means a change to
+ * the standing dog shows up in the flip without anyone remembering to make it
+ * twice.
+ */
+function drawFlip(ctx: Ctx, t: number): void {
+  const phase = (t % FLIP_CYCLE) / FLIP_CYCLE;
+  // A half-sine: on the floor at both ends of the cycle, highest in the middle.
+  const hop = Math.round((Math.sin(Math.PI * phase) * FLIP_HEIGHT) / CELL) * CELL;
+  const turn = (Math.round(phase * FLIP_STEPS) / FLIP_STEPS) * Math.PI * 2;
+
+  ctx.save();
+  ctx.translate(0, -hop - FLIP_PIVOT);
+  // Negative because the context is already mirrored by facing: this is
+  // BACKWARDS relative to the way he is looking, whichever way that is.
+  ctx.rotate(-turn);
+  ctx.translate(0, FLIP_PIVOT);
+  drawStanding(ctx, 'idle', t);
+  ctx.restore();
+}
+
 export function paintBillDog(
   ctx: Ctx,
   feet: Vec2,
@@ -707,6 +761,7 @@ export function paintBillDog(
 
   if (pose === 'roll') drawRoll(ctx, t);
   else if (pose === 'rollTell') drawRollTell(ctx, t);
+  else if (pose === 'flip') drawFlip(ctx, t);
   else drawStanding(ctx, pose, t);
 
   ctx.restore();

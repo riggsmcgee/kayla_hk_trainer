@@ -103,6 +103,8 @@ export function billPose(enemy: Enemy): BillPose {
   // the threat in one picture.
   if (enemy.celebrating) {
     if (enemy.celebrating === 'summon') return 'swatTell';
+    // `flip` is the dog's, and the man applauds straight through it — he is
+    // the steady one, the dog is the idiot, and that contrast is the joke.
     return enemy.celebrating === 'concede' ? 'kneel' : 'applaud';
   }
   if (enemy.attackKind === 'lance') {
@@ -134,9 +136,21 @@ export function billDogPose(enemy: Enemy): BillDogPose {
   // He has nothing to do during the man's `summon`: the shout is the man's,
   // and a dog who reacted to it would be answering the call he is meant to be
   // part of. He stands, and he breathes.
+  //
+  // `flip` is the last thing he ever does, and it is his alone: the man goes
+  // on applauding through it. He is the idiot, the man is the steady one, and
+  // that contrast is the joke.
   if (enemy.celebrating) {
-    if (enemy.celebrating === 'summon') return 'idle';
-    return enemy.celebrating === 'concede' ? 'lieDown' : 'applaud';
+    switch (enemy.celebrating) {
+      case 'summon':
+        return 'idle';
+      case 'concede':
+        return 'lieDown';
+      case 'flip':
+        return 'flip';
+      case 'applaud':
+        return 'applaud';
+    }
   }
   // Trotting in on his card. Checked first because he is carrying no attack
   // and no phase during it, so every branch below would fall through to
