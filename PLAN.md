@@ -265,6 +265,22 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ## 8. Later / on the radar
 
+- **The controller hole, and the ten-second check that gates it** _(playtest 8 note 5; sharpened in
+  Session 16 without the board in hand)_. `progress.controller` is written when she picks and
+  configures nothing. Before any of the fix is built, find out **whether her leverless reports as a
+  keyboard or as a gamepad** — the two answers send the work to different files and one of them
+  collapses most of it. What the code can say without the hardware:
+  - `DEFAULT_GAMEPAD_BINDINGS` (`engine/gamepad.ts:72`) binds `jump → faceDown` and
+    `attack → faceLeft`. Those are **different fingers on a pad**, so the clash the leverless
+    diagram warns about is a claim about that board's physical layout, not about this table. If she
+    reports as a keyboard, this table is never consulted and the fix is in the keyboard bindings.
+  - Nothing outside `PracticeCanvas` calls `navigator.getGamepads()`, so **no screen on the site
+    can currently tell anyone what her board reports as.** A diagnostic in Settings printing
+    connected pads' `id` strings would let her answer it herself instead of it waiting on the two
+    of them being in the same room — proposed, not built, because it is a feature nobody asked for.
+  - Setup's completion is `progress.controller !== undefined` (`storage/progress.ts:111`) and
+    nothing else, so the sandbox's seven checklist ticks have nowhere to live in `ProgressV1` yet.
+
 - **The boss win phase — BUILT** _(Session 12, `66a89ac`)_. `BossPhase` gained `'won'`; `stepBoss`
   gained `untouched` so god mode cannot earn the ending; `record()` moved out of the `'over'` branch,
   which is unreachable after 1:30 now; `Enemy.celebrating` is a channel the simulation never writes,
@@ -297,15 +313,32 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
      the live forward key, the credits roll with both Bills credited as themselves, "Watch the
      credits" in Settings behind `finaleBossCleared`, and the handoff out of the celebration —
      which also fixed the one screen in the dojo breaking `jump = forward, attack = again`.
-     **TWO THINGS ARE STILL THE USER'S TO ANSWER**, and the page to answer them on is published:
-     WHICH of the three drawings, and WHICH of the six yellows. `DEFAULT_RIGGS_VARIANT` and
-     `RIGGS_TIE` in `engine/riggs/index.ts` are one line each.
+     **The drawing is answered and landed** _(Session 16, `317e8c5`)_. Playtest 8 picked
+     **candidate B, on style**; A and C are deleted and `paintRiggs` is a function rather than a
+     dispatcher over a candidate list. Note that the pick had been ratified for a session before
+     it shipped — `DEFAULT_RIGGS_VARIANT` was still 0, so the last screen was drawing candidate A
+     the whole time. A decision written down is not a decision in the code.
+     **Two things are still the user's**, and the gallery now asks only these two:
+     WHICH of the six yellows (`RIGGS_TIE`, one line), and THE LIKENESS — the photograph, then
+     one revised face inside B's locked style.
+     ~~The credits roll~~ is **DELETED** _(Session 16, `88ac90e`)_, playtest 8 note 2: "it just
+     doesn't add anything." `#/the-end` ends on his face and his last sentence with a quiet chip
+     back to the map, and Settings says "Read it again".
+     **The read-off types itself out** _(same commit)_, playtest 8 note 3: 12 characters a second,
+     1.2 s between messages, his mouth moving only while characters appear. Automatic, but forward
+     COMPLETES the sentence she is reading rather than skipping it — the clause that keeps it from
+     repeating the wave auto-advance that playtest 5 deleted. **What is left is the WORDS:** the
+     longer letter has to be spoken aloud by the user and shaped, and every 150 characters added
+     costs another twelve seconds of her sitting still.
   6. **The copy extraction, continued.** `web/src/copy/` now holds `ending.ts`, `fight.ts` and
      `theEnd.ts` — **52 named strings, and every canvas string the boss fight draws**. That was
-     the half the user named: pixels, not DOM. `scripts/build-copy-deck.mjs` generates the deck
-     from the directory, so anything added appears without the generator changing. **Still to do:**
-     the short page and component strings (the lesson PROSE is ratified to stay in its pages — see
-     the contract), and the live deck that saves its own edits.
+     the half the user named: pixels, not DOM. **The deck is being REPLACED, not extended** — playtest 8
+     note 4: "the copy deck makes no sense to me... I just want a one-to-one recreation of the site
+     that I can edit the text in easily." `scripts/build-copy-deck.mjs` is what the replacement
+     retires. **Still to do, in order:** the ~52 short page and component strings across 23 files
+     (the lesson PROSE is ratified to stay in its pages), and then the one-to-one editor, which
+     depends on them — a tool where half the words are greyed out is the same failure in a
+     different costume.
   7. **Where the cast marks sit is now decided, and the published gap figure does not reproduce.**
      `castMarks` lays **nine evenly spaced slots** across the 1168 px arena — pitch 129.8 px, wider
      than the widest body — and gives the roster five of the ones the Knight and the Bills are not

@@ -372,3 +372,29 @@ Observations (Session 16):
   only when airborne — so the user's "no bounce target, just check she can attack in all directions"
   verifies the pogo's compound press for free. Both facts made his instincts cheaper than the design
   would have been.
+
+## Session 16 — the unattended sprint that ran playtest 8's items 3 and 4
+
+| #   | Skill       | Where it was reached for | What it was asked to do                          | Landed | Verdict                                                                                                                                                                                                                       |
+| --- | ----------- | ------------------------ | ------------------------------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 50  | `proactive` | Two hours, user away     | Finish what the playtest-8 contract left to code | ✅     | Two commits. Its real contribution was the baseline pass: reading the code before touching it surfaced that candidate B had been ratified a session earlier and never landed — the last screen was still drawing candidate A. |
+
+**What the sprint learned.**
+
+- **A ratified decision is not a shipped decision, and only the code can tell you which you have.**
+  `DEFAULT_RIGGS_VARIANT` was still `0` — candidate A — with B's win written into the contract, the
+  handoff and the plan. Three documents agreed and the site disagreed with all of them. The
+  cheapest guard is the one that caught it: before building on a decision, open the constant it was
+  supposed to change.
+
+- **`tdd` was suggested and deliberately not invoked.** The last handoff named it for this work.
+  Its discipline was followed by hand — expected values derived from the ratified 12 characters a
+  second rather than from running the page — but calling the skill would have added ceremony
+  without changing a single test. A suggested skill is a suggestion.
+
+- **The test that would not have existed without the spec found a real bug.** A frame-rate test
+  was written because the contract named "a per-frame increment reads at a different speed on a
+  144 Hz monitor" as the hidden work. Driving `requestAnimationFrame` by hand to write it meant
+  handing the page a timestamp of `0` — which collided with `0` as the "not started yet" sentinel
+  and made the clock restamp itself every frame. A real browser never emits `0`, so nothing but a
+  test was ever going to find it.
