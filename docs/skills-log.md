@@ -253,11 +253,11 @@ Observations (Session 13):
 
 ## Session 14 — the ending, redesigned and looked at (2026-08-27, `/proactive` 120 min)
 
-| #   | Skill                                                | Where it was reached for                                       | What it was asked to do                                                 | Landed | Verdict                                                                                                                                                                                                                                      |
-| --- | ---------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 41  | `proactive`                                          | The whole sprint                                               | Work the playtest-7 contract's priority list unattended                 | ✅     | Four commits, 753 tests green. The narrowing of item 1 (the 256-string extraction) to "the module plus the ending's own strings" is the call the user should check first — it is written at the top of the handoff with the reasoning.       |
+| #   | Skill                                                | Where it was reached for                                       | What it was asked to do                                                 | Landed | Verdict                                                                                                                                                                                                                                                                                               |
+| --- | ---------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 41  | `proactive`                                          | The whole sprint                                               | Work the playtest-7 contract's priority list unattended                 | ✅     | Four commits, 753 tests green. The narrowing of item 1 (the 256-string extraction) to "the module plus the ending's own strings" is the call the user should check first — it is written at the top of the handoff with the reasoning.                                                                |
 | 42  | `agent-browser`                                      | The first item in the handoff: nobody had looked at the ending | Watch the ending at game scale                                          | ❌     | Backgrounded after 200 s with no output. **Correction, logged later the same day: it does NOT hang.** It returned exit 0 with a clean snapshot long after the sprint had moved on — so rows 39 and 42 are a cold start that is unusably slow on this machine, not a crash. See the observation below. |
-| 43  | Playwright (`playwright-core`, already a dependency) | The same job, after agent-browser hung                         | Drive the dev seam and capture the canvas at each of ten ratified beats | ✅     | Worked on the first run once the storage envelope was right. **It found a defect every test had passed:** the HUD said "and they never touched you" from the first frame of the fake-out. It also killed the ratified party states on sight. |
+| 43  | Playwright (`playwright-core`, already a dependency) | The same job, after agent-browser hung                         | Drive the dev seam and capture the canvas at each of ten ratified beats | ✅     | Worked on the first run once the storage envelope was right. **It found a defect every test had passed:** the HUD said "and they never touched you" from the first frame of the fake-out. It also killed the ratified party states on sight.                                                          |
 
 Observations (Session 14):
 
@@ -285,3 +285,45 @@ Observations (Session 14):
   eviction test took 653 seconds and timed out while a headless Chromium was capturing screenshots on
   the same box. It passes in 75 ms on an idle machine. **Do not run the browser pass and the suite at
   once, and check the wall-clock before believing a red.**
+
+---
+
+## Session 15 — the portfolio, and the dojo becomes finishable (2026-08-27, `/proactive` 120 min)
+
+| #   | Skill / tool           | Where it was reached for                                            | What it was asked to do                                                         | Landed | Verdict                                                                                                                                                                                                           |
+| --- | ---------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 44  | `Workflow` (11 agents) | Three independent Riggs candidates, briefed as different directions | Survey the medium, draw three candidates, shortlist the tie, build `#/the-end`  | ⚠️     | **The three painters are excellent and are what the round was for.** Everything after them was overtaken: it ran ~90 min and was stopped in the Design phase. Fan out the CREATIVE work, not the sequential work. |
+| 45  | Playwright             | The baseline, the portfolio, the new page, and the end-to-end proof | Walk ten routes, shoot the gallery, walk `#/the-end`, drive fight → last screen | ✅     | Four separate jobs, all first-run. Found the duplicate accessible name and confirmed the whole ending path. It is now the project's browser tool.                                                                 |
+| 46  | `artifact-design`      | Before publishing the portfolio page                                | Calibrate the treatment for a decision page                                     | ✅     | Its "honour what's already there" rule was the useful one: it said keep the Bill gallery's identity rather than invent a second visual language for a sibling artifact.                                           |
+| 47  | `proactive`            | The sprint                                                          | Continue the plan, unattended                                                   | ✅     | Eleven commits, 754 → 798 tests. The headline is that the game can be finished.                                                                                                                                   |
+
+Observations (Session 15):
+
+- **A workflow's value is the fan-out, not the pipeline.** Three agents drawing three independent
+  candidates produced a genuinely informative choice — one shirtsleeved, one bespectacled, one
+  jacketed — which no single pass would have. The phases AFTER that fan-out were strictly worse than
+  doing them inline: they queued behind a barrier, they could not see what I had already learned, and
+  the tie shortlist one of them was writing had been superseded by arithmetic I did in ten minutes.
+  **Fan out what benefits from independent attempts; keep what benefits from context.**
+
+- **A mid-turn message interrupts running agents.** Typing `/proactive` while a workflow was in flight
+  showed up in the agents' transcripts as `[Request interrupted by user]`, and the retries were what
+  the duplicate journal keys were. It recovered, but the "one writer at a time" rule now has a second
+  reason behind it: while agents own the tree, the orchestrator should be doing READ-ONLY work, and
+  that is exactly what made the ten-route baseline possible in the gap.
+
+- **Check the suspicion before writing it up.** Seven buttons on Settings all reading "Change" looked
+  like a screen-reader trap and was not — their accessible names name their action. Asking the DOM
+  for `aria-label` rather than for `textContent` cleared it in one command, and turned up the real
+  defect two rows below it: two buttons genuinely sharing "Reset to defaults".
+
+- **When a decision is ratified as "a colour you should see rather than name", the useful move is to
+  make the arithmetic visible and let the eye do the rest.** The tie shortlist could not be picked by
+  reasoning, but it could be RANKED by it — and the scale came from inside the project: punishGold
+  and Bill's foam finger sit 152 apart and the game already teaches her to tell those two apart, so
+  152 became the bar every candidate is measured against.
+
+- **Tests can prove the medium even when they cannot judge the drawing.** The portfolio's 25 tests
+  never ask whether Riggs looks like anyone. They ask whether he is inside his box, whether anything
+  interpolates (240 samples across four seconds must collapse to fewer than 24 distinct pictures),
+  whether the tie parameter is live, and whether the three candidates are genuinely three.

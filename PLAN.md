@@ -285,20 +285,20 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
      arms.
   3. ~~**The dog's backflip.**~~ — **BUILT in Session 13** (`888c743`). A transform over
      `drawStanding('idle')` — hop, rotate about his middle on twelve stepped marks, land — so he
-     keeps his whole dog silhouette instead of becoming a ball. Watched in a browser. What follows
-     was the analysis it was built from: `BillDogPose` splits into rig poses
-     (`idle`/`walkIn`/`bonesTell`/`bones`/`bow`/`applaud`/`lieDown`) and the two that do not use it
-     (`rollTell`/`roll`). A flip belongs with the second group, and the ball's existing spin is the
-     nearest precedent. The clock is already built and tested — `dogIsFlipping(ending)` goes true
-     3.0 s into the cheer — so this slice is drawing only.
+     keeps his whole dog silhouette instead of becoming a ball. Watched in a browser.
   4. **Confetti**, sourced from the spitter's shots bursting at the top. `stepProjectile` has **no
      gravity** (a spitter shot must fly true), so confetti needs its own step; it must honour
-     `reduceFlashing`.
-  5. **8-bit Riggs and the monologue** at `#/the-end`, in text boxes she advances through
-     `createOverlayGate` — and **there is still no pixel font**, so he will read as a placeholder in
-     the HUD face. Playtest 7 ratified the scale: waist-up, ~500 px, **16 px master cell, nothing
-     finer than 8 px**, stepped motion. The bow tie's yellow is still unpicked and must not be
-     `punishGold #e8c76a`.
+     `reduceFlashing`. **This is the next slice.**
+  5. ~~**8-bit Riggs and the monologue** at `#/the-end`~~ — **BUILT in Session 14** (`7cced8d`,
+     `89300b5`, `cc0fa70`). The page ships: Riggs on a canvas by the shipped painter, the four
+     messages advanced by the live forward key, the credits roll with both Bills credited as
+     themselves, "Watch the credits" in Settings behind `finaleBossCleared`, and the handoff out of
+     the celebration — which also fixed the one screen in the dojo that was breaking
+     `jump = forward, attack = again`. **Two things are still the user's to answer**, and the page
+     to answer them on is published: WHICH of the three drawings, and WHICH of the six yellows.
+     `RIGGS_TIE` and `DEFAULT_RIGGS_VARIANT` in `engine/riggs/index.ts` are one line each.
+     The pixel-font worry that decided this should be a page rather than a canvas beat stands, and
+     is now moot: the page speaks in the site's own Cinzel/system-ui, and only the drawing is 8-bit.
   6. **The copy extraction, finished.** `web/src/copy/ending.ts` exists and holds the ending's own
      strings, with interpolated lines as **functions** rather than templates. The other ~250 strings
      across 19 files have not moved, and the deck artifact is generated from the module, so it waits

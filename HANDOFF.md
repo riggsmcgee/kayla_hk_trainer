@@ -5,31 +5,80 @@
 **Status:** running **Relaunches:** 0
 **Orchestrator model:** Opus **Cost so far:** see `.proactive/sprint.json` runs
 
+## The headline
+
+**The dojo can be finished.** Before this sprint, pressing forward at the end of
+the celebration restarted the fight — there was no way out of the game. Now she
+beats the Two Bills, watches the twenty seconds, presses forward, and arrives at
+`#/the-end`: four messages from you, then a credits roll with the whole cast.
+
+Proved end to end in a real browser, not just by tests:
+`node .proactive/scratch/e2e-finish.mjs` drives the fight → the celebration →
+the forward key → the last screen. Zero console errors.
+
 ## How I read the focus
 
 You gave no focus, so the plan is the backlog — and the plan's next item was
-already in flight when you typed the command. Ten minutes earlier you picked
+already in flight when the command arrived. Ten minutes earlier you had picked
 **`#/the-end` plus the Riggs portfolio** as the next thing to work on, and an
-11-agent workflow was already running it: three independent Riggs candidates, a
-bow-tie colour shortlist, the `#/the-end` page, and three adversarial reviews.
-
-Killing that to start clean would have thrown away the exact work you asked
-for. So the sprint takes it as task 1: it finishes, I look at it in a browser,
-and I integrate it. Then the plan continues from PLAN.md §8.
+11-agent workflow was running it. Killing that to start clean would have thrown
+away the exact work you asked for, so the sprint took it as task 1.
 
 ## Needs you
 
-(nothing yet)
+1. **Two decisions are waiting on your eyes, and the page to make them on is
+   published:** <https://claude.ai/code/artifact/87866505-945e-4b3f-932e-e157c53d53c3>
+   Three ways to draw you, looping in step, and six candidate yellows for the
+   bow tie on the same drawing. Every figure is the shipped painter compiled by
+   `scripts/build-riggs-gallery.mjs`, so picking one is picking code that
+   already exists — and picking one is deleting the other two.
+   - **The drawing.** A "Same Room As Bill" (shirtsleeves, maximum continuity),
+     B "The Detail The Scale Buys" (glasses, a real hairline, a three-tone
+     ramp), C "The Portrait" (jacketed, squarer, composed).
+   - **The tie.** `punishGold #e8c76a` is ratified out. The six are ranked by
+     arithmetic rather than taste — WCAG contrast on the arena ground, and
+     distance from both punishGold and Bill's foam orange. The useful scale came
+     out of the reference pair: punishGold and the foam finger sit **152** apart
+     and the game already asks her to tell those two apart, so 152 is the bar.
+     **Olive Gold `#a8891c`** leads on both counts (201 / 123) and is the
+     placeholder the game currently ships.
+   - **The page also asks the near-miss question** the portfolio process keeps
+     failing to run — which came second, and what did it nearly have.
+
+2. **The four messages are drafts, and they are the most personal writing in the
+   project.** They live in `web/src/copy/theEnd.ts` precisely so you can rewrite
+   them without touching code. Same for the cast list's one-line credits.
+
+3. **A seventh tie colour was worked out and cut rather than shown.** Honey
+   `#e3b33d` sits 77 from punishGold — a sibling of the colour that is ruled
+   out. Putting it on the page would have been offering a choice already
+   answered. Say if you want it back.
+
+4. **The workflow was stopped early, deliberately.** Its three painters landed
+   and are committed; its remaining phases were a tie shortlist I had already
+   built with real arithmetic, a page I built myself, and verify passes I ran
+   directly. It had been running ~90 minutes and would not have finished inside
+   the window. Nothing was lost.
+
+5. **Still not built, from the playtest-7 contract:** the confetti, real party
+   states for the five (PLAN §8 records why the ratified ones were rejected on
+   sight), and the rest of the ~250-string copy extraction. `#/the-end` and the
+   backflip are now done.
 
 ## Change ledger
 
-| #   | Commit    | What                                                                                      | How to try it                                             | Risk |
-| --- | --------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------- | ---- |
-| 1   | `e6278e8` | Correct the skills log: `agent-browser` is slow, not broken                               | `git show e6278e8`                                        | none |
-| 2   | `ebf5313` | Open the sprint                                                                           | this file                                                 | none |
-| 3   | `38e9a53` | PLAN.md said T10 (the two reinforced waves) was still to build; it shipped a while ago    | `git show 38e9a53`                                        | none |
-| 4   | `1da91cf` | The baseline nobody had run: every route, in a browser, console open                      | `node .proactive/scratch/route-walk.mjs`                  | none |
-| 5   | `709a70f` | **Two buttons on Settings both said "Reset to defaults"** — now named for what they reset | `#/settings`, tab to either reset; or the new render test | low  |
+| #   | Commit    | What                                                                                          | How to try it                                     | Risk |
+| --- | --------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------- | ---- |
+| 1   | `e6278e8` | Correct the skills log: `agent-browser` is slow, not broken                                   | `git show e6278e8`                                | none |
+| 2   | `ebf5313` | Open the sprint                                                                               | this file                                         | none |
+| 3   | `38e9a53` | PLAN.md said T10 (the two reinforced waves) was still to build; it shipped a while ago        | `git show 38e9a53`                                | none |
+| 4   | `1da91cf` | The baseline nobody had run: every route, in a browser, console open                          | `node .proactive/scratch/route-walk.mjs`          | none |
+| 5   | `709a70f` | **Two buttons on Settings both said "Reset to defaults"** — now named for what they reset     | `#/settings`, tab to either reset                 | low  |
+| 6   | `89300b5` | **Three ways to draw 8-bit Riggs**, plus the gallery that compiles them                       | `node scripts/build-riggs-gallery.mjs`            | low  |
+| 7   | `85132ca` | The portfolio page states what each candidate argues, and the six yellows                     | open the artifact above                           | none |
+| 8   | `cc0fa70` | **Forward, out of the fight for good** — the celebration stops breaking `jump = forward`      | the dev drawer's "Watch the ending", then press Z | med  |
+| 9   | `ca5f076` | Candidate B's last polish                                                                     | the artifact                                      | none |
+| 10  | `7cced8d` | **`#/the-end`: the dojo can be finished** — Riggs, four messages, the credits, Settings entry | `#/the-end`, or finish the fight                  | med  |
 
 Merge everything: `git checkout proactive/2026-08-27-1130 && git merge proactive/2026-08-27-1426`
 Drop one: `git revert <hash>` on the sprint branch first, then merge.
@@ -37,66 +86,83 @@ Drop one: `git revert <hash>` on the sprint branch first, then merge.
 ## Baseline (before any change)
 
 **The browser pass the last two sprints both skipped.** Every route loaded cold
-in headless Chromium with the console open, full progress and god mode seeded,
-screenshots in `.proactive/scratch/routes/`. Driven by Playwright rather than
-`agent-browser`, for the reason now corrected in the skills log: it is not
-broken, it is unusably slow to cold-start.
+in headless Chromium with the console open, full progress and god mode seeded.
+Driven by Playwright rather than `agent-browser`, for the reason now corrected in
+the skills log: it is not broken, it is unusably slow to cold-start.
 
 **Result: clean.** Ten routes — home, three lessons, three mini-games, Settings,
 `#/the-end`, and a deliberate nonsense route. **Zero console errors, zero page
-errors, zero failed requests, and no horizontal overflow on any page.** Titles
-and headings all render. That is a better result than I expected and it is
-worth having on the record.
+errors, zero failed requests, and no horizontal overflow on any page.**
 
-Two things it turned up, and one thing it cleared:
+It cleared two suspicions and found one real defect:
 
 1. **CLEARED — the seven "Change" buttons on Settings are properly labelled.**
-   Their visible text is all "Change", which looked like a screen-reader trap,
-   but the accessible names are "Change button for Jump", "…for Attack" and so
-   on. I checked before claiming it. The a11y work in M6.5 holds up.
-2. **REAL — two buttons on Settings share one accessible name.** "Reset to
-   defaults" appears twice (`Settings.tsx:210` for the keyboard bindings,
-   `:286` for the controller). Tabbing the page, or listing its buttons, gives
-   no way to tell them apart. The file already has the right convention for
-   this — the Change buttons name their action — so the fix is to follow it.
-   Queued as this sprint's next task.
-3. **NOTED, not acted on — an unknown route silently renders home.**
-   `#/nonsense-route` returns the map with no explanation. That is ordinary
-   catch-all behaviour and arguably correct, but the site ships to Pages with a
-   HashRouter, so a stale bookmark lands her somewhere confusing and silent.
-   A proposal, not a bug; see "Ideas not acted on".
+   Their visible text is all "Change", which looked like a screen-reader trap;
+   the accessible names are "Change key for Jump", "…for Attack" and so on. The
+   a11y work in M6.5 holds up.
+2. **REAL — two buttons shared one accessible name.** "Reset to defaults" was
+   both the keyboard reset and the controller reset. Fixed in `709a70f`, and
+   proved by mutation: pointing both labels at the keyboard turns two of the
+   three new tests red.
+3. **CLEARED — an unknown route rendering home is deliberate.** `App.tsx` has an
+   explicit `path="*"` redirect. Not an omission.
 
-**The suite was deliberately not run at baseline.** Eleven workflow agents were
-running `tsc` and `vitest` on this machine, and last sprint's only red was a
-653-second timeout caused by exactly that contention. Last known green, at the
-tip of the previous sprint: **754 tests in `web` (35 files), 1 in `server`**,
-lint and typecheck clean. The full suite runs on an idle machine before
-anything is integrated, and again at the final check.
+The suite was not run at baseline because eleven workflow agents were running
+`tsc` and `vitest` on this machine, and last sprint's only red was a 653-second
+timeout from exactly that contention. Last known green at the branch point:
+**754 tests in `web`, 1 in `server`.**
 
 ## Final check (after the last change)
 
-(not yet)
+- `npm test` — **green: 798 in `web` (38 files), 1 in `server`.** +44 on the
+  branch point.
+- `npm run typecheck` — clean. `npm run lint` — clean. Prettier run on every file
+  touched.
+- **End to end, twice.** The ten-route walk again, and the new `e2e-finish.mjs`:
+  the fight → the twenty-second celebration → the forward key → `#/the-end`,
+  with the first message on screen and no console errors.
+- Screenshots in `.proactive/scratch/` — `routes/`, `the-end/`, `e2e/`,
+  `gallery-candidates.png`, `gallery-ties.png`.
 
 ## Started, sliced, continued in PLAN.md
 
-(nothing yet)
+PLAN.md §8's remaining-ending list is maintained: `#/the-end` and the dog's
+backflip are struck as BUILT, the rejected party states keep their write-up, and
+the confetti and the copy extraction stay open with their numbers.
 
 ## Tried and reverted
 
-(nothing yet)
+Nothing reverted this sprint. The workflow's tie-shortlist and page phases were
+**superseded rather than reverted** — see "Needs you" item 4.
 
 ## Ideas not acted on
 
-(nothing yet)
+- **The lesson pages use about a third of a wide viewport.** Long-form reading
+  wants a narrow measure, so this is a taste call rather than a bug — but the
+  demo canvases inherit that measure and end up ~370 px wide, and those are
+  things she is meant to WATCH at half speed with hitboxes drawn in. Worth a look
+  at whether the demos should break out of the text column.
+- **`web/src/copy/` wants a sibling per area** (`fight.ts`, `lessons.ts`,
+  `overlays.ts`) rather than one file with 250 keys. A deck generator can walk
+  the directory. Two modules exist now; the shape is set.
+- **The ending's tableau composes differently every run**, because the five take
+  whichever of nine slots the Knight and the Bills are not standing in. Robust,
+  never overlaps — but a fixed composition would be a stronger picture.
 
 ## Environment changes
 
-(none yet)
+**None.** No installs, no upgrades, no global tools. Playwright was already a
+dependency; the dev server ran on **5199** to stay clear of your own Vite on 5174.
 
 ## Skills used
 
-(none yet — logged in `docs/skills-log.md` at the end)
+Logged in `docs/skills-log.md`. `proactive`, `artifact-design` (before publishing
+the portfolio), and Playwright throughout. The 11-agent workflow delivered the
+three painters and was stopped after that.
 
 ## Suggested next session
 
-(not yet)
+**Open the artifact and answer the two questions** — everything left in the
+ending is drawing, and drawing wants your eye. Then the confetti is the next
+slice and its one gotcha is already known: `stepProjectile` has no gravity, so
+confetti needs its own step, and it must honour `reduceFlashing`.
