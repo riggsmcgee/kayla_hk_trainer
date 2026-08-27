@@ -8,7 +8,7 @@
  * wave and the Bills are done the road is walked.
  */
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { PracticeRun, ProgressV1 } from '@dojo/shared';
 import { chapterById, chapterIndex } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
@@ -16,6 +16,7 @@ import { ChapterNav } from '../components/ChapterNav';
 import { ChapterNext } from '../components/ChapterNext';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { blurOnPointerClick } from '../components/focus';
+import { endingCopy } from '../copy/ending';
 import { createBossSession } from '../engine/bossSession';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
 import type { ComfortSettings } from '../engine/juice';
@@ -329,6 +330,20 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
     refresh();
   }, [refresh]);
 
+  /**
+   * Where forward goes from the celebration. Until now there was nowhere, so
+   * both keys restarted the fight and this screen was the only one in the dojo
+   * breaking the ratified `jump = forward, attack = again`.
+   *
+   * `useCallback`, and not an inline arrow, for the reason this whole file has
+   * been burned by three times: `createSession` is a dependency of the canvas,
+   * and a callback whose identity changes every render rebuilds the fight
+   * under her while she is playing it. `navigate` is stable across renders, so
+   * this is too.
+   */
+  const navigate = useNavigate();
+  const onTheEnd = useCallback(() => navigate('/the-end'), [navigate]);
+
   const createSession = useCallback(
     () =>
       createBossSession({
@@ -342,6 +357,8 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
         attackKey,
         cleared: clearedBefore,
         onPassed,
+        onNext: onTheEnd,
+        nextLabel: endingCopy.whatsNext,
         // A touch records the run, and her best time comes from those.
         onFailed: refresh,
       }),
@@ -356,6 +373,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
       attackKey,
       clearedBefore,
       onPassed,
+      onTheEnd,
       refresh,
     ],
   );

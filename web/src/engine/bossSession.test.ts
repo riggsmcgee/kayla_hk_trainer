@@ -482,3 +482,66 @@ describe('hold-to-hurry, but only after the first time', () => {
     expect(drawn(again).join(' ')).toContain('to hurry');
   });
 });
+
+/**
+ * The handoff out of the dojo (playtest 7).
+ *
+ * `jump = forward, attack = again` is ratified on every overlay, and until now
+ * the celebration was the one screen breaking it: both keys restarted the
+ * fight, because there was nowhere forward to go. There is now — `#/the-end` —
+ * and it is the last screen of the whole thing.
+ */
+describe('forward, out of the fight for good', () => {
+  const atTheFinish = (onNext?: () => void) =>
+    createBossSession({
+      comfort: COMFORT,
+      playTheEnding: true,
+      onNext,
+      nextLabel: onNext ? "what's next" : undefined,
+    });
+
+  it('sends her onward on the forward key, and does not restart the fight', () => {
+    const onNext = vi.fn();
+    const session = atTheFinish(onNext);
+    hold(session, ENDING_PROMPT_SECONDS + 0.5);
+    hold(session, 0.2, press({ jumpPressed: true }));
+
+    expect(onNext).toHaveBeenCalledTimes(1);
+    // Still on the celebration, not back at the top of the fight: leaving is
+    // the page's job, and a session that also restarted would flash the
+    // entrance behind the navigation.
+    expect(drawn(session).join(' ')).toContain('YOU DID IT');
+  });
+
+  it('faces them again on the attack key, and does not send her onward', () => {
+    const onNext = vi.fn();
+    const session = atTheFinish(onNext);
+    hold(session, ENDING_PROMPT_SECONDS + 0.5);
+    hold(session, 0.2, press({ attackPressed: true }));
+
+    expect(onNext).not.toHaveBeenCalled();
+    expect(drawn(session).join(' ')).not.toContain('YOU DID IT');
+  });
+
+  it('names the destination in the prompt, forward first', () => {
+    // The one screen in the dojo where forward is the live option and "again"
+    // is the aside — she has finished, and the thing she should press is the
+    // one that ends it.
+    const session = atTheFinish(() => {});
+    hold(session, ENDING_PROMPT_SECONDS + 0.5);
+    const copy = drawn(session).join(' ');
+    expect(copy).toContain("what's next");
+    expect(copy).toContain('to face them again');
+    expect(copy.indexOf("what's next")).toBeLessThan(copy.indexOf('to face them again'));
+  });
+
+  it('still just restarts when there is nowhere forward', () => {
+    // The dev drawer builds a session with no destination, and so did every
+    // build before this one. Z must not become inert.
+    const session = atTheFinish(undefined);
+    hold(session, ENDING_PROMPT_SECONDS + 0.5);
+    expect(drawn(session).join(' ')).toContain('to face them again');
+    hold(session, 0.2, press({ jumpPressed: true }));
+    expect(drawn(session).join(' ')).not.toContain('YOU DID IT');
+  });
+});

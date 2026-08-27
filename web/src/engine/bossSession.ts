@@ -245,6 +245,8 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   const winGate = createOverlayGate();
   /** One-shot: the gate is armed by the prompt appearing, and only once. */
   let promptShown = false;
+  /** One-shot: she has taken the forward door out of the fight for good. */
+  let leaving = false;
   /** Where she was standing when the rise began; the lift interpolates from it. */
   const riseFrom: Vec2 = { x: 0, y: 0 };
   let startedAtIso = '';
@@ -263,6 +265,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     dog = null;
     cast = [];
     promptShown = false;
+    leaving = false;
     projectiles = [];
     hitFlash = 0;
     phantomHits = 0;
@@ -629,7 +632,23 @@ export function createBossSession(config: BossSessionConfig): GameSession {
             winGate.arm();
           }
           const pressing = rawInput.attackPressed || rawInput.jumpPressed;
-          if (winGate.open(dt, pressing) && pressing) restart();
+          if (winGate.open(dt, pressing) && pressing && !leaving) {
+            // `jump = forward, attack = again`, ratified on every overlay in
+            // the dojo. Until now this screen broke that rule — both keys
+            // restarted the fight, because there was nowhere forward to go.
+            // There is now, and it is the last screen of the whole thing.
+            if (rawInput.jumpPressed && onNext) {
+              // Latched. `restart()` ends its own branch by changing the
+              // state underneath it; leaving does not — the page navigates
+              // away on its own clock, and until it does this branch keeps
+              // running. Without the latch a held key fires the handoff on
+              // every frame between the press and the unmount.
+              leaving = true;
+              onNext();
+            } else {
+              restart();
+            }
+          }
         }
         return;
       }
@@ -852,7 +871,15 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           0.7,
         );
       } else if (boss.phase === 'won') {
-        drawEnding(ctx, ending, bill.position.x, config.cleared ?? false, jumpKey, attackKey);
+        drawEnding(
+          ctx,
+          ending,
+          bill.position.x,
+          config.cleared ?? false,
+          onNext ? (nextLabel ?? endingCopy.whatsNext) : null,
+          jumpKey,
+          attackKey,
+        );
       } else if (boss.phase === 'over') {
         ctx.fillStyle = 'rgba(7, 9, 18, 0.78)';
         ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
@@ -1025,6 +1052,8 @@ function drawEnding(
   ending: EndingState,
   billX: number,
   cleared: boolean,
+  /** What forward leads to, or null when there is nowhere to go. */
+  nextLabel: string | null,
   jumpKey: () => string,
   attackKey: () => string,
 ): void {
@@ -1078,7 +1107,13 @@ function drawEnding(
     ctx.save();
     ctx.globalAlpha = fade;
     ctx.font = '17px system-ui, sans-serif';
-    ctx.fillText(endingCopy.winPrompt(jumpKey(), attackKey()), CANVAS.width / 2, 218);
+    ctx.fillText(
+      nextLabel
+        ? endingCopy.winPromptWithNext(jumpKey(), attackKey(), nextLabel)
+        : endingCopy.winPrompt(jumpKey(), attackKey()),
+      CANVAS.width / 2,
+      218,
+    );
     ctx.restore();
   }
 }

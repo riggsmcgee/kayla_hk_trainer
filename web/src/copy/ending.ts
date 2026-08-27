@@ -55,6 +55,25 @@ export const endingCopy = {
     `Press ${attack} or ${jump} to face them again.`,
 
   /**
+   * The same prompt once there is somewhere to go, which after the ending
+   * there is: `#/the-end`.
+   *
+   * FORWARD IS NAMED FIRST here, and only here. Every other overlay in the
+   * dojo leads back into practice, so "again" is the live option and forward
+   * is the aside. This is the one screen where the opposite is true — she has
+   * finished, and the thing she should press is the one that ends it.
+   *
+   * `jump = forward, attack = again` is ratified on every overlay, and both
+   * labels are live: they print `Z`, or `Space` if she has rebound it, or
+   * "the bottom button" on a pad.
+   */
+  winPromptWithNext: (jump: string, attack: string, next: string): string =>
+    `Press ${jump} for ${next} · ${attack} to face them again.`,
+
+  /** What the ending's forward button leads to, in her words. */
+  whatsNext: "what's next",
+
+  /**
    * The hurry hint, shown only once she has beaten them before. Deliberately
    * word-for-word the entrance's line: it is the same bargain, and she has
    * already learned what it means from Bill walking on.
