@@ -61,15 +61,16 @@
  *   glasses        416 -> 384    (rows 5..7) lenses 40 x 32, frame 8 px thick
  *   mouth               352      (row 8.5)   48 wide = 0.43 of head width
  *   ear            416 -> 376    (rows 5..7.5) brow to nose base, as ears go
- *   neck           336 -> 288    48 wide = 0.43 of head width
+ *   neck           336 -> 288    64 wide = 0.57 of head width. 48 looked like
+ *                                a stalk; a neck is thicker than you think
  *   trapezius top       296      (row 12.5)  \  the shoulder line is a
  *   deltoid tip         272      (row 14)    /  4-step staircase, 24 px of
  *                                              slope over 136 px of half-span
  *   shoulder width      272      (17 cells) = 1.70 head heights
  *                                (Bill is 40/24 = 1.67 — the same man, seen
  *                                 closer, is the whole point of this file)
- *   collar band    304 -> 288    (rows 12..13), points reach 256
- *   BOW TIE        272 -> 240    (rows 14..16) 80 wide x 32 tall = 0.71 of a
+ *   collar band    304 -> 288    (rows 12..13), the points reach down to 248
+ *   BOW TIE        288 -> 256    (rows 13..15) 80 wide x 32 tall = 0.71 of a
  *                                head width. It is the one thing that is known
  *                                about him, so it sits dead centre on the
  *                                strongest horizontal in the drawing.
@@ -80,7 +81,7 @@
  *                                below row 24 an 8 px gap of background opens
  *                                between sleeve and waist, which is what says
  *                                "arm" rather than "wide shirt"
- *   placket        232 -> 0      16 wide, 3 buttons
+ *   placket        240 -> 0      16 wide, 3 buttons
  *   pocket         192 -> 144    40 x 48, on the lit side
  *   total span          272 px wide  (x -136..136, inside the +/-224 budget)
  *
@@ -129,12 +130,15 @@
  *            8 px and the mouth opens. One clock, three derived values: the
  *            nod, the brow and the mouth all come out of the same floored
  *            step, which is why they land together and read as "mm-hm".
- *   BLINK    a 6 Hz clock read mod 21: two frames closed (0.33 s) every 3.5 s.
- *            A 50/50 flip would strobe at this size; a blink has to be rare to
- *            be a blink. The closed lid is drawn 8 px BELOW where the open eye
- *            sits, so the lid reads as having come down.
+ *   BLINK    an 8 Hz clock read mod 28: two frames closed (0.25 s) every 3.5 s,
+ *            and they are the LAST two of the cycle, so t = 0 has his eyes
+ *            open — a gallery that freezes him at t = 0 for reduced motion
+ *            must not catch him mid-blink. A 50/50 flip would strobe at this
+ *            size; a blink has to be rare to be a blink. The closed lid is
+ *            drawn 8 px BELOW where the open eye sits, so it reads as having
+ *            come down rather than as the eye changing colour.
  *
- * The three clocks are 1.5 Hz, 2 Hz and 6 Hz and share no factor that matters,
+ * The three clocks are 1.5 Hz, 2 Hz and 8 Hz and share no factor that matters,
  * so he never falls into a single visible pulse.
  */
 import type { Vec2 } from '../types';
@@ -159,7 +163,7 @@ const P = {
   ink: '#0b0e1a', //        reserved enemyDetail — pupils only
   lip: '#8f5b4a', //        new: the mouth line and its two smiling corners
   lipDark: '#5a3229', //    new: the gap when it is open
-  button: '#a8a49c', //     new: three of them, deliberately NOT gold
+  button: '#8e8a82', //     new: three of them, deliberately NOT gold
 };
 
 // --- the only drawing primitive -------------------------------------------
@@ -353,7 +357,7 @@ export function paintRiggsB(ctx: Ctx, origin: Vec2, t: number, tie: string): voi
   const beat = step(t, 2) % 6; // a 3 s cycle, so the nod is not a metronome
   const n = beat === 2 || beat === 5 ? 0.5 : 0; // the head drops 8 px
   const talk = beat === 5; // ...and on the second one, he says something
-  const blink = step(t, 6) % 21 < 2; // two frames closed every 3.5 s
+  const blink = step(t, 8) % 28 >= 26; // two frames closed every 3.5 s
   const u = b + n; // the head carries both offsets
 
   // Back to front, because draw order IS depth: there is no z-buffer here.
@@ -372,7 +376,7 @@ export function paintRiggsB(ctx: Ctx, origin: Vec2, t: number, tie: string): voi
   r(ctx, -5.5, 15 + b, 11, 9 - b);
   r(ctx, -5, 24, 10, 7);
   ctx.fillStyle = P.shirtHi;
-  r(ctx, 3.5, 15 + b, 1.5, 9 - b); // the chest plane that faces the light
+  r(ctx, 3.5, 15 + b, 1.5, 3.5 - b); // the chest plane that faces the light
   ctx.fillStyle = P.shirtShade;
   r(ctx, -5.5, 15 + b, 0.5, 9 - b); // rear column
   r(ctx, -5, 24, 0.5, 7);
