@@ -9,7 +9,7 @@
 
 `docs/feedback/2026-08-27-playtest-7.md` ends with a seven-item priority list in dependency order. I
 worked it in that order with **one deliberate narrowing on item 1**, and got through items 1
-(narrowed), 2, 3, 5, and part of 4.
+(narrowed), 2, 3, 5, and most of 4.
 
 **Item 1 is the copy-module extraction of ~256 strings across 19 files.** That is more than this
 whole window, and it is the one item the contract itself says "blocks nothing technically". Doing it
@@ -50,8 +50,7 @@ job, and it stays item 1.
    someone's committed files unattended is not mine to do. `git rm -- --full-page --selector` if they
    are what they look like.
 
-5. **Still not built, in the contract's order:** the dog's backflip (the clock is built and tested —
-   `dogIsFlipping` — so this is drawing only), the confetti, `#/the-end` with 8-bit Riggs, and the
+5. **Still not built, in the contract's order:** the confetti, `#/the-end` with 8-bit Riggs, and the
    rest of the copy extraction. All in PLAN.md §8 with the numbers not to re-derive.
 
 6. **The bow tie's yellow is still unpicked**, deliberately. It belongs with `#/the-end`, which is not
@@ -66,7 +65,8 @@ job, and it stays item 1.
 | 3   | `31db5aa` | **The corner stopped saying she had won.** HUD win text moved off 1:30                                                                                            | Same path; watch the top-right corner for the first 13 s             | low    |
 | 4   | `6643093` | **Hold-to-hurry after the first win**, with `clearedBefore` frozen                                                                                                | Beat them once for real, then again — hold Z during the ending       | low    |
 | 5   | `9b560e3` | **The crowd hops**, and the ratified party states are reverted with the reason                                                                                    | Same path; watch the five during the applause                        | low    |
-| 6   | `2f0e5aa` | PLAN.md continuation, skills log, this report                                                                                                                     | `git show` it                                                        | none   |
+| 6   | `888c743` | **Bill the dog does backflips**, three seconds into the applause, and never stops                                                                                 | Same path; watch the dog from ~17 s                                  | low    |
+| 7   | `9380621` | PLAN.md continuation, skills log, this report                                                                                                                     | `git show` it                                                        | none   |
 
 Merge everything: `git checkout proactive/2026-08-26-1646 && git merge proactive/2026-08-27-1130`
 Drop one: `git revert <hash>` on the sprint branch first, then merge.
@@ -101,7 +101,7 @@ Three things worth knowing about how it is built:
 
 ## Final check (after the last change)
 
-- `npm test` — **green: 753 in `web` (35 files), 1 in `server`.** +25 tests.
+- `npm test` — **green: 754 in `web` (35 files), 1 in `server`.** +26 tests.
 - `npm run typecheck` — clean. `npm run lint` — clean. `prettier --write` run over every file touched.
 - **End-to-end**: the ending driven in headless Chromium through the dev seam, ten frames captured at
   the ratified beats. This is the pass that found ledger item 3 and killed the party states.
@@ -112,8 +112,8 @@ Three things worth knowing about how it is built:
 ## Started, sliced, continued in PLAN.md
 
 PLAN.md §8's "what is left of the ending" is rewritten as seven items: the cast gather struck as
-BUILT, then the party states (with the rejection recorded), the backflip, the confetti, `#/the-end`,
-the rest of the copy extraction, and the cast-mark arithmetic.
+BUILT, then the party states (with the rejection recorded), the backflip (now also BUILT), the
+confetti, `#/the-end`, the rest of the copy extraction, and the cast-mark arithmetic.
 
 ## Tried and reverted
 
@@ -147,5 +147,5 @@ machine), Playwright ✅ (found the defect every test passed).
 
 Sit down with it rather than running `/proactive` again — **watch the twenty seconds** and answer the
 two questions in "Needs you" item 1, because everything left in the ending is drawing and drawing
-wants your eye. Then the dog's backflip is the cheapest remaining win: the clock is built and tested,
-so it is purely a new `BillDogPose` in the group that does not use the standing rig.
+wants your eye. Then the confetti is the next slice, and the one caveat is already known:
+`stepProjectile` has no gravity, so it needs its own step and it must honour `reduceFlashing`.

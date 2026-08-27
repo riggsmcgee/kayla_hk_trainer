@@ -276,7 +276,10 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
      moving off the render clock. **Real party states need new drawing, not new state**: party hats
      for the walker and flier, a shield genuinely raised rather than a telegraph, arms that read as
      arms.
-  3. **The dog's backflip.** `BillDogPose` splits into rig poses
+  3. ~~**The dog's backflip.**~~ — **BUILT in Session 13** (`888c743`). A transform over
+     `drawStanding('idle')` — hop, rotate about his middle on twelve stepped marks, land — so he
+     keeps his whole dog silhouette instead of becoming a ball. Watched in a browser. What follows
+     was the analysis it was built from: `BillDogPose` splits into rig poses
      (`idle`/`walkIn`/`bonesTell`/`bones`/`bow`/`applaud`/`lieDown`) and the two that do not use it
      (`rollTell`/`roll`). A flip belongs with the second group, and the ball's existing spin is the
      nearest precedent. The clock is already built and tested — `dogIsFlipping(ending)` goes true
