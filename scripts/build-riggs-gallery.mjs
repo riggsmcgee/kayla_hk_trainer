@@ -8,15 +8,20 @@
  * imports `web/src/engine/riggs/*` directly, so choosing a candidate here is
  * choosing a painter the game already contains.
  *
- * Two things it does that the Bill gallery did not need:
+ * It DISCOVERS its painters rather than hard-coding them. That began as
+ * insurance — three agents wrote three candidates in parallel and any one of
+ * them could have failed — and it is what lets the page survive the answer:
+ * playtest 8 picked candidate B, A and C were deleted, and this file needed no
+ * edit to stop offering a choice that had been made.
  *
- * 1. **It discovers the candidates.** Three agents wrote three files in
- *    parallel and any one of them could have failed. Globbing rather than
- *    hard-coding means a missing candidate costs one card, not the page.
- * 2. **It asks two questions at once.** The drawing and the bow tie's yellow
- *    are separate decisions with separate shortlists, and the tie is passed
- *    into the painters as a parameter precisely so this page can vary it
- *    without touching any of them.
+ * What it still asks, with one drawing on it:
+ *
+ * 1. **The bow tie's yellow**, which is genuinely undecided. The tie is passed
+ *    into the painter as a parameter precisely so this page can walk it
+ *    through a shortlist without touching the painter.
+ * 2. **The likeness.** A photograph is coming, one revised face goes into
+ *    `riggsB.ts`, and this page is how it comes back as a PICTURE rather than
+ *    as a paragraph about a picture.
  *
  * Usage:  node scripts/build-riggs-gallery.mjs [outfile]
  * Default outfile: .proactive/scratch/riggs-gallery.html
@@ -63,25 +68,15 @@ async function loadTies() {
  * to one — "I pick B" — not a running order.
  */
 /**
- * What each candidate argues for — the thing the user is actually choosing
- * between. Keyed by letter rather than by index, because a candidate can be
- * cut and the remaining letters must not shuffle.
+ * What the painter on the page argues for. Still keyed by LETTER rather than by
+ * index, which is what let A and C be deleted without B becoming "candidate A"
+ * in every conversation that had already happened about it.
  */
 const CLAIMS = {
-  A: {
-    title: 'Same Room As Bill',
-    claim:
-      'Maximum continuity. The same two-tone ramp per material, the same warm palette, the same block vocabulary as Bill the man — just at twice the cell size and cropped at the waist. The extra resolution is spent on fidelity of the same forms rather than on new features. The test: he looks like he is off Bill’s sprite sheet.',
-  },
   B: {
     title: 'The Detail The Scale Buys',
     claim:
-      'Takes “a bit more detailed” literally. Glasses, a real hairline with texture, a shirt with a pocket and a placket, a three-tone ramp instead of two, a face with more than one state. The test: he is recognisably a PERSON, not a silhouette with a prop. The risk: drifting off the medium.',
-  },
-  C: {
-    title: 'The Portrait',
-    claim:
-      'Leans into being waist-up and static — a composed bust rather than a game sprite that happens to be big. Jacketed, squarer, fewer and bigger blocks, deliberate negative space, and the tie doing real compositional work. The test: it reads at a glance from across the room.',
+      'Chosen in playtest 8, on style. It took “a bit more detailed” literally: glasses, a real hairline with texture, a shirt with a pocket and a placket, a three-tone ramp instead of two, and a face with more than one state. What is NOT settled is the likeness — the style stays exactly as it is and the face inside it changes.',
   },
 };
 
@@ -421,9 +416,8 @@ function page(script, candidates, ties) {
     <p class="lede">
       The last screen of the dojo. Kayla has just beaten the Two Bills, the cast has knelt and
       applauded, and she presses forward one more time &mdash; and you are there to tell her what she
-      did. ${candidates.length} ways to draw you, looping in step, every one of them drawn by a
-      painter the game itself would use. Below them, the bow tie&rsquo;s yellow, which is a colour to
-      see rather than to name.
+      did. This is the drawing you picked, looping in step, painted by the code the game itself
+      runs. Below it, the bow tie&rsquo;s yellow, which is a colour to see rather than to name.
     </p>
   </header>
 
@@ -445,15 +439,16 @@ function page(script, candidates, ties) {
   <div class="ask">
     <h2>While this page is still open</h2>
     <p>
-      The last step of this project&rsquo;s portfolio process &mdash; measuring what the winner shares
-      with the ones that nearly won &mdash; has now failed to run three times, every time because the
-      near-misses could not be recalled after the fact. So, in this order:
+      The drawing is settled and the other two are deleted. Two things are still open, and both are
+      faster to answer looking at this page than in the abstract:
     </p>
     <ol>
-      <li>Which drawing is it?</li>
-      <li>Which came second, and what did it nearly have?</li>
-      <li>What do those two share that the third does not?</li>
       <li>Which yellow &mdash; and is it doing the job the foam finger does for Bill?</li>
+      <li>
+        The face: send the photograph. Five things carry a likeness at this cell size &mdash; hair
+        shape and colour, glasses or none, facial hair or none, face width, one expression &mdash;
+        and a photo is what makes those five correct rather than invented.
+      </li>
     </ol>
   </div>
 

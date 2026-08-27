@@ -126,10 +126,16 @@
  *            six (a 3 s cycle) rather than a metronome. The head — and only
  *            the head — drops 8 px, and the neck shortens by the same 8 px
  *            instead of telescoping.
- *   SPEECH   on the SECOND of those two nods, and only then, the brow lifts
- *            8 px and the mouth opens. One clock, three derived values: the
- *            nod, the brow and the mouth all come out of the same floored
- *            step, which is why they land together and read as "mm-hm".
+ *   MM-HM    on the SECOND of those two nods, and only then, the brow lifts
+ *            8 px. Nod and brow come out of the same floored step, which is
+ *            why they land together and read as an acknowledgement.
+ *   SPEECH   5 Hz, two frames: the mouth alternates open and shut every 200 ms
+ *            while — and only while — the caller says he is speaking. It is a
+ *            FOURTH clock rather than a derived value because the thing it
+ *            follows lives outside this file: on the last screen it is the
+ *            typewriter, and his mouth has to stop when the sentence does.
+ *            5 shares no factor with 1.5, 2 or 8, so talking never locks to
+ *            the nod and leaves him opening his mouth on every beat.
  *   BLINK    an 8 Hz clock read mod 28: two frames closed (0.25 s) every 3.5 s,
  *            and they are the LAST two of the cycle, so t = 0 has his eyes
  *            open — a gallery that freezes him at t = 0 for reduced motion
@@ -138,8 +144,8 @@
  *            drawn 8 px BELOW where the open eye sits, so it reads as having
  *            come down rather than as the eye changing colour.
  *
- * The three clocks are 1.5 Hz, 2 Hz and 8 Hz and share no factor that matters,
- * so he never falls into a single visible pulse.
+ * The four clocks are 1.5 Hz, 2 Hz, 8 Hz and 5 Hz and share no factor that
+ * matters, so he never falls into a single visible pulse.
  */
 import type { Vec2 } from '../types';
 
@@ -346,7 +352,13 @@ function yokeStep(ctx: Ctx, col: number, row: number, w: number, h: number): voi
  * State discipline: one save/restore around the whole figure, no strokes at
  * all, and globalAlpha / lineWidth / shadowBlur are never touched.
  */
-export function paintRiggsB(ctx: Ctx, origin: Vec2, t: number, tie: string): void {
+export function paintRiggsB(
+  ctx: Ctx,
+  origin: Vec2,
+  t: number,
+  tie: string,
+  speaking = false,
+): void {
   ctx.save();
   // Snap to whole device pixels: a pixel drawing sitting on a half pixel is a
   // blurry pixel drawing, and every internal offset is already a multiple of 8.
@@ -356,7 +368,10 @@ export function paintRiggsB(ctx: Ctx, origin: Vec2, t: number, tie: string): voi
   const b = step(t, 1.5) % 2 ? 0 : 0.5; // breath: 0 = top of the breath
   const beat = step(t, 2) % 6; // a 3 s cycle, so the nod is not a metronome
   const n = beat === 2 || beat === 5 ? 0.5 : 0; // the head drops 8 px
-  const talk = beat === 5; // ...and on the second one, he says something
+  const browUp = beat === 5; // ...and on the second one, the brow goes with it
+  // The mouth is the one thing here driven from outside: it flaps while a
+  // sentence is appearing beside him and is shut the rest of the time.
+  const mouthOpen = speaking && step(t, 5) % 2 === 0;
   const blink = step(t, 8) % 28 >= 26; // two frames closed every 3.5 s
   const u = b + n; // the head carries both offsets
 
@@ -461,7 +476,7 @@ export function paintRiggsB(ctx: Ctx, origin: Vec2, t: number, tie: string): voi
   ctx.fillStyle = P.shirtHi;
   r(ctx, 2, 19, 2.5, 0.5);
 
-  head(ctx, u, blink, talk, talk);
+  head(ctx, u, blink, browUp, mouthOpen);
 
   ctx.restore();
 }
