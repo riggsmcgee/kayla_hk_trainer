@@ -47,6 +47,20 @@ export interface Projectile {
  * duelist: lunge, antiair, leap · spitter: volley · warden: riposte, bash,
  * skyward · bill: lance, swat · dog: bones, roll.
  */
+/**
+ * What a body is doing in the ending, once the fight is over.
+ *
+ * Two beats, in the order the user picked them (playtest 6, note 6): the Bills
+ * `concede` the moment the clock hits 1:30 — the man goes to a knee, the dog
+ * goes all the way down — and everyone switches to `applaud` when the rest of
+ * the cast arrives to cheer. Two poses meaning two different things, which is
+ * why both survived a portfolio that was meant to pick one.
+ *
+ * Deliberately NOT the name of a pose: `renderBills.ts` is the only file that
+ * knows `concede` is drawn as a kneel on the man and a lie-down on the dog.
+ */
+export type Celebration = 'concede' | 'applaud';
+
 export type AttackKind =
   | 'lunge'
   | 'antiair'
@@ -577,6 +591,16 @@ export interface Enemy extends EnemyState {
    * only pose left for him is `idle` — a standing dog sliding 280 px.
    */
   walkingIn: boolean;
+  /**
+   * The ENDING only, and null on every other frame of the game.
+   *
+   * After 1:30 the fight is over, so the celebration cannot be expressed as an
+   * attack phase: driving a real `antiair` would draw the applause AND arm a
+   * real hitbox. This is a separate channel the painters read and the
+   * simulation never writes, which is how the tableau stays harmless by
+   * construction rather than by remembering to switch damage off.
+   */
+  celebrating: Celebration | null;
   /** Dog: which of ROLL_VARIANTS this dog rolls with. The user picks it. */
   rollVariantIndex: number;
   /** Dog: floor bounces so far this roll — the cursor into the variant’s pattern. */
@@ -647,6 +671,7 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     sinceBounce: 0,
     roll: false,
     walkingIn: false,
+    celebrating: null,
     rollVariantIndex: 0,
     rollBounces: 0,
     rallies: 0,

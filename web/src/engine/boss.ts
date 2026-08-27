@@ -3,8 +3,10 @@
  *
  * The boss at the bottom of the well is a survival test, not a kill: neither
  * Bill can be damaged, one touch ends the run, and the score is time survived.
- * 1:30 marks the stop done and the fight keeps escalating past it, chasing a
- * better time (ratified — docs/feedback/2026-08-22-playtest-3.md).
+ * **1:30 is a finish line** — reach it untouched and the fight is over and won
+ * (playtest 6, which STRUCK playtest 3's "1:30 marks the stop done and the
+ * fight keeps escalating past it, chasing a better time"; an invisible score
+ * that runs past the ending is worse than an ending).
  *
  * That is why this is its own module rather than a mode on `stepStage`: a
  * stage freezes its clock the moment it is cleared, and has no vocabulary for
@@ -25,14 +27,23 @@ import { tickDown } from './session';
  * - `fighting` — the clock runs and a touch ends it.
  * - `card`    — the dog's arrival card: everything freezes, INCLUDING the clock.
  * - `over`    — she was touched; the clock is frozen for good.
+ * - `won`     — she reached 1:30 untouched. The clock is frozen for good too,
+ *   and this is the phase the whole ending sequence plays in.
+ *
+ * `won` exists because `over` was the only terminal phase, and it is reachable
+ * only by being touched: on a perfect run the last frame of the entire dojo
+ * used to be a loss screen reading "Got you." Celebrating under a live fight
+ * would let her die walking into a Bill that is congratulating her, and the
+ * card phase is an interruption she did not ask for — so the ending gets its
+ * own phase (playtest 6, notes 6 and 7).
  */
-export type BossPhase = 'intro' | 'ready' | 'fighting' | 'card' | 'over';
+export type BossPhase = 'intro' | 'ready' | 'fighting' | 'card' | 'over' | 'won';
 
-/** The four moments the fight has; everything else is just time passing. */
-export type BossEvent = 'dog-arrives' | 'heat' | 'passed' | 'over';
+/** The five moments the fight has; everything else is just time passing. */
+export type BossEvent = 'dog-arrives' | 'heat' | 'passed' | 'over' | 'won';
 
 export const BOSS = {
-  /** Survive this long and the stop is done. The fight does not stop here. */
+  /** Survive this long untouched and the fight is over and won. */
   targetSeconds: 90,
   /** Bill the dog walks in. */
   dogAt: 30,
@@ -100,8 +111,19 @@ export function stepIntro(s: BossState, seconds: number, dt: number): void {
  *
  * A touch beats a threshold on the step they share: the run ends where the
  * touch found her, and the threshold never latches.
+ *
+ * `ev.untouched` is what decides whether 1:30 is a win, and it has to be told
+ * rather than inferred. In normal play reaching 1:30 at all proves she was
+ * never touched — one touch ends the run — but god mode routes every hit
+ * through `wouldHaveHit` instead, and a god-mode run took 29 hits and still
+ * reached 1:30 in the browser. God mode does not earn the ending (playtest 6),
+ * so the caller passes the fact rather than this file guessing at it.
  */
-export function stepBoss(s: BossState, ev: { playerHit: boolean }, dt: number): BossEvent | null {
+export function stepBoss(
+  s: BossState,
+  ev: { playerHit: boolean; untouched: boolean },
+  dt: number,
+): BossEvent | null {
   if (s.phase === 'card') {
     s.cardTimer = tickDown(s.cardTimer, dt);
     if (s.cardTimer === 0) s.phase = 'fighting';
@@ -132,6 +154,13 @@ export function stepBoss(s: BossState, ev: { playerHit: boolean }, dt: number): 
   }
   if (!s.passed && s.elapsed >= BOSS.targetSeconds) {
     s.passed = true;
+    // The finish line. Untouched, it ends the fight; in god mode it is only a
+    // marker the HUD reads, and the fight runs on exactly as it always did —
+    // which is what keeps god mode useful for watching the fight itself.
+    if (ev.untouched) {
+      s.phase = 'won';
+      return 'won';
+    }
     return 'passed';
   }
   return null;

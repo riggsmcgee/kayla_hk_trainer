@@ -128,6 +128,44 @@ describe('billDogPose', () => {
   });
 });
 
+/**
+ * The ending, routed. The user picked the KNEE for the moment the clock stops
+ * and the APPLAUSE for the party that follows, so both poses are load-bearing
+ * and they mean two different things.
+ *
+ * These four assertions are the entire reason `celebrating` is a field on the
+ * enemy rather than an attack: at 1:30 the fight stops mid-attack, and every
+ * branch below the celebration check is still holding whatever Bill was doing
+ * a frame earlier.
+ */
+describe('the celebration outranks whatever the fight left them in', () => {
+  it('puts Bill the man on a knee, then has him applaud', () => {
+    const mid = bill('lance', 'active');
+    mid.celebrating = 'concede';
+    expect(billPose(mid)).toBe('kneel');
+    mid.celebrating = 'applaud';
+    expect(billPose(mid)).toBe('applaud');
+  });
+
+  it('puts the dog down, then sits him up patting', () => {
+    // The dog is the harder case: `roll` is checked before the phase is
+    // BECAUSE the ball outlives its own attack, so a dog balled up at 1:30
+    // would still be drawn as a ball if the celebration did not come first.
+    const rolling = dog('roll', 'active', true);
+    rolling.celebrating = 'concede';
+    expect(billDogPose(rolling)).toBe('lieDown');
+    rolling.celebrating = 'applaud';
+    expect(billDogPose(rolling)).toBe('applaud');
+  });
+
+  it('is off on every frame of the fight itself', () => {
+    // The field defaults to null, which is what keeps this a channel the
+    // simulation never writes to.
+    expect(createEnemy('bill', 0, 0).celebrating).toBe(null);
+    expect(createEnemy('dog', 0, 0).celebrating).toBe(null);
+  });
+});
+
 /** Every pose the fight can put each Bill into, as (attackKind, phase, roll). */
 const BILL_STATES: [AttackKind | null, Enemy['phase']][] = [
   [null, 'idle'],

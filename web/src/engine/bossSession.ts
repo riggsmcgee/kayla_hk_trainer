@@ -2,8 +2,9 @@
  * The Two Bills — the boss session at the bottom of the well.
  *
  * A survival clock, not a kill. Neither Bill can be damaged, one touch ends
- * the run, and the score is time survived; 1:30 marks the stop done and the
- * fight keeps escalating past it for a better time.
+ * the run, and 1:30 is the finish line: reach it untouched and the fight is
+ * over, won, and the ending plays here (playtest 6, which struck "the fight
+ * keeps escalating past it for a better time").
  *
  * This is its own session rather than a mode on `createDodgeArenaSession`,
  * which is a `stages[]` driver end to end and would fork about ten branches
@@ -14,6 +15,8 @@
  */
 
 import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
+import { beatProgress, createEndingState, stepEnding } from './ending';
+import type { EndingState } from './ending';
 import {
   INTRO_FAST_FORWARD,
   arrivalX,
@@ -25,7 +28,7 @@ import {
 import { dogLook } from './dogLook';
 import type { EntranceShape } from './entrance';
 import { createArenaState, stepArena } from './arena';
-import { CANVAS } from './constants';
+import { CANVAS, FIXED_DT } from './constants';
 import { createEnemy, stepEnemy, stepProjectile } from './enemies';
 import type { Enemy, Projectile } from './enemies';
 import { FEEDBACK, LAND_SQUASH_TIME, computeStretch, createEdgeCarry, createJuice } from './juice';
@@ -94,6 +97,17 @@ export interface BossSessionConfig extends OverlayControls {
    * bones wear. Defaults to the first.
    */
   dogLook?: number;
+  /**
+   * DEV TOOL: remove in the final build. Start one step from the finish line,
+   * untouched, so the ending can be watched without a flawless 1:30 first.
+   *
+   * It exists because god mode CANNOT reach the ending by design — a run that
+   * absorbed 29 hits has not earned it (playtest 6) — so without this the only
+   * way to look at the celebration is to actually beat the fight. The run it
+   * produces is flagged exactly like a god-mode run and does NOT mark the stop
+   * cleared: a win nobody played must never become her record of beating them.
+   */
+  playTheEnding?: boolean;
   /** Fires live at the 1:30 crossing, not at the end of the run. */
   onPassed?: () => void;
   /** Fires once per touch, after the run is recorded. */
@@ -104,9 +118,26 @@ function pressedAnything(input: InputFrame): boolean {
   return input.left || input.right || input.jumpPressed || input.dashPressed || input.attackPressed;
 }
 
+/**
+ * Hands off every control, for the one place the Knight still has physics but
+ * no driver: winning mid-pogo should let her fall and land, not hang in the
+ * air for the whole celebration.
+ */
+const AT_REST: InputFrame = {
+  left: false,
+  right: false,
+  up: false,
+  down: false,
+  jumpHeld: false,
+  jumpPressed: false,
+  attackPressed: false,
+  dashPressed: false,
+};
+
 export function createBossSession(config: BossSessionConfig): GameSession {
   const { comfort, jumpKey = () => 'Z', attackKey = () => 'X', onNext, nextLabel } = config;
   const godMode = config.godMode ?? false;
+  const devEnding = config.playTheEnding ?? false;
   const world = bossWorld();
   /** Which entrance plays, and how long it runs at normal speed. */
   const entrance = billEntrance(config.entranceVariant ?? 0);
@@ -117,6 +148,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   const edgeCarry = createEdgeCarry();
 
   let boss = createBossState();
+  let ending = createEndingState();
   let arena = createArenaState(false, godMode);
   let player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
   let bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
@@ -137,6 +169,13 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   let landSquash = 0;
   let wasGrounded = true;
   const overGate = createOverlayGate();
+  /**
+   * The ending's own gate. Separate from `overGate` because they guard
+   * opposite screens — a run that is won can never reach the fail screen — and
+   * because this one is not armed until the cheer starts, which is what makes
+   * the Bills' knee unskippable without any machinery of its own.
+   */
+  const winGate = createOverlayGate();
   let startedAtIso = '';
 
   const prevFeet: Vec2 = { ...player.position };
@@ -146,6 +185,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   function restart(): void {
     overGate.arm();
     boss = createBossState();
+    ending = createEndingState();
     arena = createArenaState(false, godMode);
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
     bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
@@ -159,6 +199,36 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     prevFeet.y = player.position.y;
     prevBillFeet.x = bill.position.x;
     prevBillFeet.y = bill.position.y;
+    if (devEnding) jumpToTheFinish();
+  }
+
+  /**
+   * DEV TOOL: remove in the final build. Wind the whole fight forward to half
+   * a step short of 1:30, with the dog already on his mark and both Bills hot,
+   * so the very next step crosses the finish line untouched.
+   *
+   * Deliberately reuses `bringInTheDog` and the real thresholds rather than
+   * hand-placing a tableau: a dev shortcut that builds its own version of the
+   * state is a dev shortcut that shows you something the game cannot produce.
+   */
+  function jumpToTheFinish(): void {
+    boss.phase = 'fighting';
+    boss.introElapsed = INTRO_SECONDS;
+    boss.elapsed = BOSS.targetSeconds - FIXED_DT / 2;
+    boss.dogIn = true;
+    boss.hot = true;
+    arena.started = true;
+    startedAtIso = new Date().toISOString();
+    bill.hot = true;
+    bill.position.x = BILL_SPAWN_X;
+    prevBillFeet.x = BILL_SPAWN_X;
+    bringInTheDog();
+    if (dog) {
+      dog.position.x = dogWalkTo;
+      dog.walkingIn = false;
+      dog.hot = true;
+      prevDogFeet.x = dogWalkTo;
+    }
   }
 
   /**
@@ -202,7 +272,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     recordRun({
       mode: 'dodge',
       boss: true,
-      godMode: godMode || undefined,
+      // The dev ending rides the god-mode flag, which is exactly what that
+      // flag means: a fight nothing could end never becomes her best time.
+      godMode: godMode || devEnding || undefined,
       cleared: boss.passed,
       hitsLanded: 0,
       durationMs: Math.round(boss.elapsed * 1000),
@@ -214,6 +286,45 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   function bills(): Enemy[] {
     return dog && boss.dogIn ? [bill, dog] : [bill];
   }
+
+  /**
+   * What `stepBoss` needs to know about this step.
+   *
+   * `untouched` is the fact god mode hides: a hit she "did not take" still
+   * happened, so a god-mode run that reached 1:30 having eaten 29 of them must
+   * not be handed the ending (playtest 6). `phantomHits` is only ever written
+   * in god mode, so in normal play this is true by construction — which is
+   * correct, because one touch would have ended the run long before 1:30.
+   */
+  function bossInput(playerHit: boolean): { playerHit: boolean; untouched: boolean } {
+    return { playerHit, untouched: phantomHits === 0 };
+  }
+
+  /**
+   * The clock has just stopped at 1:30 and both Bills go down.
+   *
+   * Planting them matters as much as the pose does: at 1:30 the man can be
+   * mid-lance and the dog can be a ball in mid-air, and a kneeling Bill drawn
+   * where a rolling one was is a body floating two thirds of the way up the
+   * arena. Everything in flight is cleared for the same reason — a bone that
+   * outlived the fight would be the one lethal-looking thing left on a screen
+   * that has just told her she is safe.
+   */
+  function theyConcede(): void {
+    projectiles = [];
+    for (const b of bills()) {
+      b.celebrating = 'concede';
+      b.roll = false;
+      b.velocity.x = 0;
+      b.velocity.y = 0;
+      b.position.y = FLOOR_Y;
+      // Both of them turn to face her. The knee is "up to HER", so a Bill
+      // kneeling away from the Knight would read as him kneeling to the wall.
+      b.facing = player.position.x < b.position.x ? -1 : 1;
+    }
+  }
+
+  if (devEnding) jumpToTheFinish();
 
   return {
     step(rawInput: InputFrame, dt: number): void {
@@ -270,10 +381,36 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       // 2 fixed.
       if (boss.phase === 'card') {
         walkTheDogIn(dt);
-        stepBoss(boss, { playerHit: false }, dt);
+        stepBoss(boss, bossInput(false), dt);
         if (boss.phase !== 'card' && dog) {
           dog.position.x = dogWalkTo;
           dog.walkingIn = false;
+        }
+        return;
+      }
+
+      // She reached 1:30 untouched, and this is the whole ending.
+      //
+      // Damage resolution is not "switched off" here — `stepArena`, `stepEnemy`
+      // and `stepProjectile` are simply never reached from this branch, so a
+      // Bill kneeling at her feet is harmless by construction rather than by
+      // anyone remembering to disarm him. That is the distinction playtest 6
+      // ratified: the fight is OVER, not paused, so this is not a reopening of
+      // the immunity window struck twice before.
+      //
+      // Nothing she can press shortens the knee: the gate is not armed until
+      // the cheer beat starts.
+      if (boss.phase === 'won') {
+        prevFeet.x = player.position.x;
+        prevFeet.y = player.position.y;
+        if (!player.grounded) stepPlayer(player, AT_REST, world, dt);
+        if (stepEnding(ending, dt) === 'cheer') {
+          winGate.arm();
+          for (const b of bills()) b.celebrating = 'applaud';
+        }
+        if (ending.beat === 'cheer') {
+          const pressing = rawInput.attackPressed || rawInput.jumpPressed;
+          if (winGate.open(dt, pressing) && pressing) restart();
         }
         return;
       }
@@ -346,7 +483,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         juice.hitStop(FEEDBACK.rally.hitStop);
       }
 
-      switch (stepBoss(boss, { playerHit: events.playerHit }, dt)) {
+      switch (stepBoss(boss, bossInput(events.playerHit), dt)) {
         case 'dog-arrives':
           bringInTheDog();
           break;
@@ -354,6 +491,19 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           bill.hot = true;
           if (dog) dog.hot = true;
           break;
+        // 1:30, untouched: the finish line. `record()` moves here from the
+        // `over` branch it used to live in alone — `over` is unreachable once
+        // the fight ends at 1:30, so a win that did not record would be a run
+        // that left no PracticeRun at all.
+        case 'won':
+          theyConcede();
+          juice.addTrauma(FEEDBACK.courseClear.trauma);
+          record();
+          // A win nobody played must not become her record of beating them.
+          if (!devEnding) config.onPassed?.();
+          break;
+        // God mode only: the clock passed 1:30 but she was touched getting
+        // there, so the fight runs on exactly as it always did.
         case 'passed':
           config.onPassed?.();
           break;
@@ -391,7 +541,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       ctx.fillStyle = COLORS.hudText;
       const target = ` / ${formatClock(BOSS.targetSeconds)}`;
       ctx.fillText(`${formatClock(boss.elapsed)}${config.cleared ? '' : target}`, 16, 14);
-      if (boss.hot) {
+      if (boss.hot && boss.phase !== 'won') {
         ctx.font = '16px system-ui, sans-serif';
         ctx.fillStyle = COLORS.hudDim;
         ctx.fillText('they have your number now', 16, 50);
@@ -400,7 +550,12 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       ctx.font = '16px system-ui, sans-serif';
       ctx.fillStyle = COLORS.hudDim;
       ctx.fillText(
-        boss.passed ? 'past 1:30 — how long can you go?' : 'the thing at the bottom',
+        boss.phase === 'won'
+          ? 'and they never touched you'
+          : // Only reachable in god mode now: 1:30 ends the fight otherwise.
+            boss.passed
+            ? 'past 1:30 — how long can you go?'
+            : 'the thing at the bottom',
         CANVAS.width - 16,
         14,
       );
@@ -457,6 +612,8 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           'The family had two. Watch him come in — your clock is paused.',
           0.7,
         );
+      } else if (boss.phase === 'won') {
+        drawEnding(ctx, ending, jumpKey, attackKey);
       } else if (boss.phase === 'over') {
         ctx.fillStyle = 'rgba(7, 9, 18, 0.78)';
         ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
@@ -540,6 +697,52 @@ function drawBarking(
       ctx.stroke();
     }
   }
+}
+
+/**
+ * The ending, drawn.
+ *
+ * Deliberately the LIGHTEST wash in the file — 0.34 against the fail screen's
+ * 0.78. The fail screen is hiding a fight she lost; this one is the only thing
+ * on the site she is meant to look AT, and a Bill on one knee behind an opaque
+ * sheet is a beat nobody sees (playtest 6 flagged exactly this).
+ *
+ * The knee gets no text of its own for its first second: the pose is the beat,
+ * and a caption arriving on top of it would be the site explaining a joke.
+ */
+function drawEnding(
+  ctx: CanvasRenderingContext2D,
+  ending: EndingState,
+  jumpKey: () => string,
+  attackKey: () => string,
+): void {
+  const cheering = ending.beat === 'cheer';
+  const wash = cheering ? 0.34 : 0.34 * Math.max(0, beatProgress(ending) - 0.4) * 1.7;
+  ctx.fillStyle = `rgba(7, 9, 18, ${Math.min(0.34, wash)})`;
+  ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
+
+  ctx.textAlign = 'center';
+  if (!cheering) {
+    if (beatProgress(ending) > 0.45) {
+      ctx.fillStyle = COLORS.hudDim;
+      ctx.font = '19px system-ui, sans-serif';
+      ctx.fillText('They are done, Kayla.', CANVAS.width / 2, 150);
+    }
+    return;
+  }
+
+  ctx.fillStyle = COLORS.hudText;
+  ctx.font = '44px system-ui, sans-serif';
+  ctx.fillText('YOU DID IT', CANVAS.width / 2, 128);
+  ctx.font = '21px system-ui, sans-serif';
+  ctx.fillStyle = COLORS.hudDim;
+  ctx.fillText(
+    "1:30 against the Two Bills, untouched. You're the Hollow Knight Queen.",
+    CANVAS.width / 2,
+    178,
+  );
+  ctx.font = '17px system-ui, sans-serif';
+  ctx.fillText(`Press ${attackKey()} or ${jumpKey()} to face them again.`, CANVAS.width / 2, 218);
 }
 
 /** A named card over a dimmed arena: the boss's one piece of theatre. */

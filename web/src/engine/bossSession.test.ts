@@ -16,6 +16,7 @@ import { createBossSession } from './bossSession';
 import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import { CANVAS, FIXED_DT } from './constants';
 import { BOSS } from './boss';
+import { ENDING } from './ending';
 import type { InputFrame } from './types';
 
 const recorded: Record<string, unknown>[] = [];
@@ -299,5 +300,114 @@ describe("Bill the dog's entrance (playtest 6, note 5)", () => {
     const start = dogDrawnAt(session, 0);
     hold(session, 1);
     expect(dogDrawnAt(session, 0)).toBeLessThan(start);
+  });
+});
+
+/**
+ * The ending (playtest 6, notes 6 and 7).
+ *
+ * Reached through the dev seam, because it has to be: god mode is the only
+ * way a test can survive ninety seconds against Bill, and god mode is
+ * deliberately locked out of the ending. So the celebration itself is played
+ * through `playTheEnding`, and the LOCK is proved separately, on the real
+ * session, by letting god mode run the full fight and checking it never wins.
+ */
+describe('the ending', () => {
+  /** One step short of the finish line, untouched. */
+  function atTheFinish() {
+    return createBossSession({ comfort: COMFORT, playTheEnding: true });
+  }
+
+  it('ends the fight at 1:30 instead of restarting it', () => {
+    const session = atTheFinish();
+    hold(session, 0.5);
+    const copy = drawn(session).join(' ');
+    // The clock stops on the number, and the fail screen never appears.
+    expect(copy).toContain('1:30');
+    expect(copy).not.toContain('Got you.');
+    expect(copy).not.toContain('Move to begin');
+  });
+
+  it('holds the Bills\u2019 knee before anyone says anything', () => {
+    const session = atTheFinish();
+    hold(session, 0.5);
+    const copy = drawn(session).join(' ');
+    expect(copy).not.toContain('YOU DID IT');
+  });
+
+  it('cannot be hurried, however hard she is pressing', () => {
+    // The knee goes through no gate at all: the ending's gate is not armed
+    // until the cheer starts, which is the same reasoning that made the dog's
+    // card unskippable. She has just won — a mashing thumb must not eat it.
+    const session = atTheFinish();
+    hold(session, ENDING.concedeSeconds - 0.2, press({ jumpPressed: true, attackPressed: true }));
+    expect(drawn(session).join(' ')).not.toContain('YOU DID IT');
+  });
+
+  it('gets to the cheer, and tells her what she did', () => {
+    const session = atTheFinish();
+    hold(session, ENDING.concedeSeconds + 0.3);
+    const copy = drawn(session).join(' ');
+    expect(copy).toContain('YOU DID IT');
+    expect(copy).toContain('Hollow Knight Queen');
+  });
+
+  it('waits for her rather than timing out', () => {
+    // Two full minutes of her looking at it. Nothing advances on its own.
+    const session = atTheFinish();
+    hold(session, 120);
+    expect(drawn(session).join(' ')).toContain('YOU DID IT');
+  });
+
+  it('records the win, which the fail branch used to be the only place for', () => {
+    // `record()` fired only when she was touched. Once 1:30 ends the fight,
+    // `over` is unreachable after it — so a win that did not record would be
+    // a run that left no PracticeRun at all.
+    const session = atTheFinish();
+    hold(session, 0.5);
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0]).toMatchObject({ boss: true, cleared: true });
+    expect(recorded[0]?.durationMs).toBeGreaterThanOrEqual(BOSS.targetSeconds * 1000);
+  });
+
+  it('never lets a win nobody played become her record of beating them', () => {
+    const onPassed = vi.fn();
+    const session = createBossSession({ comfort: COMFORT, playTheEnding: true, onPassed });
+    hold(session, 0.5);
+    expect(onPassed).not.toHaveBeenCalled();
+    // And the run it wrote is flagged the way god-mode runs are, so the bests
+    // can never pick it up either.
+    expect(recorded[0]).toMatchObject({ godMode: true });
+  });
+
+  it('restarts when she asks, and plays the whole thing again from the knee', () => {
+    const session = atTheFinish();
+    hold(session, ENDING.concedeSeconds + 0.5);
+    expect(drawn(session).join(' ')).toContain('YOU DID IT');
+
+    hold(session, 0.5, press({ attackPressed: true }));
+    // Back to the knee: the ending's own clock restarted with the run, so the
+    // dev seam replays the sequence rather than dumping her on the cheer.
+    expect(drawn(session).join(' ')).not.toContain('YOU DID IT');
+    hold(session, ENDING.concedeSeconds + 0.3);
+    expect(drawn(session).join(' ')).toContain('YOU DID IT');
+  });
+});
+
+describe('god mode does not earn the ending', () => {
+  it('runs the whole fight past 1:30 and never celebrates', () => {
+    // The lock, proved end to end on the real session rather than on the
+    // clock alone: a god-mode run in the browser took 29 hits and still
+    // reached 1:30. She is standing still here, so Bill catches her at about
+    // two seconds and keeps catching her for the next ninety.
+    const session = afterEntrance({ comfort: COMFORT, godMode: true });
+    hold(session, 1, press({ right: true }));
+    hold(session, BOSS.targetSeconds + 3);
+
+    const copy = drawn(session).join(' ');
+    expect(copy).not.toContain('YOU DID IT');
+    expect(copy).toContain('past 1:30');
+    // Still fighting: nothing recorded, because nothing ended.
+    expect(recorded).toHaveLength(0);
   });
 });

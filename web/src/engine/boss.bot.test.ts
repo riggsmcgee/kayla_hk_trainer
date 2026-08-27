@@ -279,7 +279,7 @@ describe('the whole fight, with the touch disarmed', () => {
       // Nothing skips the card any more, so the bot sits through it like
       // she does. The clock is paused, so it costs the measurement nothing.
       if (boss.phase === 'card') {
-        stepBoss(boss, { playerHit: false }, FIXED_DT);
+        stepBoss(boss, { playerHit: false, untouched: false }, FIXED_DT);
         continue;
       }
 
@@ -319,7 +319,7 @@ describe('the whole fight, with the touch disarmed', () => {
         }
       }
 
-      switch (stepBoss(boss, { playerHit: false }, FIXED_DT)) {
+      switch (stepBoss(boss, { playerHit: false, untouched: false }, FIXED_DT)) {
         case 'dog-arrives':
           out.dogArrivedAt = boss.elapsed;
           // Where the session puts him: the far wall, then walked to his mark.
@@ -348,7 +348,15 @@ describe('the whole fight, with the touch disarmed', () => {
     expect(run.dogRolls).toBeGreaterThanOrEqual(3);
   });
 
-  it('escalates on the clock and never stops at 1:30', () => {
+  /**
+   * `untouched: false` is what keeps this harness running past 1:30 now that
+   * the finish line ends the fight — and it is the truth about it, not a
+   * dodge: this describe block disarms the touch, which is exactly what god
+   * mode does, and god mode does not earn the ending (playtest 6). Measuring
+   * Bill's behaviour across the full 95 s is the whole point of the bot, so
+   * the harness stays on the god-mode path deliberately.
+   */
+  it('escalates on the clock, and with the touch disarmed runs past 1:30', () => {
     const run = runToTheEnd(BOSS.targetSeconds + 5);
     expect(run.hotAt).toBeGreaterThanOrEqual(BOSS.heatAt);
     expect(run.hotAt).toBeLessThan(BOSS.heatAt + 0.1);

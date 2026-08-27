@@ -4,8 +4,13 @@ import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import type { BossEvent, BossState } from './boss';
 import { FIXED_DT } from './constants';
 
-const CALM = { playerHit: false } as const;
-const TOUCHED = { playerHit: true } as const;
+const CALM = { playerHit: false, untouched: true } as const;
+const TOUCHED = { playerHit: true, untouched: true } as const;
+/**
+ * A run that has already been touched and is somehow still going: god mode,
+ * the only way that can happen. 1:30 is a marker for this run, not a win.
+ */
+const BRUISED = { playerHit: false, untouched: false } as const;
 
 const steps = (seconds: number): number => Math.round(seconds / FIXED_DT);
 
@@ -157,19 +162,66 @@ describe('the heat at 1:00', () => {
   });
 });
 
-describe('1:30 is the target, not the end', () => {
-  it('marks the run passed and keeps the fight running', () => {
+describe('1:30 is the finish line', () => {
+  /**
+   * Playtest 6 STRUCK "1:30 marks the stop done, and the fight keeps
+   * escalating after that for her best time". An invisible score that runs
+   * past the ending is worse than an ending — and the score really was
+   * invisible: `bestLine.ts` never had a boss line to show it on.
+   */
+  it('ends the fight and wins it, on the first step that reaches it', () => {
     const s = pastTheDog();
     fight(s, BOSS.targetSeconds - s.elapsed - 0.1);
     expect(s.passed).toBe(false);
-
-    expect(fight(s, 0.3)).toEqual(['passed']);
-    expect(s.passed).toBe(true);
-    // Ratified: the clock keeps escalating past 1:30, chasing her best time.
     expect(s.phase).toBe('fighting');
+
+    expect(fight(s, 0.3)).toEqual(['won']);
+    expect(s.passed).toBe(true);
+    expect(s.phase).toBe('won');
+  });
+
+  it('freezes the clock at the finish line, and never fires again', () => {
+    const s = pastTheDog();
+    fight(s, BOSS.targetSeconds - s.elapsed + 1);
     const atTarget = s.elapsed;
-    fight(s, 10);
+    expect(atTarget).toBeGreaterThanOrEqual(BOSS.targetSeconds);
+
+    // Nothing after the win moves the score or reports anything.
+    expect(run(s, 10)).toEqual([]);
+    expect(s.elapsed).toBeCloseTo(atTarget, 10);
+  });
+
+  it('is only a marker for a run that was already touched — god mode', () => {
+    // God mode routes every hit through `wouldHaveHit`, so `playerHit` stays
+    // false and the run survives. A god-mode run took 29 hits and still
+    // reached 1:30 in the browser; it does not get the ending.
+    const s = pastTheDog();
+    const events: BossEvent[] = [];
+    const toTheLine = steps(BOSS.targetSeconds - s.elapsed + 0.2);
+    for (let i = 0; i < toTheLine; i++) {
+      const ev = stepBoss(s, BRUISED, FIXED_DT);
+      if (ev) events.push(ev);
+    }
+    // The heat at 1:00 is on the way there, and it still fires normally.
+    expect(events).toEqual(['heat', 'passed']);
+    expect(s.passed).toBe(true);
+    expect(s.phase).toBe('fighting');
+
+    // And it keeps escalating, exactly as it did before the ending existed.
+    const atTarget = s.elapsed;
+    for (let i = 0; i < steps(10); i++) stepBoss(s, BRUISED, FIXED_DT);
     expect(s.elapsed).toBeGreaterThan(atTarget + 9.9);
+  });
+
+  it('is beaten by a touch on the step they share', () => {
+    // The same rule the dog's card already follows: the run ends where the
+    // touch found her, and the threshold never latches.
+    const s = pastTheDog();
+    fight(s, BOSS.targetSeconds - s.elapsed - FIXED_DT / 2);
+
+    expect(stepBoss(s, TOUCHED, FIXED_DT)).toBe('over');
+    expect(s.phase).toBe('over');
+    expect(s.passed).toBe(false);
   });
 });
 

@@ -90,6 +90,12 @@ function drawRollHazardRing(
  * | —       | idle        | `idle`      |                                      |
  */
 export function billPose(enemy: Enemy): BillPose {
+  // The ending, checked before anything else: at 1:30 the fight stops mid-
+  // attack, and whatever Bill was in the middle of is no longer true of him.
+  // The user picked the KNEE for the concede — "back knee down, foam finger up
+  // to her" — over the bow and the applause, and then picked the applause for
+  // the cheer, so the two now mean two different things.
+  if (enemy.celebrating) return enemy.celebrating === 'concede' ? 'kneel' : 'applaud';
   if (enemy.attackKind === 'lance') {
     if (enemy.phase === 'telegraph') return 'lanceTell';
     if (enemy.phase === 'active') return 'lanceDash';
@@ -112,6 +118,10 @@ export function billPose(enemy: Enemy): BillPose {
  * the man's shape.
  */
 export function billDogPose(enemy: Enemy): BillDogPose {
+  // The ending. `lieDown` is the dog's half of the man's knee — chin out, ear
+  // back, all the way to the floor; `applaud` sits him up on his haunches
+  // patting his front paws on the man's own 5 Hz clap beat.
+  if (enemy.celebrating) return enemy.celebrating === 'concede' ? 'lieDown' : 'applaud';
   // Trotting in on his card. Checked first because he is carrying no attack
   // and no phase during it, so every branch below would fall through to
   // `idle` and his entrance would be a standing dog on a conveyor belt.

@@ -304,6 +304,17 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
    */
   const [runCount, setRunCount] = useState(0);
   /**
+   * DEV TOOL: remove in the final build. Watch the ending without beating the
+   * fight first. God mode cannot reach it on purpose — a run that absorbed
+   * hits has not earned it — so this is the only way to look at the
+   * celebration while it is being built.
+   */
+  const [watchEnding, setWatchEnding] = useState(false);
+  const replay = (ending: boolean) => {
+    setWatchEnding(ending);
+    setRunCount((n) => n + 1);
+  };
+  /**
    * Whether she had already survived 1:30 BEFORE this visit. Read once and
    * held for the life of the beat, deliberately: `cleared` is baked into the
    * session when it is built, so a live value rebuilds the whole fight the
@@ -326,6 +337,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
         rollVariant,
         entranceVariant,
         dogLook: look,
+        playTheEnding: watchEnding,
         jumpKey,
         attackKey,
         cleared: clearedBefore,
@@ -339,6 +351,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
       rollVariant,
       entranceVariant,
       look,
+      watchEnding,
       jumpKey,
       attackKey,
       clearedBefore,
@@ -357,10 +370,14 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
       />
       {godMode && (
         <p className="fine-print settings-note">
-          <button type="button" className="text-button" onClick={() => setRunCount((n) => n + 1)}>
+          <button type="button" className="text-button" onClick={() => replay(false)}>
             Start the fight over
           </button>{' '}
-          — god mode means it cannot end on its own.
+          — god mode means it cannot end on its own.{' '}
+          <button type="button" className="text-button" onClick={() => replay(true)}>
+            Watch the ending
+          </button>{' '}
+          — jumps to 1:30 untouched. It does not count as beating them.
         </p>
       )}
     </div>
