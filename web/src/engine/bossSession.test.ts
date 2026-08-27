@@ -443,3 +443,42 @@ describe('god mode does not earn the ending', () => {
     expect(recorded).toHaveLength(0);
   });
 });
+
+/**
+ * The escape, once the ending has been earned (playtest 7).
+ *
+ * Twenty seconds is 7.1x Bill's entrance, and this beat replays on every win.
+ * The FIRST win is protected completely; every win after it can be hurried by
+ * holding forward, exactly as `stepIntro` already lets her hurry the entrance.
+ */
+describe('hold-to-hurry, but only after the first time', () => {
+  const atTheFinish = (cleared: boolean) =>
+    createBossSession({ comfort: COMFORT, playTheEnding: true, cleared });
+
+  it('cannot be hurried on the win that earns it', () => {
+    // She has never done this before. Holding forward changes nothing at all,
+    // because the first time is the one that is supposed to be magic.
+    const first = atTheFinish(false);
+    hold(first, 8, press({ jumpHeld: true }));
+    expect(drawn(first).join(' ')).not.toContain('YOU DID IT');
+    expect(drawn(first).join(' ')).not.toContain('to hurry');
+  });
+
+  it('runs at 2.5x for a Knight who has beaten them before', () => {
+    // 8 s of held jump is 20 s of ending, which is past the cheer. The same
+    // 8 s without it is still in the fake-out.
+    const again = atTheFinish(true);
+    hold(again, 8, press({ jumpHeld: true }));
+    expect(drawn(again).join(' ')).toContain('YOU DID IT');
+
+    const patient = atTheFinish(true);
+    hold(patient, 8);
+    expect(drawn(patient).join(' ')).not.toContain('YOU DID IT');
+  });
+
+  it('says so, in the entrance’s own words', () => {
+    const again = atTheFinish(true);
+    hold(again, 1);
+    expect(drawn(again).join(' ')).toContain('to hurry');
+  });
+});

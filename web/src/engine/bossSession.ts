@@ -558,7 +558,19 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           stepPlayer(player, AT_REST, world, dt);
         }
 
-        switch (stepEnding(ending, dt)) {
+        // Magic once, a tax afterwards. Twenty seconds is 7.1x Bill's
+        // entrance, so the FIRST win is protected completely and every win
+        // after it can be hurried by holding forward — the same bargain
+        // `stepIntro` already strikes, at the same 2.5x.
+        //
+        // `config.cleared` is `clearedBefore` in PlayWell: read once with
+        // `useState` and frozen for the life of the beat. It must NEVER become
+        // a live read of `progress.finaleBossCleared`, which `onPassed()` sets
+        // at the moment she wins — a live dependency there rebuilds the
+        // session mid-celebration, which is verbatim the defect fixed in
+        // 819c0ea.
+        const hurrying = (config.cleared ?? false) && rawInput.jumpHeld;
+        switch (stepEnding(ending, hurrying ? dt * INTRO_FAST_FORWARD : dt)) {
           case 'gather':
             gatherTheCast();
             break;
@@ -811,7 +823,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           0.7,
         );
       } else if (boss.phase === 'won') {
-        drawEnding(ctx, ending, bill.position.x, jumpKey, attackKey);
+        drawEnding(ctx, ending, bill.position.x, config.cleared ?? false, jumpKey, attackKey);
       } else if (boss.phase === 'over') {
         ctx.fillStyle = 'rgba(7, 9, 18, 0.78)';
         ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
@@ -983,6 +995,7 @@ function drawEnding(
   ctx: CanvasRenderingContext2D,
   ending: EndingState,
   billX: number,
+  cleared: boolean,
   jumpKey: () => string,
   attackKey: () => string,
 ): void {
@@ -1003,6 +1016,17 @@ function drawEnding(
     drawShout(ctx, endingCopy.summonFirst, billX, shoutBob(ending.elapsed));
   } else if (ending.beat === 'gather' && beatElapsed(ending) < SUMMON_SECOND_SECONDS) {
     drawShout(ctx, endingCopy.summonSecond, billX, shoutBob(ending.elapsed));
+  }
+
+  // The hurry hint, once she has beaten them before. Bottom-right, in the
+  // same words and the same place the entrance puts it, because it is the
+  // same bargain — and it is the one line the ending is allowed to say
+  // during the fake-out, since it says nothing about winning.
+  if (cleared && ending.beat !== 'cheer') {
+    ctx.textAlign = 'right';
+    ctx.fillStyle = COLORS.hudDim;
+    ctx.font = '15px system-ui, sans-serif';
+    ctx.fillText(endingCopy.hurryHint(jumpKey()), CANVAS.width - 16, CANVAS.height - 26);
   }
 
   // The gather and the hold get NO text at all. That silence is ratified:

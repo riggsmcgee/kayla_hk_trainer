@@ -54,6 +54,13 @@ export const endingCopy = {
   winPrompt: (jump: string, attack: string): string =>
     `Press ${attack} or ${jump} to face them again.`,
 
+  /**
+   * The hurry hint, shown only once she has beaten them before. Deliberately
+   * word-for-word the entrance's line: it is the same bargain, and she has
+   * already learned what it means from Bill walking on.
+   */
+  hurryHint: (jump: string): string => `hold ${jump} to hurry`,
+
   /** The dev drawer's own line, so the deck sees it too and can flag it as dev-only. */
   devWatchEnding: 'Watch the ending',
 } as const;
