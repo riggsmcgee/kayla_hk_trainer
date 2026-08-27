@@ -29,6 +29,15 @@ import {
   stepEnding,
 } from './ending';
 import type { CastMark, EndingState } from './ending';
+import {
+  CONFETTI,
+  CONFETTI_COLORS,
+  CONFETTI_COLORS_SOFT,
+  burstConfetti,
+  shotHasBurst,
+  stepConfetti,
+} from './confetti';
+import type { ConfettiPiece } from './confetti';
 import { endingCopy } from '../copy/ending';
 import { ROSTER } from './roster';
 import {
@@ -43,7 +52,7 @@ import { dogLook } from './dogLook';
 import type { EntranceShape } from './entrance';
 import { createArenaState, stepArena } from './arena';
 import { CANVAS, FIXED_DT } from './constants';
-import { createEnemy, stepEnemy, stepProjectile } from './enemies';
+import { ENEMY_SIZES, createEnemy, stepEnemy, stepProjectile } from './enemies';
 import type { Enemy, Projectile } from './enemies';
 import { FEEDBACK, LAND_SQUASH_TIME, computeStretch, createEdgeCarry, createJuice } from './juice';
 import type { ComfortSettings } from './juice';
@@ -186,6 +195,14 @@ const FLIER_HOVER = 56;
  */
 const STILL_THE_FIGHT = 'the thing at the bottom';
 
+/**
+ * How high up the arena the volley bursts.
+ *
+ * Above the Knight's risen head and clear of the HUD line, so the paper falls
+ * THROUGH the tableau rather than starting inside it.
+ */
+const CONFETTI_BURST_Y = 90;
+
 /** Ease-out cubic: everything in the ending decelerates onto its mark. */
 function easeOut(t: number): number {
   return 1 - (1 - t) ** 3;
@@ -221,6 +238,18 @@ export function createBossSession(config: BossSessionConfig): GameSession {
    * that the fight is over.
    */
   let cast: CastMember[] = [];
+  /**
+   * The spitter's celebration volley, and the paper it becomes.
+   *
+   * Only ever written during the cheer. `stepProjectile` cannot drive it —
+   * that step has no gravity, deliberately, because a spitter shot must fly
+   * true — so confetti has its own step in `confetti.ts`.
+   */
+  let confetti: ConfettiPiece[] = [];
+  /** Seconds since the current shot left the spitter's mouth. */
+  let shotAge = 0;
+  /** Which shot this is, so consecutive bursts do not stamp one shape. */
+  let shotIndex = 0;
   /** Where the dog is heading while his card is up, and how fast. */
   let dogWalkTo = 0;
   let dogWalkFrom = 0;
@@ -264,6 +293,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
     dog = null;
     cast = [];
+    confetti = [];
+    shotAge = 0;
+    shotIndex = 0;
     promptShown = false;
     leaving = false;
     projectiles = [];
@@ -484,6 +516,40 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   }
 
   /**
+   * The spitter fires straight up, and the shot bursts into paper at the top.
+   *
+   * Ratified: "the spitter re-fires on a ~2 s cycle so something is always
+   * drifting through the held tableau." The cheer runs until she presses
+   * forward, so this has to be a CYCLE rather than a one-off — and every piece
+   * has to expire, or a celebration she sits in for two minutes grows a list
+   * that never stops.
+   *
+   * Nothing here can hurt her. It is drawn paper, not a projectile: it never
+   * enters `projectiles`, so `stepArena` never sees it and it has no hitbox
+   * to switch off.
+   */
+  function fireTheVolley(dt: number): void {
+    confetti = stepConfetti(confetti, dt);
+
+    const spitter = cast.find((c) => c.enemy.id === 'spitter');
+    if (!spitter) return;
+
+    shotAge += dt;
+    // The shot climbs from the spitter's mouth to a burst height near the top
+    // of the arena; the sky above it is the only empty part of this tableau.
+    const mouth = spitter.enemy.position.y - ENEMY_SIZES.spitter.height;
+    const climb = mouth - CONFETTI_BURST_Y;
+    if (shotHasBurst(shotAge, climb)) {
+      confetti = [
+        ...confetti,
+        ...burstConfetti(spitter.enemy.position.x, CONFETTI_BURST_Y, shotIndex),
+      ];
+      shotIndex += 1;
+      shotAge -= CONFETTI.cycleSeconds;
+    }
+  }
+
+  /**
    * She lifts off the floor and drifts to the horizontal centre.
    *
    * Written into `player.position`, NEVER into the draw call: `render` lerps
@@ -614,6 +680,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
             break;
         }
 
+        if (ending.beat === 'cheer') fireTheVolley(hurrying ? dt * INTRO_FAST_FORWARD : dt);
         if (ending.beat === 'gather') walkTheCastOn(beatProgress(ending));
         if (ending.beat === 'rise') liftHer(beatProgress(ending), riseFrom);
         // The punchline, three seconds into the applause. He claps with
@@ -781,6 +848,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       if (dog)
         drawEnemy(ctx, lerpVec(prevDogFeet, dog.position, alpha), dog, simTime, 0, look.ring);
       drawProjectiles(ctx, projectiles, look.boneSteps);
+      drawConfetti(ctx, confetti, comfort.reduceFlashing);
       drawNailSlash(ctx, feet, player);
       drawKnight(ctx, feet, player, computeStretch(player.velocity.y, landSquash));
       ctx.restore();
@@ -910,6 +978,32 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };
+}
+
+/**
+ * The confetti, drawn.
+ *
+ * Squares on whole 4 px coordinates, because everything else in this fight is:
+ * paper that slid smoothly past a cast drawn in whole cells would be the one
+ * thing on screen from a different medium.
+ *
+ * `reduceFlashing` swaps the palette for a softened one rather than dropping
+ * the confetti. The ratified line is that she still gets her party — the
+ * setting exists to stop things flashing at her, and steady paper falling
+ * down a screen is not that.
+ */
+function drawConfetti(
+  ctx: CanvasRenderingContext2D,
+  pieces: readonly ConfettiPiece[],
+  reduceFlashing: boolean,
+): void {
+  if (pieces.length === 0) return;
+  const palette = reduceFlashing ? CONFETTI_COLORS_SOFT : CONFETTI_COLORS;
+  const step = (v: number) => Math.round(v / 4) * 4;
+  for (const p of pieces) {
+    ctx.fillStyle = palette[p.color] ?? palette[0]!;
+    ctx.fillRect(step(p.x), step(p.y), CONFETTI.size, CONFETTI.size);
+  }
 }
 
 /**
