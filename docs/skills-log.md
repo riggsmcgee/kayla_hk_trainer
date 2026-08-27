@@ -327,3 +327,18 @@ Observations (Session 15):
   never ask whether Riggs looks like anyone. They ask whether he is inside his box, whether anything
   interpolates (240 samples across four seconds must collapse to fewer than 24 distinct pictures),
   whether the tie parameter is live, and whether the three candidates are genuinely three.
+
+**Session 15, added after the sprint's last task:**
+
+- **The most valuable thing the sprint produced was a correction to its own finding.** An exploration
+  said "four strategies all die to body contact", which sounded structural and went into PLAN.md as
+  a lead. It was wrong: the instrumentation asked which ENEMY was mid-attack at the moment of the
+  hit, and the killer was a BONE already in flight whose thrower had gone back to idle. The label
+  said body because the question was wrong. **When a measurement produces a suspiciously clean
+  result — four strategies, one identical time — suspect the instrument before the subject.**
+
+- **Answering the biggest untested assumption cost twenty minutes.** Every number in the Two Bills
+  fight was derived and never played to the end, so it was possible the whole ending could never
+  fire. Extending the existing bot from 30 s to the real 90 s target was a four-line change to a
+  test that already existed, and it came back green. **The question that has been open longest is
+  not always the expensive one to close.**
