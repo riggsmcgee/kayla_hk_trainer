@@ -32,16 +32,42 @@ Drop one: `git revert <hash>` on the sprint branch first, then merge.
 
 ## Baseline (before any change)
 
-(deferred — see below)
+**The browser pass the last two sprints both skipped.** Every route loaded cold
+in headless Chromium with the console open, full progress and god mode seeded,
+screenshots in `.proactive/scratch/routes/`. Driven by Playwright rather than
+`agent-browser`, for the reason now corrected in the skills log: it is not
+broken, it is unusably slow to cold-start.
 
-The suite is **deliberately not run yet**. Eleven workflow agents are writing
-files and running `tsc` and `vitest` on this machine right now, and last
-sprint's one red test was a 653-second timeout caused by exactly that
-contention. The baseline runs on an idle machine the moment the workflow lands,
-and it is recorded here before anything is integrated.
+**Result: clean.** Ten routes — home, three lessons, three mini-games, Settings,
+`#/the-end`, and a deliberate nonsense route. **Zero console errors, zero page
+errors, zero failed requests, and no horizontal overflow on any page.** Titles
+and headings all render. That is a better result than I expected and it is
+worth having on the record.
 
-Last known green, at the tip of the previous sprint: **754 tests in `web`
-(35 files), 1 in `server`**, lint and typecheck clean.
+Two things it turned up, and one thing it cleared:
+
+1. **CLEARED — the seven "Change" buttons on Settings are properly labelled.**
+   Their visible text is all "Change", which looked like a screen-reader trap,
+   but the accessible names are "Change button for Jump", "…for Attack" and so
+   on. I checked before claiming it. The a11y work in M6.5 holds up.
+2. **REAL — two buttons on Settings share one accessible name.** "Reset to
+   defaults" appears twice (`Settings.tsx:210` for the keyboard bindings,
+   `:286` for the controller). Tabbing the page, or listing its buttons, gives
+   no way to tell them apart. The file already has the right convention for
+   this — the Change buttons name their action — so the fix is to follow it.
+   Queued as this sprint's next task.
+3. **NOTED, not acted on — an unknown route silently renders home.**
+   `#/nonsense-route` returns the map with no explanation. That is ordinary
+   catch-all behaviour and arguably correct, but the site ships to Pages with a
+   HashRouter, so a stale bookmark lands her somewhere confusing and silent.
+   A proposal, not a bug; see "Ideas not acted on".
+
+**The suite was deliberately not run at baseline.** Eleven workflow agents were
+running `tsc` and `vitest` on this machine, and last sprint's only red was a
+653-second timeout caused by exactly that contention. Last known green, at the
+tip of the previous sprint: **754 tests in `web` (35 files), 1 in `server`**,
+lint and typecheck clean. The full suite runs on an idle machine before
+anything is integrated, and again at the final check.
 
 ## Final check (after the last change)
 
