@@ -20,6 +20,7 @@ import {
   beatElapsed,
   beatProgress,
   castMarks,
+  crowdHop,
   createEndingState,
   inkWidth,
   promptIsUp,
@@ -460,6 +461,25 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   }
 
   /**
+   * The five stand up and join in.
+   *
+   * All it does is turn them back toward her, and that is not redundant with
+   * the kneel: she DRIFTS to the horizontal centre as she rises, so a body
+   * that was on her left through the whole fake-out can be on her right by
+   * the time the applause starts, still facing the wall she left.
+   *
+   * Their celebration itself is `crowdHop`, at draw time. PLAN.md §8's
+   * ratified party states were built and rejected on sight — see the note on
+   * `crowdHop` in ending.ts.
+   */
+  function theyCelebrate(): void {
+    for (const c of cast) {
+      const e = c.enemy;
+      e.facing = player.position.x < e.position.x ? -1 : 1;
+    }
+  }
+
+  /**
    * She lifts off the floor and drifts to the horizontal centre.
    *
    * Written into `player.position`, NEVER into the draw call: `render` lerps
@@ -586,6 +606,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
             break;
           case 'cheer':
             for (const b of bills()) b.celebrating = 'applaud';
+            theyCelebrate();
             break;
         }
 
@@ -720,10 +741,11 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       // The walk-on cast, behind the Bills: they are the crowd, and a warden
       // drawn over Bill's 160 px body would read as standing in front of him.
       const bow = reverence(ending);
-      for (const c of cast) {
+      const partying = boss.phase === 'won' && ending.beat === 'cheer';
+      for (const [i, c] of cast.entries()) {
         const feetAt = {
           x: c.prevX + (c.enemy.position.x - c.prevX) * alpha,
-          y: c.enemy.position.y,
+          y: c.enemy.position.y - (partying ? crowdHop(simTime, i) : 0),
         };
         drawReverent(ctx, feetAt, bow, c.enemy.facing, () =>
           drawEnemy(ctx, feetAt, c.enemy, simTime, 0),

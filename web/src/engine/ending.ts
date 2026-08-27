@@ -191,6 +191,35 @@ export function reverence(s: EndingState): number {
   }
 }
 
+/**
+ * How high body `i` of the crowd is off the floor right now, celebrating.
+ *
+ * `Math.max(0, sin)` rather than a plain sine, so each body spends half its
+ * cycle ON the floor: a crowd that hovers sinusoidally reads as floating, and
+ * a crowd that hops reads as cheering. The stagger is what stops five bodies
+ * from moving as one object — they are cheering, not marching.
+ *
+ * A DRAW-time offset on purpose. Nothing in the tableau is simulated after
+ * 1:30, and a hop written into `position` would be one more piece of state the
+ * restart has to remember to clear.
+ *
+ * This carries the whole celebration for the five, and it is doing so because
+ * the alternative was TRIED and rejected on sight. PLAN.md §8 ratified giving
+ * each of them its own party state through the fields its painter already
+ * reads — the warden waving its shield, the duelist's upward anti-air, the
+ * spitter's volley. In a browser the warden's `skyward` telegraph paints its
+ * LANDING ZONE, a grey slab the height of the arena, and a hazard marker is
+ * the last thing a celebration should be drawing; the duelist's anti-air
+ * reads as a lamp post rather than as raised arms. Both wanted new drawing,
+ * not new state, so they are written up in PLAN.md rather than half-shipped.
+ */
+export function crowdHop(timeS: number, i: number): number {
+  return Math.max(0, Math.sin(timeS * 5.2 + i * 1.3)) * CROWD_HOP_HEIGHT;
+}
+
+/** How high a celebrating body leaves the floor at the top of its hop. */
+export const CROWD_HOP_HEIGHT = 9;
+
 /** True once the dog has stopped applauding and started showing off. */
 export function dogIsFlipping(s: EndingState): boolean {
   return s.beat === 'cheer' && beatElapsed(s) >= ENDING.cheerFlipAt;

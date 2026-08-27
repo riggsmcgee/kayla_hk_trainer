@@ -15,7 +15,9 @@ import {
   ENDING_PROMPT_SECONDS,
   beatElapsed,
   beatProgress,
+  CROWD_HOP_HEIGHT,
   castMarks,
+  crowdHop,
   createEndingState,
   dogIsFlipping,
   inkWidth,
@@ -247,5 +249,27 @@ describe('the cast marks', () => {
     expect(slotX(0)).toBeGreaterThan(0);
     expect(slotX(CAST_SLOTS - 1)).toBeLessThan(CANVAS.width);
     expect(slotX(1) - slotX(0)).toBeCloseTo(CANVAS.width / CAST_SLOTS, 5);
+  });
+});
+
+describe('the crowd hop', () => {
+  it('puts every body back on the floor, so they hop rather than hover', () => {
+    // A plain sine would leave them floating half the time. This is what makes
+    // it read as cheering.
+    const lows = [];
+    for (let t = 0; t < 4; t += 1 / 60) lows.push(crowdHop(t, 0));
+    expect(Math.min(...lows)).toBe(0);
+    expect(Math.max(...lows)).toBeCloseTo(CROWD_HOP_HEIGHT, 1);
+  });
+
+  it('staggers them, so five bodies do not move as one object', () => {
+    const together = [0, 1, 2, 3, 4].map((i) => crowdHop(1.0, i));
+    expect(new Set(together.map((h) => h.toFixed(3))).size).toBeGreaterThan(1);
+  });
+
+  it('never pushes a body below the floor it is standing on', () => {
+    for (let t = 0; t < 4; t += 0.01) {
+      for (let i = 0; i < 5; i++) expect(crowdHop(t, i)).toBeGreaterThanOrEqual(0);
+    }
   });
 });
