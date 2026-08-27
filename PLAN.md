@@ -347,7 +347,26 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 ### Planned, needs its own design conversation
 
 - **The boss's first tuning pass** — every number in the fight is derived against the shipped physics and **none of it has been played by a person**. The knobs are `ATTACKS.bill.lanceSpeed` and `lanceHeight`; never `PHYSICS`, whose gravity is the one estimated value in the engine and which prices the pogo course's ceiling too. Two specific things to watch: a standing Knight is caught at about **0:02**, which may be too fast for a first meeting; and a mashed pogo chain is ended by Bill's **body** rather than by the shake-off, because the 0.41 s nail cadence desyncs from the ~0.6 s bounce and he has no pogo-safe cap (ratified).
-- **The boss's headless survival bot, extended** — `engine/boss.bot.test.ts` proves a Knight who jumps at the tell survives Bill for 30 s, and that standing still and running away both lose. It does **not** yet reach 0:30, so the dog's arrival, the 1:00 heat and the 1:30 crossing are proved only at the clock level in `boss.test.ts`. Extending the bot through the dog is what would let `bossSession.test.ts` assert the card and the heat end to end.
+- **The boss's headless survival bot, extended** — `engine/boss.bot.test.ts` proves a Knight who jumps at the tell survives Bill for 30 s, and that standing still and running away both lose. Extending it through the dog is what would let `bossSession.test.ts` assert the card and the heat end to end.
+
+  **PART ANSWERED in Session 15**, and the half that is answered is the one that mattered.
+  `boss.bot.test.ts` now runs the read all the way to **1:30 against Bill, and it clears it**
+  (`572c6de`): stand still, commit to a held jump when the lance commits, ten passes dodged along
+  the way. So the finish line is reachable by something a person can actually do, and the ending
+  built across Sessions 13–15 can fire. That was the biggest untested assumption in the project.
+
+  **The dog is still open, and there is now a lead worth chasing.** An exploration harness that
+  added him at 0:30 killed FOUR different strategies — stand and jump, hop the ball, hold the
+  middle, back away from him — all within **2.7 seconds** of his arrival, and every one of them by
+  **body contact** rather than by an attack. Four strategies dying at an identical time is the
+  signature of something structural rather than something tactical.
+
+  **The caveat that keeps this a lead and not a verdict:** the harness dropped a fully active dog
+  200 px from a wall, while the real session walks him in during a card, with the clock paused and
+  `walkingIn` set. **The next step is to walk him in exactly as `bringInTheDog` does** and see
+  whether the 2.7 seconds survives it. If it does, the first thing to look at is his CONTACT
+  behaviour rather than the roll, because no attack was live when the bot died.
+
 - **Crowd control during the boss** — extra roster enemies joining the Bills. Deferred: get the two Bills good first.
 
 - **The Bills' entrances — BUILT; **Heavy** chosen in playtest 5** _(Session 10)_. Everything ratified about them is honoured: 2–3 s each, the clock frozen throughout so a slow intro can never eat her best time, replayed on every retry, hold-jump running the man's at 2.5× rather than skipping, the man off-frame when the beat opens with his thumps landing before he appears, and the dog's 0:30 card now running its full length with no skip and no fast-forward (playtest 6, note 5). The barking is drawn, not heard. Three variants ship — **Heavy**, **Sudden**, **Looming** — each covering both Bills, picked in the dev drawer. **Heavy** is the choice. What is left is the step that pays: measuring what the near-misses had in common with the winner — which has now failed to run twice, both times because the near-misses could not be recalled after the fact (playtest 6).

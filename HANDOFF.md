@@ -13,6 +13,13 @@ rise and the applause and the confetti and the backflips and the party hats,
 the hold-to-hurry escape, `#/the-end`, and the generated copy deck. The last
 two landed in the sprint before this one; the rest landed here.
 
+**And the finish line turns out to be reachable.** Every number in the Two Bills
+fight was derived against the physics and never played to the end by anything,
+so it was possible — right up until this sprint — that a flawless 1:30 was not
+achievable at all and the whole ending could never fire. Against Bill it is,
+by a strategy a person can execute: stand still, commit to a held jump when the
+lance commits. The bot clears 1:30 with ten passes dodged.
+
 **The dojo can be finished.** Before this sprint, pressing forward at the end of
 the celebration restarted the fight — there was no way out of the game. Now she
 beats the Two Bills, watches the twenty seconds, presses forward, and arrives at
@@ -75,7 +82,17 @@ away the exact work you asked for, so the sprint took it as task 1.
    directly. It had been running ~90 minutes and would not have finished inside
    the window. Nothing was lost.
 
-6. **Still not built:** the short page and component strings (the lesson PROSE is
+6. **The dog is the open question now, and there is a lead.** An exploration
+   harness that added him at 0:30 killed FOUR different strategies — stand and
+   jump, hop the ball, hold the middle, back away — all within **2.7 seconds**
+   of his arrival, and every one by **body contact** rather than by an attack.
+   Four strategies dying at an identical time is structural, not tactical. The
+   caveat that keeps it a lead: the harness dropped a fully active dog 200 px
+   from a wall, while the real session walks him in during a card with the
+   clock paused. Walking him in the way `bringInTheDog` does is the next step,
+   and it is written into PLAN.md M6.7 with the numbers.
+
+7. **Still not built:** the short page and component strings (the lesson PROSE is
    ratified to stay in its pages), and the live deck that saves its own edits.
    Everything else in the contract shipped.
 
@@ -97,6 +114,7 @@ away the exact work you asked for, so the sprint took it as task 1.
 | 12  | `396b4d5` | **The fight's 17 canvas strings move into `copy/fight.ts`** — zero behaviour change           | `git show 396b4d5`                                  | low  |
 | 13  | `222444d` | **The copy deck**, generated from the modules rather than transcribed                         | `node scripts/build-copy-deck.mjs`, or the artifact | none |
 | 14  | `05804ba` | **Party hats** on all five, drawn over the bodies rather than through their painters          | the celebration, from ~14 s                         | low  |
+| 15  | `572c6de` | **1:30 untouched is reachable** — the survival bot now runs the read to the finish line       | `npx vitest run src/engine/boss.bot.test.ts`        | none |
 
 Merge everything: `git checkout proactive/2026-08-27-1130 && git merge proactive/2026-08-27-1426`
 Drop one: `git revert <hash>` on the sprint branch first, then merge.
@@ -132,8 +150,9 @@ timeout from exactly that contention. Last known green at the branch point:
 
 ## Final check (after the last change)
 
-- `npm test` — **green: 818 in `web` (39 files), 1 in `server`.** +64 on the
+- `npm test` — **green: 819 in `web` (39 files), 1 in `server`.** +65 on the
   branch point.
+- `npm run build` — clean, 414.88 kB / 130.51 kB gzipped.
 - `npm run typecheck` — clean. `npm run lint` — clean. Prettier run on every file
   touched.
 - **End to end, twice.** The ten-route walk again, and the new `e2e-finish.mjs`:
