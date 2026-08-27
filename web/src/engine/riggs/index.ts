@@ -69,7 +69,7 @@ export const DEFAULT_RIGGS_VARIANT: RiggsVariant = 0;
  *
  * It is one constant in one place precisely so answering costs one line.
  */
-export const RIGGS_TIE = '#c8901f';
+export const RIGGS_TIE = '#a8891c';
 
 /** Clamp anything a stale setting or a hand-edited blob might hold. */
 export function riggsCandidate(variant: RiggsVariant): RiggsCandidate {

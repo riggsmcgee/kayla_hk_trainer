@@ -12,6 +12,7 @@ import { PlayPogo } from './pages/PlayPogo';
 import { PlayDodge } from './pages/PlayDodge';
 import { PlayWell } from './pages/PlayWell';
 import { Settings } from './pages/Settings';
+import { TheEnd } from './pages/TheEnd';
 
 export function App() {
   return (
@@ -44,6 +45,9 @@ export function App() {
             <Route path={chapterById('dodge-arena').route} element={<PlayDodge />} />
             <Route path={chapterById('finale').route} element={<PlayWell />} />
             <Route path="/settings" element={<Settings />} />
+            {/* NOT a stop on the road, so deliberately not in chapters.ts: she
+                arrives here from the celebration, not from the map. */}
+            <Route path="/the-end" element={<TheEnd />} />
             {/* Old addresses keep working (playtest 1: the lessons index was
                 redundant with the map; "practice" became "mini-games"). */}
             <Route path="/lessons" element={<Navigate to="/" replace />} />

@@ -4,7 +4,9 @@
  * and no strip. The real controllers get their check-and-remap here in M7.
  */
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { ComfortToggles } from '../components/ComfortToggles';
+import { theEndCopy } from '../copy/theEnd';
 import {
   ACTIONS,
   DEFAULT_BINDINGS,
@@ -24,7 +26,7 @@ import {
 import { friendlyKeyName } from '../storage/keyNames';
 import { useGamepadBindings } from '../storage/useGamepadBindings';
 import { useBindings } from '../storage/useBindings';
-import { notifyProgressChanged, progressStore } from '../storage/useChapterProgress';
+import { notifyProgressChanged, progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
@@ -63,6 +65,7 @@ const PAD_POLL_MS = 160;
 type ResetStage = 'idle' | 'confirm' | 'cleared';
 
 export function Settings() {
+  const { progress } = useProgress();
   const [bindings, setBindings] = useBindings();
   const [comfort, setComfort] = useComfortSettings();
   const [godMode, setGodMode] = useGodMode();
@@ -305,6 +308,22 @@ export function Settings() {
         <h2 id="settings-comfort">Comfort</h2>
         <ComfortToggles value={comfort} onChange={setComfort} />
       </section>
+
+      {/* Only once she has actually beaten them. A message that can be read
+          only by beating a boss again is the wrong shape for what it is
+          (playtest 7) — but offering it before she has earned it would spoil
+          the one beat the whole ending is built to protect. */}
+      {progress.finaleBossCleared && (
+        <section className="settings-section" aria-labelledby="settings-credits">
+          <h2 id="settings-credits">The ending</h2>
+          <div className="btn-row">
+            <Link className="chip" to="/the-end">
+              {theEndCopy.settingsWatchCredits}
+            </Link>
+          </div>
+          <p className="fine-print settings-note">{theEndCopy.settingsWatchCreditsNote}</p>
+        </section>
+      )}
 
       <section className="settings-section" aria-labelledby="settings-progress">
         <h2 id="settings-progress">Progress</h2>
