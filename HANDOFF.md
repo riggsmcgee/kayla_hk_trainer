@@ -7,6 +7,12 @@
 
 ## The headline
 
+**The whole playtest-7 contract is built.** All seven priorities: the copy
+module, the stop and the summon, the gather and the reverence transform, the
+rise and the applause and the confetti and the backflips and the party hats,
+the hold-to-hurry escape, `#/the-end`, and the generated copy deck. The last
+two landed in the sprint before this one; the rest landed here.
+
 **The dojo can be finished.** Before this sprint, pressing forward at the end of
 the celebration restarted the fight — there was no way out of the game. Now she
 beats the Two Bills, watches the twenty seconds, presses forward, and arrives at
@@ -45,40 +51,52 @@ away the exact work you asked for, so the sprint took it as task 1.
    - **The page also asks the near-miss question** the portfolio process keeps
      failing to run — which came second, and what did it nearly have.
 
-2. **The four messages are drafts, and they are the most personal writing in the
+2. **The copy deck is published too:**
+   <https://claude.ai/code/artifact/c0a18df6-7af9-49c8-a8a0-4d45230b8bd7>
+   52 strings, read straight out of `web/src/copy/` rather than transcribed, so
+   it cannot miss one or drift. This is the canvas half — the writing that is
+   pixels rather than DOM, which is the half you named. Lines that substitute a
+   value are shown as the game really draws them, with worked sample keys,
+   rather than as `Press {key}`. To change a line, edit the module named under
+   its section heading; the deck regenerates from there.
+
+3. **The four messages are drafts, and they are the most personal writing in the
    project.** They live in `web/src/copy/theEnd.ts` precisely so you can rewrite
    them without touching code. Same for the cast list's one-line credits.
 
-3. **A seventh tie colour was worked out and cut rather than shown.** Honey
+4. **A seventh tie colour was worked out and cut rather than shown.** Honey
    `#e3b33d` sits 77 from punishGold — a sibling of the colour that is ruled
    out. Putting it on the page would have been offering a choice already
    answered. Say if you want it back.
 
-4. **The workflow was stopped early, deliberately.** Its three painters landed
+5. **The workflow was stopped early, deliberately.** Its three painters landed
    and are committed; its remaining phases were a tie shortlist I had already
    built with real arithmetic, a page I built myself, and verify passes I ran
    directly. It had been running ~90 minutes and would not have finished inside
    the window. Nothing was lost.
 
-5. **Still not built, from the playtest-7 contract:** the confetti, real party
-   states for the five (PLAN §8 records why the ratified ones were rejected on
-   sight), and the rest of the ~250-string copy extraction. `#/the-end` and the
-   backflip are now done.
+6. **Still not built:** the short page and component strings (the lesson PROSE is
+   ratified to stay in its pages), and the live deck that saves its own edits.
+   Everything else in the contract shipped.
 
 ## Change ledger
 
-| #   | Commit    | What                                                                                          | How to try it                                     | Risk |
-| --- | --------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------- | ---- |
-| 1   | `e6278e8` | Correct the skills log: `agent-browser` is slow, not broken                                   | `git show e6278e8`                                | none |
-| 2   | `ebf5313` | Open the sprint                                                                               | this file                                         | none |
-| 3   | `38e9a53` | PLAN.md said T10 (the two reinforced waves) was still to build; it shipped a while ago        | `git show 38e9a53`                                | none |
-| 4   | `1da91cf` | The baseline nobody had run: every route, in a browser, console open                          | `node .proactive/scratch/route-walk.mjs`          | none |
-| 5   | `709a70f` | **Two buttons on Settings both said "Reset to defaults"** — now named for what they reset     | `#/settings`, tab to either reset                 | low  |
-| 6   | `89300b5` | **Three ways to draw 8-bit Riggs**, plus the gallery that compiles them                       | `node scripts/build-riggs-gallery.mjs`            | low  |
-| 7   | `85132ca` | The portfolio page states what each candidate argues, and the six yellows                     | open the artifact above                           | none |
-| 8   | `cc0fa70` | **Forward, out of the fight for good** — the celebration stops breaking `jump = forward`      | the dev drawer's "Watch the ending", then press Z | med  |
-| 9   | `ca5f076` | Candidate B's last polish                                                                     | the artifact                                      | none |
-| 10  | `7cced8d` | **`#/the-end`: the dojo can be finished** — Riggs, four messages, the credits, Settings entry | `#/the-end`, or finish the fight                  | med  |
+| #   | Commit    | What                                                                                          | How to try it                                       | Risk |
+| --- | --------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---- |
+| 1   | `e6278e8` | Correct the skills log: `agent-browser` is slow, not broken                                   | `git show e6278e8`                                  | none |
+| 2   | `ebf5313` | Open the sprint                                                                               | this file                                           | none |
+| 3   | `38e9a53` | PLAN.md said T10 (the two reinforced waves) was still to build; it shipped a while ago        | `git show 38e9a53`                                  | none |
+| 4   | `1da91cf` | The baseline nobody had run: every route, in a browser, console open                          | `node .proactive/scratch/route-walk.mjs`            | none |
+| 5   | `709a70f` | **Two buttons on Settings both said "Reset to defaults"** — now named for what they reset     | `#/settings`, tab to either reset                   | low  |
+| 6   | `89300b5` | **Three ways to draw 8-bit Riggs**, plus the gallery that compiles them                       | `node scripts/build-riggs-gallery.mjs`              | low  |
+| 7   | `85132ca` | The portfolio page states what each candidate argues, and the six yellows                     | open the artifact above                             | none |
+| 8   | `cc0fa70` | **Forward, out of the fight for good** — the celebration stops breaking `jump = forward`      | the dev drawer's "Watch the ending", then press Z   | med  |
+| 9   | `ca5f076` | Candidate B's last polish                                                                     | the artifact                                        | none |
+| 10  | `7cced8d` | **`#/the-end`: the dojo can be finished** — Riggs, four messages, the credits, Settings entry | `#/the-end`, or finish the fight                    | med  |
+| 11  | `436da35` | **Confetti**: the spitter fires straight up on a ~2 s cycle and it comes down as paper        | the celebration, from ~14 s                         | low  |
+| 12  | `396b4d5` | **The fight's 17 canvas strings move into `copy/fight.ts`** — zero behaviour change           | `git show 396b4d5`                                  | low  |
+| 13  | `222444d` | **The copy deck**, generated from the modules rather than transcribed                         | `node scripts/build-copy-deck.mjs`, or the artifact | none |
+| 14  | `05804ba` | **Party hats** on all five, drawn over the bodies rather than through their painters          | the celebration, from ~14 s                         | low  |
 
 Merge everything: `git checkout proactive/2026-08-27-1130 && git merge proactive/2026-08-27-1426`
 Drop one: `git revert <hash>` on the sprint branch first, then merge.
@@ -114,13 +132,14 @@ timeout from exactly that contention. Last known green at the branch point:
 
 ## Final check (after the last change)
 
-- `npm test` — **green: 798 in `web` (38 files), 1 in `server`.** +44 on the
+- `npm test` — **green: 818 in `web` (39 files), 1 in `server`.** +64 on the
   branch point.
 - `npm run typecheck` — clean. `npm run lint` — clean. Prettier run on every file
   touched.
 - **End to end, twice.** The ten-route walk again, and the new `e2e-finish.mjs`:
   the fight → the twenty-second celebration → the forward key → `#/the-end`,
-  with the first message on screen and no console errors.
+  with the first message on screen and no console errors. Re-run after the
+  confetti and the hats landed.
 - Screenshots in `.proactive/scratch/` — `routes/`, `the-end/`, `e2e/`,
   `gallery-candidates.png`, `gallery-ties.png`.
 
@@ -162,7 +181,13 @@ three painters and was stopped after that.
 
 ## Suggested next session
 
-**Open the artifact and answer the two questions** — everything left in the
-ending is drawing, and drawing wants your eye. Then the confetti is the next
-slice and its one gotcha is already known: `stepProjectile` has no gravity, so
-confetti needs its own step, and it must honour `reduceFlashing`.
+**Open both artifacts.** The portfolio needs two answers — which drawing, which
+yellow — and each is one line in `engine/riggs/index.ts` once you have picked.
+The deck needs a read-through: it is the first time all the canvas writing has
+been in one place, and the four messages on `#/the-end` are drafts.
+
+The contract is otherwise finished, so the next session is a **playtest**, not
+a build. The biggest untested assumption in the project is still whether 1:30
+untouched is actually reachable — every number in that fight was derived and
+none of it has been played by a person. If it is not reachable, none of what
+shipped this sprint ever fires for her.

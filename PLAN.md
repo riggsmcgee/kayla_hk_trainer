@@ -271,38 +271,41 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
   so the tableau is harmless without switching damage off. A dev-drawer **"Watch the ending"** button
   jumps to one step short of the finish line, because god mode cannot reach it by design.
   **What is left of the ending, in order** — each slice ships alone:
-  1. ~~**The cast gathers.**~~ — **BUILT in Session 13** (`fcdeb2b`), and the sequence around it was
-     redesigned first. The Bills now STOP at 1:30 rather than kneeling, the roster walks on from both
-     walls, and the kneel is a transform (`drawReverent`) rather than five new painters.
-  2. **The five need real party states, and the ratified ones were tried and rejected**
-     _(Session 13)_. This plan said to reach them through fields the painters already read. Built,
-     then looked at in a browser: the warden's `skyward` telegraph paints its **landing zone**, a grey
-     slab most of the height of the arena, and a hazard marker is the last thing a celebration should
-     draw; the duelist's anti-air reads as a **lamp post**, not raised arms. What ships instead is
-     `crowdHop` — a staggered draw-time bounce — with the walker's legs and the flier's wings already
-     moving off the render clock. **Real party states need new drawing, not new state**: party hats
-     for the walker and flier, a shield genuinely raised rather than a telegraph, arms that read as
-     arms.
+  1. ~~**The cast gathers.**~~ — **BUILT in Session 13** (`fcdeb2b`). The Bills STOP at 1:30 rather
+     than kneeling, the roster walks on from both walls, and the kneel is a transform
+     (`drawReverent`) rather than five new painters.
+  2. ~~**Party states for the five.**~~ — **BUILT in Session 15** (`05804ba`), on the SECOND attempt,
+     and the first attempt is the part worth keeping. This plan said to reach them through the
+     fields the painters already read. Every one was reachable exactly as written and two looked
+     wrong in a browser: the warden's `skyward` telegraph paints its **landing zone**, a grey slab
+     most of the height of the arena, so the celebration grew a hazard marker; the duelist's
+     anti-air read as a lamp post. **They needed new drawing, not new state.** What ships is
+     `crowdHop` (a staggered draw-time bounce) plus party hats drawn OVER each body from the
+     session, exactly as `drawReverent` bows them — so `drawEnemy` still never learns the fight
+     ended. Hat geometry lives in `ending.ts` with the rest of the tableau arithmetic.
   3. ~~**The dog's backflip.**~~ — **BUILT in Session 13** (`888c743`). A transform over
      `drawStanding('idle')` — hop, rotate about his middle on twelve stepped marks, land — so he
-     keeps his whole dog silhouette instead of becoming a ball. Watched in a browser.
-  4. **Confetti**, sourced from the spitter's shots bursting at the top. `stepProjectile` has **no
-     gravity** (a spitter shot must fly true), so confetti needs its own step; it must honour
-     `reduceFlashing`. **This is the next slice.**
+     keeps his whole dog silhouette instead of becoming a ball.
+  4. ~~**Confetti.**~~ — **BUILT in Session 15** (`436da35`). Its own step in `engine/confetti.ts`,
+     because `stepProjectile` has no gravity by design. A ~2 s cycle with a 3.4 s piece life, so
+     the tableau is never empty and never grows without bound. Nothing is random — every piece's
+     spread, colour and lifetime comes from its index through a hash, which keeps consecutive
+     bursts different AND keeps the drawing on whole pixels. `reduceFlashing` swaps the palette
+     for a softened one rather than removing the confetti.
   5. ~~**8-bit Riggs and the monologue** at `#/the-end`~~ — **BUILT in Session 14** (`7cced8d`,
-     `89300b5`, `cc0fa70`). The page ships: Riggs on a canvas by the shipped painter, the four
-     messages advanced by the live forward key, the credits roll with both Bills credited as
-     themselves, "Watch the credits" in Settings behind `finaleBossCleared`, and the handoff out of
-     the celebration — which also fixed the one screen in the dojo that was breaking
-     `jump = forward, attack = again`. **Two things are still the user's to answer**, and the page
-     to answer them on is published: WHICH of the three drawings, and WHICH of the six yellows.
-     `RIGGS_TIE` and `DEFAULT_RIGGS_VARIANT` in `engine/riggs/index.ts` are one line each.
-     The pixel-font worry that decided this should be a page rather than a canvas beat stands, and
-     is now moot: the page speaks in the site's own Cinzel/system-ui, and only the drawing is 8-bit.
-  6. **The copy extraction, finished.** `web/src/copy/ending.ts` exists and holds the ending's own
-     strings, with interpolated lines as **functions** rather than templates. The other ~250 strings
-     across 19 files have not moved, and the deck artifact is generated from the module, so it waits
-     on this.
+     `89300b5`, `cc0fa70`). Riggs on a canvas by the shipped painter, four messages advanced by
+     the live forward key, the credits roll with both Bills credited as themselves, "Watch the
+     credits" in Settings behind `finaleBossCleared`, and the handoff out of the celebration —
+     which also fixed the one screen in the dojo breaking `jump = forward, attack = again`.
+     **TWO THINGS ARE STILL THE USER'S TO ANSWER**, and the page to answer them on is published:
+     WHICH of the three drawings, and WHICH of the six yellows. `DEFAULT_RIGGS_VARIANT` and
+     `RIGGS_TIE` in `engine/riggs/index.ts` are one line each.
+  6. **The copy extraction, continued.** `web/src/copy/` now holds `ending.ts`, `fight.ts` and
+     `theEnd.ts` — **52 named strings, and every canvas string the boss fight draws**. That was
+     the half the user named: pixels, not DOM. `scripts/build-copy-deck.mjs` generates the deck
+     from the directory, so anything added appears without the generator changing. **Still to do:**
+     the short page and component strings (the lesson PROSE is ratified to stay in its pages — see
+     the contract), and the live deck that saves its own edits.
   7. **Where the cast marks sit is now decided, and the published gap figure does not reproduce.**
      `castMarks` lays **nine evenly spaced slots** across the 1168 px arena — pitch 129.8 px, wider
      than the widest body — and gives the roster five of the ones the Knight and the Bills are not
