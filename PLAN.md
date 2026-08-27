@@ -178,7 +178,7 @@ The finale at the end of the road _(Session 6)_. Named by the map's own metaphor
    a warden — the spread the user named, and exactly the four-alive cap. It
    was warden + duelist.)_
 
-3. **The boss: The Two Bills** _(Session 7 — designed in the playtest 3 interview; full spec in `docs/feedback/2026-08-22-playtest-3.md`)_. A pure survival test: **neither Bill can be damaged** — the nail bounces off them and nothing else happens, there is no hit counter — and **one touch ends the run**. Score is time survived; **1:30 marks the stop done**, and the fight keeps escalating after that for her best time. The beat stays mysterious until she starts it ("The thing at the bottom").
+3. **The boss: The Two Bills** _(Session 7 — designed in the playtest 3 interview; full spec in `docs/feedback/2026-08-22-playtest-3.md`)_. A pure survival test: **neither Bill can be damaged** — the nail bounces off them and nothing else happens, there is no hit counter — and **one touch ends the run**. **1:30 is a FINISH LINE**: reach it untouched and the fight is over, won, and the ending plays — the boss is pass/fail _(playtest 6, which **STRIKES** "score is time survived; 1:30 marks the stop done, and the fight keeps escalating after that for her best time". An invisible score that runs past the ending is worse than an ending, and it really was invisible: `bestLine.ts` had no boss line to show it on)_. The beat stays mysterious until she starts it ("The thing at the bottom").
 
    | Clock | What happens                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
    | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -258,6 +258,33 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ## 8. Later / on the radar
 
+- **The boss win phase — BUILT** _(Session 12, `66a89ac`)_. `BossPhase` gained `'won'`; `stepBoss`
+  gained `untouched` so god mode cannot earn the ending; `record()` moved out of the `'over'` branch,
+  which is unreachable after 1:30 now; `Enemy.celebrating` is a channel the simulation never writes,
+  so the tableau is harmless without switching damage off. A dev-drawer **"Watch the ending"** button
+  jumps to one step short of the finish line, because god mode cannot reach it by design.
+  **What is left of the ending, in order** — each slice ships alone:
+  1. **The cast gathers.** Real `Enemy` objects created at the win and walked to marks around where
+     she stood, then held in celebratory states. `stepEnemy` is never called on them, so they have no
+     AI and no hitboxes; the ending's own step drives their `phase`/`phaseTimer` on a fixed clock.
+     The states are already ratified: **spitter** fires its volley straight up, **warden** waves the
+     shield (`shieldDir` already flips on a clock), **duelist**'s upward anti-air already reads as
+     applause, **walker and flier** are present in party hats. Two numbers not to re-derive: the cast
+     is **394 px of drawn ink, not 320** — `ENEMY_SIZES` is the collision box — and nine bodies leave
+     **53.8 px per gap** across the 1168 px arena.
+  2. **Confetti**, sourced from the spitter's shots bursting at the top. `stepProjectile` has **no
+     gravity** (a spitter shot must fly true), so confetti needs its own step; it must honour
+     `reduceFlashing`.
+  3. **8-bit Riggs and the monologue**, in text boxes she advances through `createOverlayGate` — and
+     **there is still no pixel font**, so he will read as a placeholder in the HUD face.
+- **The Bills' celebration portfolio — ANSWERED, and it kept both** _(Session 12)_. The user picked
+  **C. The Knee** for the moment the clock stops and **B. The Applause** for the party that follows:
+  _"let's do the knee immediately after the fight, and then, as other characters come on to
+  celebrate, we'll have the applause one play."_ So the portfolio did not delete two of three — it
+  gave two poses two different jobs. Both are live in `renderBills.ts` (`concede` → `kneel`/`lieDown`,
+  `applaud` → `applaud`/`applaud`). **The Bow is the near-miss**, and the near-miss question is still
+  the step that pays: what did the Bow nearly have, and what do the Knee and the Applause share that
+  it does not?
 - **The Bills' celebration portfolio — SHIPPED, waiting on the user** _(Session 11)_.
   `scripts/build-bill-gallery.mjs` compiles `web/src/engine/renderBillMan.ts` with the repo's own
   esbuild into one self-contained page, published at
@@ -273,27 +300,13 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
     all the way down with his chin out and his ear back.
   - **Then the near-miss question**, which the page already asks in the three-step form: which won,
     which came second and what it nearly had, and what those two share that the third does not.
-- **The boss win phase — NOT STARTED, and it is the next thing to build** _(Session 11 analysis)_.
-  Priority 5 of the playtest-6 contract. It is not blocked on the portfolio pick: the phase is the
-  substrate and the celebration choreography sits on top of it. The seams, read and written down so
-  the next session does not have to re-derive them:
-  - `BossPhase` is a closed union in `boss.ts` and `stepBoss` returns early for anything that is
-    not `'fighting'`, so adding `'won'` stops the clock for free — no new freeze machinery.
-  - **The touch gate needs a third input.** `stepBoss` currently takes `{ playerHit }`. God mode
-    routes hits through `events.wouldHaveHit` into `phantomHits` instead, and a god-mode run took
-    29 hits and still reached 1:30, so the win has to be told the run is genuinely untouched rather
-    than inferring it from `playerHit` alone.
-  - **`record()` has to move.** It fires only in the `'over'` branch today. Once 1:30 ends the
-    fight, `'over'` is unreachable after it, so a win that does not record is a win that leaves no
-    `PracticeRun` at all — which is the second half of the bug fixed in `819c0ea`.
-  - **The 0.78 wash is in the `'over'` branch**, so anything drawn before it is 78 % hidden. Free
-    upside already in the file: `simTime += dt` runs before every early return, so a held pose
-    animates its own step clock on a frozen screen with no new machinery.
-  - **All six celebration poses already exist** on both Bills (`bow`, `applaud`, `kneel` /
-    `lieDown`), so the phase can drive whichever the user picks without any new art.
-  - Strike `PLAN.md`'s "1:30 marks the stop done, and the fight keeps escalating after that for her
-    best time" **in the same commit as this**, not before — and the same line in `boss.ts`'s and
-    `bossSession.ts`'s own doc comments, which both still state it.
+- ~~**The boss win phase — NOT STARTED**~~ — **BUILT in Session 12**; see the entry at the top of
+  this section for what shipped and what is left. Session 11's seams analysis was all realised in
+  `66a89ac`, including the strike of the "1:30 marks the stop done" line, which landed in the same
+  commit as the phase in all three places that stated it (`PLAN.md`, `boss.ts`, `bossSession.ts`).
+  One thing it predicted and got right, worth keeping: **the 0.78 wash would hide the celebration**,
+  so the ending draws its own at **0.34** instead — the lightest in the file, because it is the one
+  screen she is meant to look at.
 
 ### Planned, needs its own design conversation
 
