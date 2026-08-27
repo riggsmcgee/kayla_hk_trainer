@@ -159,6 +159,31 @@ describe('being airborne is', () => {
     expect(run.lancesDodged).toBeGreaterThanOrEqual(4);
   });
 
+  it('and carries that read all the way to 1:30 — the finish line is reachable', () => {
+    /**
+     * The biggest untested assumption in the project, answered.
+     *
+     * Every number in this fight was DERIVED against the shipped physics and
+     * none of it had been played to the end by anything — so it was possible,
+     * right up until this test, that 1:30 untouched was not achievable at all
+     * and that the whole ending could never fire.
+     *
+     * It is achievable against Bill, by a strategy a person can execute: stand
+     * still, and commit to a held jump when the lance commits. No dashing, no
+     * pogo chain, no frame-perfect anything.
+     *
+     * What this does NOT prove is the fight she actually plays: the dog joins
+     * at 0:30 and this bot never meets him. That is still open — see PLAN.md
+     * M6.7 — and the exploration that raised it found a reading bot dying
+     * about 2.7 s after he arrives, to BODY CONTACT rather than to an attack.
+     */
+    const run = play(BOSS.targetSeconds + 1, jumpTheLance());
+    expect(run.survivedSeconds).toBeGreaterThan(BOSS.targetSeconds);
+    expect(run.caughtBy).toBe(null);
+    // Roughly a pass every seven seconds across the whole minute and a half.
+    expect(run.lancesDodged).toBeGreaterThanOrEqual(10);
+  });
+
   /** Jump on a fixed beat, holding the ascent, ignoring what Bill is doing. */
   function jumpOnABeat(periodFrames: number, offsetFrames: number): () => InputFrame {
     let frame = -1;
