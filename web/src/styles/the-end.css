@@ -55,8 +55,9 @@
   line-height: 1.65;
   text-wrap: pretty;
   margin: 0;
-  /* The four messages differ in length; a min-height stops the button jumping
-     up and down the page as she advances through them. */
+  /* The messages differ in length AND each one now arrives a character at a
+     time, so without a floor here the button walks up the page sixty times a
+     second while he is talking. */
   min-height: 7.5rem;
 }
 
@@ -84,55 +85,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.the-end-credits {
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-}
-
-.the-end-credits h1 {
-  font-family: var(--font-display);
-  margin: 0;
-}
-
-.the-end-credits h2 {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  color: var(--text-dim);
-  margin: 0;
-}
-
-.cast-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.55rem;
-}
-
-.cast-list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.6rem;
-}
-
-.cast-list strong {
-  font-family: var(--font-display);
-  letter-spacing: 0.02em;
-}
-
-.cast-list span {
-  color: var(--text-dim);
-  font-size: 0.95rem;
-}
-
-.built-line {
+.the-end-back {
+  /* All that follows the last sentence. A quiet chip and not a gold button:
+     the forward key is how this site says "the next thing is worth doing",
+     and after playtest 8 deleted the credits there is no next thing. */
   margin: 0.5rem 0 0;
-  color: var(--text-dim);
-}
-
-.built-line strong {
-  color: var(--text);
-  font-family: var(--font-display);
 }

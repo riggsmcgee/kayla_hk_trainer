@@ -314,14 +314,14 @@ export function Settings() {
           (playtest 7) — but offering it before she has earned it would spoil
           the one beat the whole ending is built to protect. */}
       {progress.finaleBossCleared && (
-        <section className="settings-section" aria-labelledby="settings-credits">
-          <h2 id="settings-credits">The ending</h2>
+        <section className="settings-section" aria-labelledby="settings-ending">
+          <h2 id="settings-ending">The ending</h2>
           <div className="btn-row">
             <Link className="chip" to="/the-end">
-              {theEndCopy.settingsWatchCredits}
+              {theEndCopy.settingsReadAgain}
             </Link>
           </div>
-          <p className="fine-print settings-note">{theEndCopy.settingsWatchCreditsNote}</p>
+          <p className="fine-print settings-note">{theEndCopy.settingsReadAgainNote}</p>
         </section>
       )}
 
