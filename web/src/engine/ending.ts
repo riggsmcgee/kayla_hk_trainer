@@ -1,38 +1,122 @@
 /**
- * The ending — the celebration after 1:30, and nothing else.
+ * The ending — the twenty seconds after 1:30, and nothing else.
  *
  * Written as its own clock for the same reason `boss.ts` is: the fight's
  * clock, the intro's clock and the ending's clock must never be the same
  * number. The score stopped at 1:30 and this runs afterwards, so a slow
  * celebration can no more eat her time than Bill's entrance could.
  *
- * The sequence is ratified in docs/feedback/2026-08-26-playtest-6.md (notes 6
- * and 7, which are one feature), and the user picked the two poses that carry
- * it: the KNEE the moment the clock stops, then the APPLAUSE once the rest of
- * the cast is on. Beat names are what is HAPPENING, never what is drawn — the
- * painters translate.
+ * The sequence is ratified in docs/feedback/2026-08-27-playtest-7.md, which
+ * REDESIGNED the two-beat version shipped in 66a89ac. The load-bearing change
+ * is the first beat: the Bills STOP, they do not kneel. A kneeling Bill
+ * announces the win, and the walk-on that follows then has nothing left to
+ * frighten her with. The whole point of the sequence is that for thirteen
+ * seconds she believes she is about to fight five more enemies.
+ *
+ * Beat names are what is HAPPENING, never what is drawn — the painters
+ * translate.
  */
 
 import { tickDown } from './session';
+import { CANVAS } from './constants';
+import { ENEMY_SIZES } from './enemies';
+import type { EnemyId } from '@dojo/shared';
 
 /**
- * - `concede` — the Bills go down. The clock has just stopped; they were
- *   mid-attack a frame ago and now they are not.
- * - `cheer`   — the applause. Runs until she says she is finished, so nothing
- *   about the ending is on a timer she has to keep up with.
+ * - `stop`   — the clock dies mid-attack. Both Bills freeze, Bill's foam
+ *   finger goes up and he shouts. No win text of any kind.
+ * - `gather` — the roster walks in from both walls. Total silence otherwise.
+ * - `hold`   — they arrive, and nothing happens. The peak of the fear.
+ * - `kneel`  — everyone goes down to her, the Bills included.
+ * - `rise`   — she lifts off the floor and drifts to the centre.
+ * - `cheer`  — everyone stands and applauds. Runs until she says she is
+ *   finished, so nothing about the ending is on a timer she has to keep up
+ *   with.
  */
-export type EndingBeat = 'concede' | 'cheer';
+export type EndingBeat = 'stop' | 'gather' | 'hold' | 'kneel' | 'rise' | 'cheer';
+
+/** The beats in the order they play. `cheer` is last and never ends. */
+export const ENDING_ORDER: readonly EndingBeat[] = [
+  'stop',
+  'gather',
+  'hold',
+  'kneel',
+  'rise',
+  'cheer',
+];
 
 export const ENDING = {
+  /** Bill's first word, and the frame where the fight stops being a fight. */
+  stopSeconds: 1.2,
+  /** The walk-on. The user's instruction was "don't rush it". */
+  gatherSeconds: 5,
   /**
-   * How long the Bills hold the knee before the cheer starts.
-   *
-   * Sized against the beat it has to read next to: the dog's card is 2.5 s and
-   * Bill's entrance 2.8 s, both of which she watches without input. This is
-   * shorter than either on purpose — it is a reaction, not a card.
+   * They arrive and nothing happens. This beat has no content at all, which
+   * is exactly its job: it is the moment she is most sure she is in trouble,
+   * and it exists only because the sequence was stretched to twenty seconds.
    */
-  concedeSeconds: 2,
+  holdSeconds: 1.5,
+  /** The kneel: the going-down, then the pose held. */
+  kneelSeconds: 3.5,
+  /**
+   * How much of `kneelSeconds` is the going-down. The rest is the pose held,
+   * which is what turns a movement into a gesture.
+   */
+  kneelMotionSeconds: 2,
+  /** Her rise, and the drift to the horizontal centre. */
+  riseSeconds: 2.6,
+  /**
+   * Seconds into the cheer before the dog starts backflipping. He applauds
+   * with everyone first: the flip lands as a PUNCHLINE rather than as
+   * texture, and it gives the held tableau a beat change instead of one held
+   * picture.
+   */
+  cheerFlipAt: 3,
+  /** Seconds into the cheer before the prompt fades in. */
+  cheerPromptAt: 5.7,
+  /** How long the cast takes to stand back up out of the kneel. */
+  standSeconds: 0.6,
 } as const;
+
+/** Beat lengths, in order. `cheer` is 0 — it runs forever. */
+const BEAT_SECONDS: Record<EndingBeat, number> = {
+  stop: ENDING.stopSeconds,
+  gather: ENDING.gatherSeconds,
+  hold: ENDING.holdSeconds,
+  kneel: ENDING.kneelSeconds,
+  rise: ENDING.riseSeconds,
+  cheer: 0,
+};
+
+/**
+ * What follows what. Written as a total map rather than as an index into
+ * `ENDING_ORDER` so the sequence cannot fall off its own end: `cheer` points
+ * at itself, and `stepEnding` returns before ever reading it.
+ */
+const NEXT_BEAT: Record<EndingBeat, EndingBeat> = {
+  stop: 'gather',
+  gather: 'hold',
+  hold: 'kneel',
+  kneel: 'rise',
+  rise: 'cheer',
+  cheer: 'cheer',
+};
+
+/** Where the cheer starts, measured from 1:30. Every finite beat, summed. */
+const CHEER_STARTS_AT =
+  ENDING.stopSeconds +
+  ENDING.gatherSeconds +
+  ENDING.holdSeconds +
+  ENDING.kneelSeconds +
+  ENDING.riseSeconds;
+
+/**
+ * When the prompt appears, measured from 1:30. DERIVED, never written down —
+ * the ratified figure is 19.5 s and the beat lengths must keep summing to it,
+ * so a beat that is retuned without the others moves this number rather than
+ * silently disagreeing with it.
+ */
+export const ENDING_PROMPT_SECONDS = CHEER_STARTS_AT + ENDING.cheerPromptAt;
 
 export interface EndingState {
   beat: EndingBeat;
@@ -43,7 +127,7 @@ export interface EndingState {
 }
 
 export function createEndingState(): EndingState {
-  return { beat: 'concede', elapsed: 0, beatTimer: ENDING.concedeSeconds };
+  return { beat: 'stop', elapsed: 0, beatTimer: ENDING.stopSeconds };
 }
 
 /**
@@ -56,8 +140,21 @@ export function stepEnding(s: EndingState, dt: number): EndingBeat | null {
 
   s.beatTimer = tickDown(s.beatTimer, dt);
   if (s.beatTimer > 0) return null;
-  s.beat = 'cheer';
-  return 'cheer';
+
+  const next = NEXT_BEAT[s.beat];
+  s.beat = next;
+  s.beatTimer = BEAT_SECONDS[next];
+  return next;
+}
+
+/**
+ * Seconds spent inside the current beat. During the cheer it is measured off
+ * `elapsed` instead of the timer, because the cheer has no timer to subtract
+ * from — it is the beat that runs until she ends it.
+ */
+export function beatElapsed(s: EndingState): number {
+  if (s.beat === 'cheer') return Math.max(0, s.elapsed - CHEER_STARTS_AT);
+  return BEAT_SECONDS[s.beat] - s.beatTimer;
 }
 
 /**
@@ -66,7 +163,117 @@ export function stepEnding(s: EndingState, dt: number): EndingBeat | null {
  * safe to feed a fade or a slide without special-casing the last beat.
  */
 export function beatProgress(s: EndingState): number {
-  const total = s.beat === 'concede' ? ENDING.concedeSeconds : 0;
+  const total = BEAT_SECONDS[s.beat];
   if (total <= 0) return 1;
   return Math.min(1, Math.max(0, 1 - s.beatTimer / total));
+}
+
+/**
+ * How far down the cast is bowed, 0 → 1.
+ *
+ * ONE number for the whole tableau, because the kneel is a TRANSFORM applied
+ * to whatever silhouette a body happens to have rather than five new
+ * painters: a walker is a shell with leg nubs, a flier is a hovering ball, a
+ * spitter has no legs. It ramps in over `kneelMotionSeconds`, holds through
+ * the rest of the kneel AND through her rise — she is lifting while they are
+ * still down, which is the picture — and unwinds when they stand to applaud.
+ */
+export function reverence(s: EndingState): number {
+  switch (s.beat) {
+    case 'kneel':
+      return Math.min(1, beatElapsed(s) / ENDING.kneelMotionSeconds);
+    case 'rise':
+      return 1;
+    case 'cheer':
+      return Math.max(0, 1 - beatElapsed(s) / ENDING.standSeconds);
+    default:
+      return 0;
+  }
+}
+
+/** True once the dog has stopped applauding and started showing off. */
+export function dogIsFlipping(s: EndingState): boolean {
+  return s.beat === 'cheer' && beatElapsed(s) >= ENDING.cheerFlipAt;
+}
+
+/** True once she has been told which button ends the celebration. */
+export function promptIsUp(s: EndingState): boolean {
+  return s.beat === 'cheer' && beatElapsed(s) >= ENDING.cheerPromptAt;
+}
+
+/**
+ * NINE SLOTS, evenly spaced across the arena. The Knight takes the one she is
+ * standing nearest, each Bill takes the one HE is nearest, and the roster
+ * fills five of what is left.
+ *
+ * Fixed slots rather than offsets from the Knight, because the Bills are
+ * planted wherever the fight left them — they do not walk to marks — and a
+ * layout measured from her alone would happily stand a warden inside Bill the
+ * man.
+ */
+export const CAST_SLOTS = 9;
+
+/**
+ * Drawn bounds, where they differ from the collision box.
+ *
+ * Playtest 6's correction, and the reason it is recorded rather than inferred:
+ * `ENEMY_SIZES` is the HURTBOX. The flier's wings are 64 px across a 32 px
+ * hurtbox, and sizing a tableau from the hurtbox is the same class of error
+ * that shipped the warden's invisible telegraph.
+ */
+const INK_WIDTH: Partial<Record<EnemyId, number>> = {
+  flier: 64,
+  spitter: 58,
+  dog: 68,
+  bill: 88,
+};
+
+/** How wide this body actually draws, wings and props included. */
+export function inkWidth(id: EnemyId): number {
+  return INK_WIDTH[id] ?? ENEMY_SIZES[id].width;
+}
+
+/** Centre of slot `i` of `CAST_SLOTS`, spread evenly across the arena. */
+export function slotX(i: number): number {
+  return ((i + 0.5) * CANVAS.width) / CAST_SLOTS;
+}
+
+function nearestSlot(x: number): number {
+  return Math.max(0, Math.min(CAST_SLOTS - 1, Math.round((x / CANVAS.width) * CAST_SLOTS - 0.5)));
+}
+
+export interface CastMark {
+  id: EnemyId;
+  /** Where this body ends up standing. */
+  x: number;
+  /** Which wall it walks in from. */
+  fromLeft: boolean;
+}
+
+/**
+ * Assign the roster to slots, given who is already standing where.
+ *
+ * `taken` is the Knight's x plus both Bills'. Roster members alternate ends of
+ * the free list — leftmost, then rightmost, then inward — so the walk-on
+ * arrives from both directions at once. That is the user's "all the other
+ * enemies walk [on]", and it is only frightening if she cannot watch one edge
+ * and feel safe about the other.
+ */
+export function castMarks(roster: readonly EnemyId[], taken: readonly number[]): CastMark[] {
+  const free = new Set<number>();
+  for (let i = 0; i < CAST_SLOTS; i++) free.add(i);
+  for (const x of taken) free.delete(nearestSlot(x));
+
+  const slots = [...free].sort((a, b) => a - b);
+  const marks: CastMark[] = [];
+  let lo = 0;
+  let hi = slots.length - 1;
+  for (const [i, id] of roster.entries()) {
+    if (lo > hi) break;
+    const fromLeft = i % 2 === 0;
+    const slot = fromLeft ? slots[lo++] : slots[hi--];
+    if (slot === undefined) break;
+    marks.push({ id, x: slotX(slot), fromLeft });
+  }
+  return marks;
 }

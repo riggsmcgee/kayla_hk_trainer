@@ -58,8 +58,14 @@ export interface Projectile {
  *
  * Deliberately NOT the name of a pose: `renderBills.ts` is the only file that
  * knows `concede` is drawn as a kneel on the man and a lie-down on the dog.
+ *
+ * `summon` is the beat playtest 7 added in front of both, and it is the reason
+ * the ending works at all: at 1:30 the Bills STOP — they do not kneel — and
+ * Bill raises the foam finger and shouts for everybody. A Bill who kneels here
+ * announces the win, and the walk-on that follows has nothing left to
+ * frighten her with.
  */
-export type Celebration = 'concede' | 'applaud';
+export type Celebration = 'summon' | 'concede' | 'applaud';
 
 export type AttackKind =
   | 'lunge'

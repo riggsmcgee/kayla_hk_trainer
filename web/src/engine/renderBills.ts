@@ -95,7 +95,16 @@ export function billPose(enemy: Enemy): BillPose {
   // The user picked the KNEE for the concede — "back knee down, foam finger up
   // to her" — over the bow and the applause, and then picked the applause for
   // the cheer, so the two now mean two different things.
-  if (enemy.celebrating) return enemy.celebrating === 'concede' ? 'kneel' : 'applaud';
+  //
+  // `summon` REUSES `swatTell`, the 0.4 s upward windup, rather than adding a
+  // pose: it is already the foam finger held high, and she has spent ninety
+  // seconds learning to fear exactly that shape. Bill calling the roster in
+  // with the arm that has been trying to hit her all fight is the joke and
+  // the threat in one picture.
+  if (enemy.celebrating) {
+    if (enemy.celebrating === 'summon') return 'swatTell';
+    return enemy.celebrating === 'concede' ? 'kneel' : 'applaud';
+  }
   if (enemy.attackKind === 'lance') {
     if (enemy.phase === 'telegraph') return 'lanceTell';
     if (enemy.phase === 'active') return 'lanceDash';
@@ -121,7 +130,14 @@ export function billDogPose(enemy: Enemy): BillDogPose {
   // The ending. `lieDown` is the dog's half of the man's knee — chin out, ear
   // back, all the way to the floor; `applaud` sits him up on his haunches
   // patting his front paws on the man's own 5 Hz clap beat.
-  if (enemy.celebrating) return enemy.celebrating === 'concede' ? 'lieDown' : 'applaud';
+  //
+  // He has nothing to do during the man's `summon`: the shout is the man's,
+  // and a dog who reacted to it would be answering the call he is meant to be
+  // part of. He stands, and he breathes.
+  if (enemy.celebrating) {
+    if (enemy.celebrating === 'summon') return 'idle';
+    return enemy.celebrating === 'concede' ? 'lieDown' : 'applaud';
+  }
   // Trotting in on his card. Checked first because he is carrying no attack
   // and no phase during it, so every branch below would fall through to
   // `idle` and his entrance would be a standing dog on a conveyor belt.

@@ -15,8 +15,20 @@
  */
 
 import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
-import { beatProgress, createEndingState, stepEnding } from './ending';
-import type { EndingState } from './ending';
+import {
+  ENDING,
+  beatElapsed,
+  beatProgress,
+  castMarks,
+  createEndingState,
+  inkWidth,
+  promptIsUp,
+  reverence,
+  stepEnding,
+} from './ending';
+import type { CastMark, EndingState } from './ending';
+import { endingCopy } from '../copy/ending';
+import { ROSTER } from './roster';
 import {
   INTRO_FAST_FORWARD,
   arrivalX,
@@ -134,6 +146,42 @@ const AT_REST: InputFrame = {
   dashPressed: false,
 };
 
+/** One of the five who walk on for the ending: the body, and where it is going. */
+interface CastMember {
+  enemy: Enemy;
+  mark: CastMark;
+  /** Where it stood the instant the walk-on began — off the edge of the arena. */
+  fromX: number;
+  /**
+   * Its x at the end of the PREVIOUS step, so the draw can interpolate like
+   * every other body does. A walk-on written straight to `position` and drawn
+   * without `alpha` stutters on any display that is not exactly 60 Hz.
+   */
+  prevX: number;
+}
+
+/**
+ * How far off the floor she ends up. Chosen so the 48 px Knight clears the
+ * kneeling cast with daylight underneath — the picture is that she is ABOVE
+ * them — while staying well under the HUD line at the top.
+ */
+const RISE_HEIGHT = 190;
+
+/**
+ * How high the flier holds station in the tableau.
+ *
+ * It is the one body that does not stand on the floor, and in the fight it
+ * aims itself at her CHEST — about 24 px up — which on a still frame reads as
+ * a thing resting on the ground rather than hovering. This is roughly its own
+ * body height, so the daylight underneath is unmistakable.
+ */
+const FLIER_HOVER = 56;
+
+/** Ease-out cubic: everything in the ending decelerates onto its mark. */
+function easeOut(t: number): number {
+  return 1 - (1 - t) ** 3;
+}
+
 export function createBossSession(config: BossSessionConfig): GameSession {
   const { comfort, jumpKey = () => 'Z', attackKey = () => 'X', onNext, nextLabel } = config;
   const godMode = config.godMode ?? false;
@@ -154,6 +202,16 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   let bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
   /** Null until 0:30. */
   let dog: Enemy | null = null;
+  /**
+   * The ending's walk-on cast: the five roster enemies, created at the
+   * `gather` beat and never stepped.
+   *
+   * `stepEnemy` is never called on them and neither is `stepArena`, so they
+   * have no AI and no hitboxes — they are a tableau that happens to be made of
+   * `Enemy` objects, which is what lets `drawEnemy` paint them with no idea
+   * that the fight is over.
+   */
+  let cast: CastMember[] = [];
   /** Where the dog is heading while his card is up, and how fast. */
   let dogWalkTo = 0;
   let dogWalkFrom = 0;
@@ -172,10 +230,14 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   /**
    * The ending's own gate. Separate from `overGate` because they guard
    * opposite screens — a run that is won can never reach the fail screen — and
-   * because this one is not armed until the cheer starts, which is what makes
-   * the Bills' knee unskippable without any machinery of its own.
+   * because this one is not armed until the PROMPT appears at 19.5 s, which is
+   * what makes the whole ending unskippable without any machinery of its own.
    */
   const winGate = createOverlayGate();
+  /** One-shot: the gate is armed by the prompt appearing, and only once. */
+  let promptShown = false;
+  /** Where she was standing when the rise began; the lift interpolates from it. */
+  const riseFrom: Vec2 = { x: 0, y: 0 };
   let startedAtIso = '';
 
   const prevFeet: Vec2 = { ...player.position };
@@ -190,6 +252,8 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
     bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
     dog = null;
+    cast = [];
+    promptShown = false;
     projectiles = [];
     hitFlash = 0;
     phantomHits = 0;
@@ -301,27 +365,105 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   }
 
   /**
-   * The clock has just stopped at 1:30 and both Bills go down.
+   * The clock has just stopped at 1:30 and both Bills STOP — they do not
+   * kneel. The kneel is seven and a half seconds away.
+   *
+   * This is playtest 7's correction to 66a89ac, and it is the whole sequence:
+   * a Bill on one knee at 1:30 tells her she has won, and the walk-on that
+   * follows then has nothing left to frighten her with. What happens here is
+   * the stop and the shout. Bill's foam finger goes up — `summon` draws as
+   * `swatTell`, the windup she has spent ninety seconds learning to fear — and
+   * he calls for everybody.
    *
    * Planting them matters as much as the pose does: at 1:30 the man can be
-   * mid-lance and the dog can be a ball in mid-air, and a kneeling Bill drawn
+   * mid-lance and the dog can be a ball in mid-air, and a stopped Bill drawn
    * where a rolling one was is a body floating two thirds of the way up the
    * arena. Everything in flight is cleared for the same reason — a bone that
    * outlived the fight would be the one lethal-looking thing left on a screen
-   * that has just told her she is safe.
+   * that has just stopped being a fight.
    */
-  function theyConcede(): void {
+  function theyStop(): void {
     projectiles = [];
     for (const b of bills()) {
-      b.celebrating = 'concede';
+      b.celebrating = 'summon';
       b.roll = false;
       b.velocity.x = 0;
       b.velocity.y = 0;
       b.position.y = FLOOR_Y;
-      // Both of them turn to face her. The knee is "up to HER", so a Bill
-      // kneeling away from the Knight would read as him kneeling to the wall.
+      // Both of them turn to face her. Every pose from here is "up to HER",
+      // so a Bill addressing the wall would throw the whole tableau away.
       b.facing = player.position.x < b.position.x ? -1 : 1;
     }
+  }
+
+  /**
+   * The five walk on, from both walls at once.
+   *
+   * Created here rather than at the win so that nothing exists during the
+   * `stop` beat: the fear depends on the arena being empty at the moment Bill
+   * shouts, and a body already standing off-frame is one `drawEnemy` call away
+   * from being visible.
+   *
+   * Their marks come from `castMarks`, which is given every x already
+   * occupied — hers and both Bills' — so nobody walks into anybody. The Bills
+   * do NOT walk: they are planted where the fight left them.
+   */
+  function gatherTheCast(): void {
+    const taken = [player.position.x, ...bills().map((b) => b.position.x)];
+    cast = castMarks(
+      ROSTER.map((r) => r.id),
+      taken,
+    ).map((mark) => {
+      // The flier is the one body that does not stand on the floor. It keeps
+      // the same hover it fights at, so the tableau reads as the cast she
+      // knows rather than as five things placed on a line.
+      const markY = mark.id === 'flier' ? FLOOR_Y - FLIER_HOVER : FLOOR_Y;
+      const half = inkWidth(mark.id) / 2;
+      const fromX = mark.fromLeft ? -half - 20 : CANVAS.width + half + 20;
+      const enemy = createEnemy(mark.id, fromX, markY);
+      // Facing the wall they are walking away from would read as retreating.
+      enemy.facing = mark.fromLeft ? 1 : -1;
+      return { enemy, mark, fromX, prevX: fromX };
+    });
+  }
+
+  /** Slide the walk-on cast from the walls onto their marks, easing in to a stop. */
+  function walkTheCastOn(t: number): void {
+    const eased = easeOut(t);
+    for (const c of cast) {
+      c.prevX = c.enemy.position.x;
+      c.enemy.position.x = c.fromX + (c.mark.x - c.fromX) * eased;
+    }
+  }
+
+  /**
+   * Everyone goes down to her, the Bills included.
+   *
+   * The Bills use their own painted poses — the man's knee, the dog's
+   * lie-down — because they have them. The other five are bowed by a
+   * TRANSFORM at draw time instead (see `drawReverent`), which is what keeps
+   * `drawEnemy` from ever learning that the fight ended.
+   */
+  function theyConcede(): void {
+    for (const b of bills()) {
+      b.celebrating = 'concede';
+      b.facing = player.position.x < b.position.x ? -1 : 1;
+    }
+    for (const c of cast) c.enemy.facing = player.position.x < c.enemy.position.x ? -1 : 1;
+  }
+
+  /**
+   * She lifts off the floor and drifts to the horizontal centre.
+   *
+   * Written into `player.position`, NEVER into the draw call: `render` lerps
+   * `prevFeet → player.position` by `alpha`, so a rise applied only at draw
+   * time jitters on any display that is not exactly 60 Hz. That is the same
+   * class of bug that made the dog invisible on his own card (cda951e).
+   */
+  function liftHer(t: number, riseFrom: Vec2): void {
+    const eased = easeOut(t);
+    player.position.x = riseFrom.x + (CANVAS.width / 2 - riseFrom.x) * eased;
+    player.position.y = riseFrom.y - RISE_HEIGHT * eased;
   }
 
   if (devEnding) jumpToTheFinish();
@@ -403,12 +545,42 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       if (boss.phase === 'won') {
         prevFeet.x = player.position.x;
         prevFeet.y = player.position.y;
-        if (!player.grounded) stepPlayer(player, AT_REST, world, dt);
-        if (stepEnding(ending, dt) === 'cheer') {
-          winGate.arm();
-          for (const b of bills()) b.celebrating = 'applaud';
+        // She keeps her physics until the rise takes her over, so winning
+        // mid-pogo lets her fall and land rather than hang in the air.
+        if (ending.beat !== 'rise' && ending.beat !== 'cheer' && !player.grounded) {
+          stepPlayer(player, AT_REST, world, dt);
         }
-        if (ending.beat === 'cheer') {
+
+        switch (stepEnding(ending, dt)) {
+          case 'gather':
+            gatherTheCast();
+            break;
+          case 'kneel':
+            theyConcede();
+            break;
+          case 'rise':
+            // Frozen at the moment the lift begins: `liftHer` interpolates
+            // from here every step, so reading her live position would make
+            // the rise chase its own tail and never arrive.
+            riseFrom.x = player.position.x;
+            riseFrom.y = player.position.y;
+            break;
+          case 'cheer':
+            for (const b of bills()) b.celebrating = 'applaud';
+            break;
+        }
+
+        if (ending.beat === 'gather') walkTheCastOn(beatProgress(ending));
+        if (ending.beat === 'rise') liftHer(beatProgress(ending), riseFrom);
+
+        // The gate is armed by the PROMPT, not by the cheer — she is not asked
+        // to press anything until she has been told what to press. That is
+        // what makes the whole 19.5 s unskippable rather than the knee alone.
+        if (promptIsUp(ending)) {
+          if (!promptShown) {
+            promptShown = true;
+            winGate.arm();
+          }
           const pressing = rawInput.attackPressed || rawInput.jumpPressed;
           if (winGate.open(dt, pressing) && pressing) restart();
         }
@@ -496,7 +668,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         // the fight ends at 1:30, so a win that did not record would be a run
         // that left no PracticeRun at all.
         case 'won':
-          theyConcede();
+          theyStop();
           juice.addTrauma(FEEDBACK.courseClear.trauma);
           record();
           // A win nobody played must not become her record of beating them.
@@ -526,6 +698,18 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       ctx.save();
       ctx.translate(shake.x, shake.y);
       drawWorld(ctx, world);
+      // The walk-on cast, behind the Bills: they are the crowd, and a warden
+      // drawn over Bill's 160 px body would read as standing in front of him.
+      const bow = reverence(ending);
+      for (const c of cast) {
+        const feetAt = {
+          x: c.prevX + (c.enemy.position.x - c.prevX) * alpha,
+          y: c.enemy.position.y,
+        };
+        drawReverent(ctx, feetAt, bow, c.enemy.facing, () =>
+          drawEnemy(ctx, feetAt, c.enemy, simTime, 0),
+        );
+      }
       drawEnemy(ctx, lerpVec(prevBillFeet, bill.position, alpha), bill, simTime, 0);
       if (dog)
         drawEnemy(ctx, lerpVec(prevDogFeet, dog.position, alpha), dog, simTime, 0, look.ring);
@@ -613,7 +797,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           0.7,
         );
       } else if (boss.phase === 'won') {
-        drawEnding(ctx, ending, jumpKey, attackKey);
+        drawEnding(ctx, ending, bill.position.x, jumpKey, attackKey);
       } else if (boss.phase === 'over') {
         ctx.fillStyle = 'rgba(7, 9, 18, 0.78)';
         ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
@@ -647,6 +831,54 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 }
 
 /**
+ * Bow a body toward the Knight, whatever shape it happens to be.
+ *
+ * The ratified alternative was five new painters, and it was rejected for a
+ * reason that survives contact with the art: a walker is a shell with leg
+ * nubs, a flier is a hovering ball, a spitter has no legs. None of them has a
+ * knee to bend. What they all have is a footprint and a facing, so the
+ * reverence is a TRANSFORM about the feet — sink, then tip forward — and it
+ * reads as deference on all five without `drawEnemy` ever learning that the
+ * fight ended.
+ *
+ * It is also the honest answer for the flier: a hovering thing that sinks and
+ * tips is exactly what a bow looks like when you have no legs to kneel on.
+ */
+function drawReverent(
+  ctx: CanvasRenderingContext2D,
+  feet: Vec2,
+  bow: number,
+  facing: number,
+  paint: () => void,
+): void {
+  if (bow <= 0) {
+    paint();
+    return;
+  }
+  ctx.save();
+  // Rotate about the FEET, not the centre: a body pivoting about its middle
+  // sinks its head and lifts its base, which reads as falling over.
+  //
+  // The tip is signed by facing, so every body leans toward HER rather than
+  // all of them leaning the same way down the screen. A cast bowing east in
+  // unison is a chorus line; a cast bowing inward is a court.
+  ctx.translate(feet.x, feet.y + REVERENCE_SINK * bow);
+  ctx.rotate(REVERENCE_TIP * bow * Math.sign(facing || 1));
+  ctx.translate(-feet.x, -feet.y);
+  paint();
+  ctx.restore();
+}
+
+/** How far a bowing body sinks toward the floor, fully bowed. */
+const REVERENCE_SINK = 10;
+/**
+ * How far it tips forward, fully bowed. About 22°: enough to be unmistakably
+ * a bow at a glance, shallow enough that a 26 px walker does not look like it
+ * has fallen on its face.
+ */
+const REVERENCE_TIP = 0.38;
+
+/**
  * Bill calls for help, and the answer arrives from off-screen.
  *
  * There is no audio anywhere in this project — no `Audio`, no Web Audio, no
@@ -676,8 +908,7 @@ function drawBarking(
     // Clamped inward: Bill can be standing against either wall when the
     // dog is due, and a shout that runs off the edge of the canvas reads as
     // a rendering bug rather than as a shout.
-    const shoutX = Math.min(Math.max(billX, 90), CANVAS.width - 90);
-    ctx.fillText('HELP!', step(shoutX), step(FLOOR_Y - 200) + bob);
+    drawShout(ctx, 'HELP!', billX, bob);
   }
 
   // The woof crosses in from the right edge over the back half of the card.
@@ -700,6 +931,30 @@ function drawBarking(
 }
 
 /**
+ * A word out of Bill's mouth, in his own lettering.
+ *
+ * Pulled out of `drawBarking` so the ending's summons can use it without
+ * reusing the WOOF that answers it: at 0:30 the second stage flies in from the
+ * right edge because it comes from someone else, and at 1:30 both stages are
+ * Bill's own voice and belong over Bill's own head.
+ *
+ * Clamped inward: he can be standing against either wall when a shout is due,
+ * and one that runs off the canvas reads as a rendering bug rather than as a
+ * shout.
+ */
+function drawShout(ctx: CanvasRenderingContext2D, text: string, billX: number, bob: number): void {
+  ctx.textAlign = 'center';
+  ctx.font = '22px system-ui, sans-serif';
+  ctx.fillStyle = COLORS.hudText;
+  const step = (v: number) => Math.round(v / 4) * 4;
+  ctx.fillText(
+    text,
+    step(Math.min(Math.max(billX, 90), CANVAS.width - 90)),
+    step(FLOOR_Y - 200) + bob,
+  );
+}
+
+/**
  * The ending, drawn.
  *
  * Deliberately the LIGHTEST wash in the file — 0.34 against the fail screen's
@@ -713,36 +968,60 @@ function drawBarking(
 function drawEnding(
   ctx: CanvasRenderingContext2D,
   ending: EndingState,
+  billX: number,
   jumpKey: () => string,
   attackKey: () => string,
 ): void {
-  const cheering = ending.beat === 'cheer';
-  const wash = cheering ? 0.34 : 0.34 * Math.max(0, beatProgress(ending) - 0.4) * 1.7;
-  ctx.fillStyle = `rgba(7, 9, 18, ${Math.min(0.34, wash)})`;
-  ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
-
-  ctx.textAlign = 'center';
-  if (!cheering) {
-    if (beatProgress(ending) > 0.45) {
-      ctx.fillStyle = COLORS.hudDim;
-      ctx.font = '19px system-ui, sans-serif';
-      ctx.fillText('They are done, Kayla.', CANVAS.width / 2, 150);
-    }
-    return;
+  // NOTHING dims until the cast is down. For the first nine seconds she is
+  // supposed to believe the fight is still on, and a wash is the site telling
+  // her it is not — the one thing this whole sequence exists to withhold.
+  if (ending.beat === 'kneel' || ending.beat === 'rise' || ending.beat === 'cheer') {
+    const settled = ending.beat === 'kneel' ? beatProgress(ending) : 1;
+    ctx.fillStyle = `rgba(7, 9, 18, ${0.34 * settled})`;
+    ctx.fillRect(0, 0, CANVAS.width, CANVAS.height);
   }
 
+  // Bill's summons, in two stages on the shout's own clock. The words are the
+  // user's correction: "HELP!" is already in this fight at 0:30 and reads as
+  // Bill LOSING, and this beat needs him escalating. The fear is Kayla's own
+  // inference — she has already watched a shouting Bill produce a second one.
+  if (ending.beat === 'stop') {
+    drawShout(ctx, endingCopy.summonFirst, billX, shoutBob(ending.elapsed));
+  } else if (ending.beat === 'gather' && beatElapsed(ending) < SUMMON_SECOND_SECONDS) {
+    drawShout(ctx, endingCopy.summonSecond, billX, shoutBob(ending.elapsed));
+  }
+
+  // The gather and the hold get NO text at all. That silence is ratified:
+  // a wave-style card naming the five would sell the fake-out completely and
+  // would be the first time the dojo ever told her something untrue.
+  if (ending.beat !== 'cheer') return;
+
+  ctx.textAlign = 'center';
   ctx.fillStyle = COLORS.hudText;
   ctx.font = '44px system-ui, sans-serif';
-  ctx.fillText('YOU DID IT', CANVAS.width / 2, 128);
+  ctx.fillText(endingCopy.winHeadline, CANVAS.width / 2, 128);
   ctx.font = '21px system-ui, sans-serif';
   ctx.fillStyle = COLORS.hudDim;
-  ctx.fillText(
-    "1:30 against the Two Bills, untouched. You're the Hollow Knight Queen.",
-    CANVAS.width / 2,
-    178,
-  );
-  ctx.font = '17px system-ui, sans-serif';
-  ctx.fillText(`Press ${attackKey()} or ${jumpKey()} to face them again.`, CANVAS.width / 2, 218);
+  ctx.fillText(endingCopy.winLine, CANVAS.width / 2, 178);
+
+  // The prompt is last and latest: she is not asked to press anything until
+  // she has had the tableau to herself for the better part of six seconds.
+  if (promptIsUp(ending)) {
+    const fade = Math.min(1, (beatElapsed(ending) - ENDING.cheerPromptAt) / 0.8);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.font = '17px system-ui, sans-serif';
+    ctx.fillText(endingCopy.winPrompt(jumpKey(), attackKey()), CANVAS.width / 2, 218);
+    ctx.restore();
+  }
+}
+
+/** How long "EVERYBODY!" stays up after it lands, at the top of the walk-on. */
+const SUMMON_SECOND_SECONDS = 1.4;
+
+/** The two-frame jitter every shout in this fight has. Stepped, never swept. */
+function shoutBob(elapsed: number): number {
+  return Math.floor(elapsed * 8) % 2 === 0 ? 0 : 4;
 }
 
 /** A named card over a dimmed arena: the boss's one piece of theatre. */

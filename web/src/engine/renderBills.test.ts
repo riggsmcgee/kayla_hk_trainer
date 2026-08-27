@@ -139,12 +139,31 @@ describe('billDogPose', () => {
  * a frame earlier.
  */
 describe('the celebration outranks whatever the fight left them in', () => {
+  it('stops Bill with the foam finger up before he ever kneels', () => {
+    // Playtest 7's correction, at the level the painter sees it: at 1:30 he
+    // is `summon`, not `concede`. He gets his knee seven and a half seconds
+    // later, once the roster he called for is standing round her.
+    //
+    // `swatTell` is reused rather than a new pose invented: it is already the
+    // foam finger held high, and she has spent ninety seconds learning to
+    // fear exactly that shape.
+    const mid = bill('lance', 'active');
+    mid.celebrating = 'summon';
+    expect(billPose(mid)).toBe('swatTell');
+  });
+
   it('puts Bill the man on a knee, then has him applaud', () => {
     const mid = bill('lance', 'active');
     mid.celebrating = 'concede';
     expect(billPose(mid)).toBe('kneel');
     mid.celebrating = 'applaud';
     expect(billPose(mid)).toBe('applaud');
+  });
+
+  it('leaves the dog standing through the summons — the shout is the man’s', () => {
+    const rolling = dog('roll', 'active', true);
+    rolling.celebrating = 'summon';
+    expect(billDogPose(rolling)).toBe('idle');
   });
 
   it('puts the dog down, then sits him up patting', () => {

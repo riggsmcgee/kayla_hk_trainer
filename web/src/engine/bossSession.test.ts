@@ -16,7 +16,7 @@ import { createBossSession } from './bossSession';
 import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import { CANVAS, FIXED_DT } from './constants';
 import { BOSS } from './boss';
-import { ENDING } from './ending';
+import { ENDING, ENDING_PROMPT_SECONDS } from './ending';
 import type { InputFrame } from './types';
 
 const recorded: Record<string, unknown>[] = [];
@@ -328,28 +328,54 @@ describe('the ending', () => {
     expect(copy).not.toContain('Move to begin');
   });
 
-  it('holds the Bills\u2019 knee before anyone says anything', () => {
+  it('shouts for everybody instead of telling her she has won', () => {
+    // The load-bearing frame of the whole sequence. At 1:30 the Bills STOP,
+    // Bill's foam finger goes up and he calls the roster in. Any win text here
+    // kills the fake-out before the walk-on has even begun.
     const session = atTheFinish();
     hold(session, 0.5);
     const copy = drawn(session).join(' ');
+    expect(copy).toContain('ALL RIGHT');
     expect(copy).not.toContain('YOU DID IT');
+    // And NOT the 0:30 line: "HELP!" reads as Bill losing.
+    expect(copy).not.toContain('HELP!');
+  });
+
+  it('says nothing at all while the roster walks on', () => {
+    // The fear beat. The game never lies to her and it never reassures her
+    // either \u2014 a wave-style card naming the five would sell the fake-out and
+    // would be the first untrue thing the dojo ever said.
+    const session = atTheFinish();
+    hold(session, ENDING.stopSeconds + ENDING.gatherSeconds - 0.2);
+    const copy = drawn(session).join(' ');
+    expect(copy).not.toContain('YOU DID IT');
+    expect(copy).not.toContain('Hollow Knight Queen');
   });
 
   it('cannot be hurried, however hard she is pressing', () => {
-    // The knee goes through no gate at all: the ending's gate is not armed
-    // until the cheer starts, which is the same reasoning that made the dog's
-    // card unskippable. She has just won — a mashing thumb must not eat it.
+    // The whole 19.5 s goes through no gate at all: the ending's gate is not
+    // armed until the PROMPT appears, which is the same reasoning that made
+    // the dog's card unskippable. She has just won — a mashing thumb must not
+    // eat it.
     const session = atTheFinish();
-    hold(session, ENDING.concedeSeconds - 0.2, press({ jumpPressed: true, attackPressed: true }));
-    expect(drawn(session).join(' ')).not.toContain('YOU DID IT');
+    hold(session, ENDING_PROMPT_SECONDS - 0.3, press({ jumpPressed: true, attackPressed: true }));
+    expect(drawn(session).join(' ')).not.toContain('to face them again');
   });
 
   it('gets to the cheer, and tells her what she did', () => {
     const session = atTheFinish();
-    hold(session, ENDING.concedeSeconds + 0.3);
+    hold(session, ENDING_PROMPT_SECONDS - ENDING.cheerPromptAt + 0.3);
     const copy = drawn(session).join(' ');
     expect(copy).toContain('YOU DID IT');
     expect(copy).toContain('Hollow Knight Queen');
+  });
+
+  it('holds the prompt back until the tableau has had its time', () => {
+    const session = atTheFinish();
+    hold(session, ENDING_PROMPT_SECONDS - 0.3);
+    expect(drawn(session).join(' ')).not.toContain('to face them again');
+    hold(session, 0.6);
+    expect(drawn(session).join(' ')).toContain('to face them again');
   });
 
   it('waits for her rather than timing out', () => {
@@ -380,16 +406,16 @@ describe('the ending', () => {
     expect(recorded[0]).toMatchObject({ godMode: true });
   });
 
-  it('restarts when she asks, and plays the whole thing again from the knee', () => {
+  it('restarts when she asks, and plays the whole thing again from the stop', () => {
     const session = atTheFinish();
-    hold(session, ENDING.concedeSeconds + 0.5);
+    hold(session, ENDING_PROMPT_SECONDS + 0.5);
     expect(drawn(session).join(' ')).toContain('YOU DID IT');
 
     hold(session, 0.5, press({ attackPressed: true }));
-    // Back to the knee: the ending's own clock restarted with the run, so the
+    // Back to the stop: the ending's own clock restarted with the run, so the
     // dev seam replays the sequence rather than dumping her on the cheer.
     expect(drawn(session).join(' ')).not.toContain('YOU DID IT');
-    hold(session, ENDING.concedeSeconds + 0.3);
+    hold(session, ENDING_PROMPT_SECONDS - ENDING.cheerPromptAt + 0.3);
     expect(drawn(session).join(' ')).toContain('YOU DID IT');
   });
 });
