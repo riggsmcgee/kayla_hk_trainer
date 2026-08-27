@@ -177,6 +177,13 @@ const RISE_HEIGHT = 190;
  */
 const FLIER_HOVER = 56;
 
+/**
+ * What the HUD's right-hand corner says while the fight is on — and, for the
+ * thirteen seconds of the fake-out, after it is over. Nothing about the corner
+ * may change at 1:30, or it becomes the tell.
+ */
+const STILL_THE_FIGHT = 'the thing at the bottom';
+
 /** Ease-out cubic: everything in the ending decelerates onto its mark. */
 function easeOut(t: number): number {
   return 1 - (1 - t) ** 3;
@@ -733,13 +740,20 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       ctx.textAlign = 'right';
       ctx.font = '16px system-ui, sans-serif';
       ctx.fillStyle = COLORS.hudDim;
+      // "and they never touched you" is WIN TEXT, and it may not appear until
+      // the cast is applauding — found by watching the sequence rather than by
+      // a test, which is the whole reason the ending gets watched. For the
+      // thirteen seconds she is supposed to believe she is in trouble, the HUD
+      // keeps saying exactly what it said during the fight.
       ctx.fillText(
         boss.phase === 'won'
-          ? 'and they never touched you'
+          ? ending.beat === 'cheer'
+            ? endingCopy.hudNeverTouched
+            : STILL_THE_FIGHT
           : // Only reachable in god mode now: 1:30 ends the fight otherwise.
             boss.passed
             ? 'past 1:30 — how long can you go?'
-            : 'the thing at the bottom',
+            : STILL_THE_FIGHT,
         CANVAS.width - 16,
         14,
       );

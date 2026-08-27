@@ -339,6 +339,11 @@ describe('the ending', () => {
     expect(copy).not.toContain('YOU DID IT');
     // And NOT the 0:30 line: "HELP!" reads as Bill losing.
     expect(copy).not.toContain('HELP!');
+    // The HUD counts as win text too. This one was caught by watching the
+    // sequence in a browser, not by a test — the corner still said "and they
+    // never touched you" from the first frame of the fake-out.
+    expect(copy).not.toContain('never touched you');
+    expect(copy).toContain('the thing at the bottom');
   });
 
   it('says nothing at all while the roster walks on', () => {
@@ -368,6 +373,7 @@ describe('the ending', () => {
     const copy = drawn(session).join(' ');
     expect(copy).toContain('YOU DID IT');
     expect(copy).toContain('Hollow Knight Queen');
+    expect(copy).toContain('never touched you');
   });
 
   it('holds the prompt back until the tableau has had its time', () => {

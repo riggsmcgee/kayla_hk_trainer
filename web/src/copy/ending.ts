@@ -35,6 +35,13 @@ export const endingCopy = {
    * for the first thirteen seconds, because a caption is the site explaining
    * the joke while the joke is still being told.
    */
+  /**
+   * The HUD's right-hand line, once the party has started. It is win text, so
+   * it waits for the cheer with everything else — during the walk-on the HUD
+   * still says "the thing at the bottom", exactly as it did all fight.
+   */
+  hudNeverTouched: 'and they never touched you',
+
   winHeadline: 'YOU DID IT',
   winLine: "1:30 against the Two Bills, untouched. You're the Hollow Knight Queen.",
 
