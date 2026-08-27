@@ -82,15 +82,20 @@ away the exact work you asked for, so the sprint took it as task 1.
    directly. It had been running ~90 minutes and would not have finished inside
    the window. Nothing was lost.
 
-6. **The dog is the open question now, and there is a lead.** An exploration
-   harness that added him at 0:30 killed FOUR different strategies — stand and
-   jump, hop the ball, hold the middle, back away — all within **2.7 seconds**
-   of his arrival, and every one by **body contact** rather than by an attack.
-   Four strategies dying at an identical time is structural, not tactical. The
-   caveat that keeps it a lead: the harness dropped a fully active dog 200 px
-   from a wall, while the real session walks him in during a card with the
-   clock paused. Walking him in the way `bringInTheDog` does is the next step,
-   and it is written into PLAN.md M6.7 with the numbers.
+6. **The dog is the open question now, and the lead is sharper than it first
+   looked.** A lance-reading bot stops at **32.7 s** once he arrives. My first
+   reading of that was WRONG and is worth the correction: the instrumentation
+   said "body contact" because it asked which ENEMY was mid-attack, and the
+   killer was a **bone already in flight** whose thrower had gone back to idle.
+   Teaching the bot to step away from bones moved it to **34.7 s** and changed
+   HOW it dies, which is the useful part: it now dies to the lance, airborne,
+   against the left wall. The two threats pull opposite ways — backing off a
+   bone walks her toward a wall, and the wall is where the lance leaves no
+   dodge. That is a property of the fight after 0:30, not a gap in the bot, and
+   it is the first thing to look at if she calls the second half unfair. Two
+   caveats before anyone tunes: the harness drops a fully active dog rather
+   than walking him in during his card, and the bot never pogos — the one tool
+   that turns Bill's head into a platform. Both are in PLAN.md M6.7.
 
 7. **Still not built:** the short page and component strings (the lesson PROSE is
    ratified to stay in its pages), and the live deck that saves its own edits.

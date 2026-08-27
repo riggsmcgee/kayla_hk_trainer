@@ -355,17 +355,21 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
   the way. So the finish line is reachable by something a person can actually do, and the ending
   built across Sessions 13–15 can fire. That was the biggest untested assumption in the project.
 
-  **The dog is still open, and there is now a lead worth chasing.** An exploration harness that
-  added him at 0:30 killed FOUR different strategies — stand and jump, hop the ball, hold the
-  middle, back away from him — all within **2.7 seconds** of his arrival, and every one of them by
-  **body contact** rather than by an attack. Four strategies dying at an identical time is the
-  signature of something structural rather than something tactical.
+  **The dog is still open, and the lead is sharper than it first looked.** An exploration harness
+  that added him at 0:30 stopped a lance-reading bot at **32.7 s**, and the first reading of that was
+  wrong: the instrumentation reported "body contact" because it asked which ENEMY was mid-attack, and
+  the killer was a **bone already in flight** whose thrower had gone back to idle. Teaching the bot to
+  step away from bones moved it to **34.7 s** — and changed how it dies, which is the useful part.
 
-  **The caveat that keeps this a lead and not a verdict:** the harness dropped a fully active dog
-  200 px from a wall, while the real session walks him in during a card, with the clock paused and
-  `walkingIn` set. **The next step is to walk him in exactly as `bringInTheDog` does** and see
-  whether the 2.7 seconds survives it. If it does, the first thing to look at is his CONTACT
-  behaviour rather than the roll, because no attack was live when the bot died.
+  **It now dies to the lance, airborne, against the left wall.** The two threats pull in opposite
+  directions: backing away from a bone walks her toward a wall, and the wall is exactly where the
+  lance has no dodge left to offer. That is a real property of the fight after 0:30 rather than a
+  gap in the bot, and it is the first thing to look at if she reports the second half as unfair.
+
+  **Two caveats before anyone tunes anything.** The harness drops a fully active dog 200 px from a
+  wall, while the real session walks him in during a card with the clock paused and `walkingIn` set;
+  and the bot never pogos, which is the one tool that turns Bill's head into a platform. Neither is
+  hard to add, and both would move the number.
 
 - **Crowd control during the boss** — extra roster enemies joining the Bills. Deferred: get the two Bills good first.
 
