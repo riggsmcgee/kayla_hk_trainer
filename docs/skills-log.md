@@ -342,3 +342,33 @@ Observations (Session 15):
   fire. Extending the existing bot from 30 s to the real 90 s target was a four-line change to a
   test that already existed, and it came back green. **The question that has been open longest is
   not always the expensive one to close.**
+
+---
+
+## Session 16 — playtest 8 interview (2026-08-27)
+
+| #   | Skill      | Where it was reached for                       | What it was asked to do                             | Landed | Verdict                                                                                                                                                                  |
+| --- | ---------- | ---------------------------------------------- | --------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 48  | `grilling` | Four notes reacting to everything that shipped | Turn them into a contract before any of it hardened | ✅     | Four rounds. Its best moment was forcing the auto-advance question against the user's OWN earlier ruling, which he then overturned deliberately rather than by accident. |
+| 49  | `handoff`  | Prepping the next chat                         | Orientation, traps, order, skills                   | ✅     | The traps section is where the value is — every entry in it cost real time this session.                                                                                 |
+
+Observations (Session 16):
+
+- **When a deliverable misses, check whether the fix is a SIMPLIFICATION before designing a better
+  miss.** The copy deck failed as an inventory organised by code file. The instinct on being told so
+  was to design something more elaborate — curated cards, rendered game frames, a taxonomy of which
+  beats carry words — and the user cut through all of it with one sentence: "I just want a one-to-one
+  recreation of the site that I can edit the text in easily." The second design was further from the
+  answer than the first was.
+
+- **Ask a user to overturn their own ruling explicitly, rather than letting them do it by accident.**
+  Auto-advancing text is the same shape as the wave auto-advance that playtest 5 deleted outright.
+  Put to him as his own precedent, he kept the new decision AND took the interruptible form — which
+  is the clause that stops it repeating the original failure. Neither would have happened if the
+  contradiction had gone unmentioned.
+
+- **Look for the answer in the code before asking for it.** Two of this interview's questions
+  answered themselves: candidate B already had a documented speaking mouth, and `nailDir` is `'down'`
+  only when airborne — so the user's "no bounce target, just check she can attack in all directions"
+  verifies the pogo's compound press for free. Both facts made his instincts cheaper than the design
+  would have been.
