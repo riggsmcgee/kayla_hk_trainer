@@ -264,19 +264,42 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
   so the tableau is harmless without switching damage off. A dev-drawer **"Watch the ending"** button
   jumps to one step short of the finish line, because god mode cannot reach it by design.
   **What is left of the ending, in order** — each slice ships alone:
-  1. **The cast gathers.** Real `Enemy` objects created at the win and walked to marks around where
-     she stood, then held in celebratory states. `stepEnemy` is never called on them, so they have no
-     AI and no hitboxes; the ending's own step drives their `phase`/`phaseTimer` on a fixed clock.
-     The states are already ratified: **spitter** fires its volley straight up, **warden** waves the
-     shield (`shieldDir` already flips on a clock), **duelist**'s upward anti-air already reads as
-     applause, **walker and flier** are present in party hats. Two numbers not to re-derive: the cast
-     is **394 px of drawn ink, not 320** — `ENEMY_SIZES` is the collision box — and nine bodies leave
-     **53.8 px per gap** across the 1168 px arena.
-  2. **Confetti**, sourced from the spitter's shots bursting at the top. `stepProjectile` has **no
+  1. ~~**The cast gathers.**~~ — **BUILT in Session 13** (`fcdeb2b`), and the sequence around it was
+     redesigned first. The Bills now STOP at 1:30 rather than kneeling, the roster walks on from both
+     walls, and the kneel is a transform (`drawReverent`) rather than five new painters.
+  2. **The five need real party states, and the ratified ones were tried and rejected**
+     _(Session 13)_. This plan said to reach them through fields the painters already read. Built,
+     then looked at in a browser: the warden's `skyward` telegraph paints its **landing zone**, a grey
+     slab most of the height of the arena, and a hazard marker is the last thing a celebration should
+     draw; the duelist's anti-air reads as a **lamp post**, not raised arms. What ships instead is
+     `crowdHop` — a staggered draw-time bounce — with the walker's legs and the flier's wings already
+     moving off the render clock. **Real party states need new drawing, not new state**: party hats
+     for the walker and flier, a shield genuinely raised rather than a telegraph, arms that read as
+     arms.
+  3. **The dog's backflip.** `BillDogPose` splits into rig poses
+     (`idle`/`walkIn`/`bonesTell`/`bones`/`bow`/`applaud`/`lieDown`) and the two that do not use it
+     (`rollTell`/`roll`). A flip belongs with the second group, and the ball's existing spin is the
+     nearest precedent. The clock is already built and tested — `dogIsFlipping(ending)` goes true
+     3.0 s into the cheer — so this slice is drawing only.
+  4. **Confetti**, sourced from the spitter's shots bursting at the top. `stepProjectile` has **no
      gravity** (a spitter shot must fly true), so confetti needs its own step; it must honour
      `reduceFlashing`.
-  3. **8-bit Riggs and the monologue**, in text boxes she advances through `createOverlayGate` — and
-     **there is still no pixel font**, so he will read as a placeholder in the HUD face.
+  5. **8-bit Riggs and the monologue** at `#/the-end`, in text boxes she advances through
+     `createOverlayGate` — and **there is still no pixel font**, so he will read as a placeholder in
+     the HUD face. Playtest 7 ratified the scale: waist-up, ~500 px, **16 px master cell, nothing
+     finer than 8 px**, stepped motion. The bow tie's yellow is still unpicked and must not be
+     `punishGold #e8c76a`.
+  6. **The copy extraction, finished.** `web/src/copy/ending.ts` exists and holds the ending's own
+     strings, with interpolated lines as **functions** rather than templates. The other ~250 strings
+     across 19 files have not moved, and the deck artifact is generated from the module, so it waits
+     on this.
+  7. **Where the cast marks sit is now decided, and the published gap figure does not reproduce.**
+     `castMarks` lays **nine evenly spaced slots** across the 1168 px arena — pitch 129.8 px, wider
+     than the widest body — and gives the roster five of the ones the Knight and the Bills are not
+     standing in. The **394 px of drawn ink** correction is used and is load-bearing (`inkWidth`, not
+     `ENEMY_SIZES`). The companion figure, **53.8 px per gap**, could not be reproduced from the ink
+     table at any reasonable reading, so the layout is derived and pinned in `ending.test.ts`
+     instead. Worth one look if the tableau ever reads as crowded.
 - **The Bills' celebration portfolio — ANSWERED, and it kept both** _(Session 12)_. The user picked
   **C. The Knee** for the moment the clock stops and **B. The Applause** for the party that follows:
   _"let's do the knee immediately after the fight, and then, as other characters come on to

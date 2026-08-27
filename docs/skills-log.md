@@ -248,3 +248,40 @@ Observations (Session 13):
 - **The dev seam and the test seam turned out to be the same seam.** God mode is deliberately locked out of the ending, which also means no test can reach the ending — a Knight standing still is caught at about two seconds and the suite has no bot that survives ninety. The dev-drawer "Watch the ending" button the contract asked for is exactly the hook the tests needed, so it is exercised by nine of them rather than being untested scaffolding. **When a feature is unreachable by construction, the tool that lets a human look at it is the tool that lets a test look at it.**
 
 - **A closed union plus early returns made a sixth phase nearly free.** `stepBoss` already returned early for every non-`fighting` phase, so `'won'` stopped the clock with no new freeze machinery, and TypeScript's exhaustiveness pointed at every place that had to learn the new case. The expensive parts were the two things the type system could not see: `record()` living in a branch that had just become unreachable, and god mode hiding the fact the win needed.
+
+---
+
+## Session 14 — the ending, redesigned and looked at (2026-08-27, `/proactive` 120 min)
+
+| #   | Skill                                                | Where it was reached for                                       | What it was asked to do                                                 | Landed | Verdict                                                                                                                                                                                                                                      |
+| --- | ---------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 41  | `proactive`                                          | The whole sprint                                               | Work the playtest-7 contract's priority list unattended                 | ✅     | Four commits, 753 tests green. The narrowing of item 1 (the 256-string extraction) to "the module plus the ending's own strings" is the call the user should check first — it is written at the top of the handoff with the reasoning.       |
+| 42  | `agent-browser`                                      | The first item in the handoff: nobody had looked at the ending | Watch the ending at game scale                                          | ❌     | **Third consecutive cold-start hang.** Backgrounded after 200 s with no output. It is no longer worth trying first on this machine.                                                                                                          |
+| 43  | Playwright (`playwright-core`, already a dependency) | The same job, after agent-browser hung                         | Drive the dev seam and capture the canvas at each of ten ratified beats | ✅     | Worked on the first run once the storage envelope was right. **It found a defect every test had passed:** the HUD said "and they never touched you" from the first frame of the fake-out. It also killed the ratified party states on sight. |
+
+Observations (Session 14):
+
+- **Tests cannot judge a pose — and they cannot judge a HUD corner either.** The lesson carried in from
+  last round was about art. It turned out to be about copy: 745 tests passed while the top-right
+  corner announced the win thirteen seconds before the sequence was ready to. A test asserting "the
+  celebration says YOU DID IT at the right time" is not the same test as "nothing on screen says she
+  has won", and the second one is the one the design needed. **Assert the absence, not just the
+  presence.**
+
+- **A ratified decision can be wrong about the thing it is ratifying.** PLAN.md §8 named each of the
+  five's party states, reached through fields the painters already read. Every one was reachable
+  exactly as written, and two of them looked terrible — the warden's `skyward` telegraph draws its
+  landing zone, so the celebration grew a hazard marker. The ratification was sound about the
+  mechanism and untested about the picture. **A decision made without looking is a hypothesis;
+  ratifying it does not promote it.**
+
+- **The escape hatch a feature ships with is the way in for a script.** Reaching the Bills from a cold
+  browser meant getting past a chapter gate and two beat locks. Seeding progress into localStorage
+  failed three times because the store wraps every blob in a `{ v, data }` envelope — and the failure
+  was silent, because a shape mismatch reads back as the fallback. Clicking the gate's own "Skip this
+  challenge" would have worked immediately. **Prefer the product's own door.**
+
+- **A test that has passed a hundred times can fail because the machine is busy.** The storage
+  eviction test took 653 seconds and timed out while a headless Chromium was capturing screenshots on
+  the same box. It passes in 75 ms on an idle machine. **Do not run the browser pass and the suite at
+  once, and check the wall-clock before believing a red.**
