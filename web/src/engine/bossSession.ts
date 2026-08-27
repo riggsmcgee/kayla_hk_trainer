@@ -39,6 +39,7 @@ import {
 } from './confetti';
 import type { ConfettiPiece } from './confetti';
 import { endingCopy } from '../copy/ending';
+import { fightCopy } from '../copy/fight';
 import { ROSTER } from './roster';
 import {
   INTRO_FAST_FORWARD,
@@ -187,13 +188,6 @@ const RISE_HEIGHT = 190;
  * body height, so the daylight underneath is unmistakable.
  */
 const FLIER_HOVER = 56;
-
-/**
- * What the HUD's right-hand corner says while the fight is on — and, for the
- * thirteen seconds of the fake-out, after it is over. Nothing about the corner
- * may change at 1:30, or it becomes the tell.
- */
-const STILL_THE_FIGHT = 'the thing at the bottom';
 
 /**
  * How high up the arena the volley bursts.
@@ -858,12 +852,12 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       ctx.textBaseline = 'top';
       ctx.font = '28px system-ui, sans-serif';
       ctx.fillStyle = COLORS.hudText;
-      const target = ` / ${formatClock(BOSS.targetSeconds)}`;
-      ctx.fillText(`${formatClock(boss.elapsed)}${config.cleared ? '' : target}`, 16, 14);
+      const target = config.cleared ? null : formatClock(BOSS.targetSeconds);
+      ctx.fillText(fightCopy.hudClock(formatClock(boss.elapsed), target), 16, 14);
       if (boss.hot && boss.phase !== 'won') {
         ctx.font = '16px system-ui, sans-serif';
         ctx.fillStyle = COLORS.hudDim;
-        ctx.fillText('they have your number now', 16, 50);
+        ctx.fillText(fightCopy.hudHot, 16, 50);
       }
       ctx.textAlign = 'right';
       ctx.font = '16px system-ui, sans-serif';
@@ -877,11 +871,11 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         boss.phase === 'won'
           ? ending.beat === 'cheer'
             ? endingCopy.hudNeverTouched
-            : STILL_THE_FIGHT
+            : fightCopy.hudSubtitle
           : // Only reachable in god mode now: 1:30 ends the fight otherwise.
             boss.passed
-            ? 'past 1:30 — how long can you go?'
-            : STILL_THE_FIGHT,
+            ? fightCopy.hudPastTarget
+            : fightCopy.hudSubtitle,
         CANVAS.width - 16,
         14,
       );
@@ -902,42 +896,23 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           ctx.textAlign = 'center';
           ctx.fillStyle = COLORS.hudDim;
           ctx.font = '19px system-ui, sans-serif';
-          ctx.fillText('Something is coming.', CANVAS.width / 2, CANVAS.height / 2 - 40);
+          ctx.fillText(fightCopy.introSomethingComing, CANVAS.width / 2, CANVAS.height / 2 - 40);
         } else if (beat.beat === 'name') {
-          drawCard(
-            ctx,
-            'BILL THE MAN',
-            "Kayla's uncle. You cannot hurt him — only outlast him.",
-            0.7 * beat.progress,
-          );
+          drawCard(ctx, fightCopy.billName, fightCopy.billLine, 0.7 * beat.progress);
         }
         ctx.textAlign = 'right';
         ctx.fillStyle = COLORS.hudDim;
         ctx.font = '15px system-ui, sans-serif';
-        ctx.fillText(`hold ${jumpKey()} to hurry`, CANVAS.width - 16, CANVAS.height - 26);
+        ctx.fillText(fightCopy.introHurry(jumpKey()), CANVAS.width - 16, CANVAS.height - 26);
       } else if (boss.phase === 'ready') {
-        drawCard(
-          ctx,
-          'BILL THE MAN',
-          "Kayla's uncle. You cannot hurt him — only outlast him.",
-          0.7,
-        );
+        drawCard(ctx, fightCopy.billName, fightCopy.billLine, 0.7);
         ctx.textAlign = 'center';
         ctx.fillStyle = COLORS.hudDim;
         ctx.font = '17px system-ui, sans-serif';
-        ctx.fillText(
-          'One touch ends it. Survive 1:30. Move to begin.',
-          CANVAS.width / 2,
-          CANVAS.height / 2 + 76,
-        );
+        ctx.fillText(fightCopy.readyLine, CANVAS.width / 2, CANVAS.height / 2 + 76);
       } else if (boss.phase === 'card') {
         drawBarking(ctx, 1 - boss.cardTimer / BOSS.cardSeconds, bill.position.x, entrance);
-        drawCard(
-          ctx,
-          'BILL THE DOG',
-          'The family had two. Watch him come in — your clock is paused.',
-          0.7,
-        );
+        drawCard(ctx, fightCopy.dogName, fightCopy.dogLine, 0.7);
       } else if (boss.phase === 'won') {
         drawEnding(
           ctx,
@@ -954,21 +929,25 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         ctx.textAlign = 'center';
         ctx.fillStyle = COLORS.hudText;
         ctx.font = '30px system-ui, sans-serif';
-        ctx.fillText('Got you.', CANVAS.width / 2, CANVAS.height / 2 - 70);
+        ctx.fillText(fightCopy.failHeadline, CANVAS.width / 2, CANVAS.height / 2 - 70);
         ctx.font = '19px system-ui, sans-serif';
         ctx.fillStyle = COLORS.hudDim;
         ctx.fillText(
           boss.passed
-            ? `${formatClock(boss.elapsed)} — past 1:30, and still going when they got you.`
-            : `${formatClock(boss.elapsed)} survived.`,
+            ? fightCopy.failTimePastTarget(formatClock(boss.elapsed))
+            : fightCopy.failTime(formatClock(boss.elapsed)),
           CANVAS.width / 2,
           CANVAS.height / 2 - 24,
         );
         ctx.fillStyle = COLORS.hudText;
         ctx.fillText(
           onNext
-            ? `Press ${attackKey()} to face them again · ${jumpKey()} for ${nextLabel ?? 'the next stop'}.`
-            : `Press ${attackKey()} to face them again.`,
+            ? fightCopy.failPromptWithNext(
+                attackKey(),
+                jumpKey(),
+                nextLabel ?? fightCopy.nextStopFallback,
+              )
+            : fightCopy.failPrompt(attackKey()),
           CANVAS.width / 2,
           CANVAS.height / 2 + 24,
         );
@@ -1084,7 +1063,7 @@ function drawBarking(
     // Clamped inward: Bill can be standing against either wall when the
     // dog is due, and a shout that runs off the edge of the canvas reads as
     // a rendering bug rather than as a shout.
-    drawShout(ctx, 'HELP!', billX, bob);
+    drawShout(ctx, fightCopy.billShout, billX, bob);
   }
 
   // The woof crosses in from the right edge over the back half of the card.
@@ -1094,7 +1073,7 @@ function drawBarking(
     const y = step(FLOOR_Y - 150);
     ctx.fillStyle = COLORS.hudText;
     ctx.font = '26px system-ui, sans-serif';
-    ctx.fillText('WOOF!', x, y);
+    ctx.fillText(fightCopy.dogAnswer, x, y);
     ctx.strokeStyle = COLORS.hudDim;
     ctx.lineWidth = 3;
     for (const dy of [-12, 0, 12]) {
