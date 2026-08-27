@@ -1,0 +1,44 @@
+[
+  {
+    "hex": "#a8891c",
+    "name": "Olive Gold",
+    "why": "The deepest of the six and the best separated from both colours that already mean something: 201 from punishGold, 123 from Bill's foam orange. Nothing on the site is this hue. Contrast 5.9 on the arena ground.",
+    "contrastOnGround": "5.92:1",
+    "distanceFromPunishGold": "201 — for scale, punishGold and Bill's foam finger are 152 apart, and nobody confuses those"
+  },
+  {
+    "hex": "#b8860b",
+    "name": "Old Brass",
+    "why": "A worn, unpolished gold — the colour of a tie that has been worn a lot rather than one bought for the photo. 208 from punishGold, 106 from the foam finger. Contrast 6.1.",
+    "contrastOnGround": "6.11:1",
+    "distanceFromPunishGold": "208 — further from it than the two warm colours the game already asks her to tell apart"
+  },
+  {
+    "hex": "#c46b1c",
+    "name": "Burnt Amber",
+    "why": "The furthest from punishGold of any candidate at 225, but it buys that by leaning orange — and orange is Bill's foam finger, only 100 away. The one to pick if you want no chance of the punish read, and to avoid if the tie should not look like it came off Bill.",
+    "contrastOnGround": "5.17:1",
+    "distanceFromPunishGold": "225 — the largest here"
+  },
+  {
+    "hex": "#c8901f",
+    "name": "Deep Saffron",
+    "why": "The middle of the range and the easiest to like. Comfortably clear of punishGold at 165, but only 71 from the foam finger, which is the closest of the six — on a dark screen it may read as Bill's colour rather than yours.",
+    "contrastOnGround": "7.06:1",
+    "distanceFromPunishGold": "165"
+  },
+  {
+    "hex": "#d4a017",
+    "name": "Mustard",
+    "why": "Brighter and more readable at 8.4 contrast, and the most obviously a BOW TIE colour rather than a metal. The trade is the same as Deep Saffron's: 72 from the foam finger, so it borrows a little of Bill.",
+    "contrastOnGround": "8.36:1",
+    "distanceFromPunishGold": "148 — just under the punishGold-to-foam gap, so this is the first one where the punish read is worth a second look"
+  },
+  {
+    "hex": "#d9c02b",
+    "name": "Citron",
+    "why": "The surprise, included because a shortlist that only covers what was expected is not a shortlist. Acid, almost green, and the most legible of the six at 10.9. It is also the closest to punishGold at 96 — far enough to see the difference side by side, not obviously far enough on a screen she is reading fast.",
+    "contrastOnGround": "10.91:1",
+    "distanceFromPunishGold": "96 — the narrowest here, and the reason this one is a question rather than a recommendation"
+  }
+]

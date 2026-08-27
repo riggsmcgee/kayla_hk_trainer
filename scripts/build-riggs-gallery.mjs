@@ -62,6 +62,29 @@ async function loadTies() {
  * `paintRiggs<X>(ctx, origin, t, tie)`. The letter is how the user refers back
  * to one — "I pick B" — not a running order.
  */
+/**
+ * What each candidate argues for — the thing the user is actually choosing
+ * between. Keyed by letter rather than by index, because a candidate can be
+ * cut and the remaining letters must not shuffle.
+ */
+const CLAIMS = {
+  A: {
+    title: 'Same Room As Bill',
+    claim:
+      'Maximum continuity. The same two-tone ramp per material, the same warm palette, the same block vocabulary as Bill the man — just at twice the cell size and cropped at the waist. The extra resolution is spent on fidelity of the same forms rather than on new features. The test: he looks like he is off Bill’s sprite sheet.',
+  },
+  B: {
+    title: 'The Detail The Scale Buys',
+    claim:
+      'Takes “a bit more detailed” literally. Glasses, a real hairline with texture, a shirt with a pocket and a placket, a three-tone ramp instead of two, a face with more than one state. The test: he is recognisably a PERSON, not a silhouette with a prop. The risk: drifting off the medium.',
+  },
+  C: {
+    title: 'The Portrait',
+    claim:
+      'Leans into being waist-up and static — a composed bust rather than a game sprite that happens to be big. Jacketed, squarer, fewer and bigger blocks, deliberate negative space, and the tie doing real compositional work. The test: it reads at a glance from across the room.',
+  },
+};
+
 async function discoverCandidates() {
   let entries;
   try {
@@ -102,6 +125,7 @@ ${table}
 ];
 
 const TIES = ${JSON.stringify(ties)};
+const CLAIMS = ${JSON.stringify(CLAIMS)};
 
 /** The arena's own ground and floor, so the cards look like the game. */
 const BACKDROP = '#070912';
@@ -172,8 +196,11 @@ for (const c of CANDIDATES) {
   const letter = document.createElement('span');
   letter.className = 'letter';
   letter.textContent = c.letter;
-  h2.append(letter, document.createTextNode('Candidate ' + c.letter));
-  caption.append(h2);
+  const meta = CLAIMS[c.letter] || { title: 'Candidate ' + c.letter, claim: '' };
+  h2.append(letter, document.createTextNode(meta.title));
+  const claim = document.createElement('p');
+  claim.textContent = meta.claim;
+  caption.append(h2, claim);
   figure.append(caption);
   gallery.append(figure);
   const ctx = canvas.getContext('2d');
@@ -303,6 +330,7 @@ function page(script, candidates, ties) {
     margin: 0 0 0.6rem;
   }
   h2.section {
+    text-wrap: balance;
     font-family: 'Silkscreen', ui-monospace, 'Courier New', monospace;
     font-size: 1.05rem;
     margin: 0 0 0.35rem;
@@ -319,8 +347,13 @@ function page(script, candidates, ties) {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
     gap: 1rem;
-    align-items: start;
+    /* Stretch, not start: the reasoning under each swatch runs to different
+       lengths, and a staggered grid makes six colours harder to compare than
+       six equal boxes do. */
+    align-items: stretch;
   }
+  .swatch { display: flex; flex-direction: column; }
+  .swatch figcaption { flex: 1; }
   .card, .swatch {
     margin: 0;
     background: var(--panel);
@@ -375,7 +408,12 @@ function page(script, candidates, ties) {
     font-size: 0.85rem;
     max-width: 64ch;
   }
-  code { font-family: ui-monospace, 'Courier New', monospace; font-size: 0.85em; }
+  code {
+    font-family: ui-monospace, 'Courier New', monospace;
+    font-size: 0.85em;
+    /* Six hex codes read as a column; tabular figures keep them aligned. */
+    font-variant-numeric: tabular-nums;
+  }
 </style>
 <div class="wrap">
   <header>
