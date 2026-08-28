@@ -82,6 +82,7 @@ function ControlChips({
 /** One rebindable control: what it is bound to, and the button that changes it. */
 function ControlLine({
   action,
+  row,
   named,
   bindings,
   padBindings,
@@ -90,6 +91,8 @@ function ControlLine({
   onCancel,
 }: {
   action: Action;
+  /** The checklist item this control belongs to, for the accessible name. */
+  row: string;
   /** True on a compound row, where the action needs naming of its own. */
   named: boolean;
   bindings: Bindings;
@@ -111,9 +114,17 @@ function ControlLine({
       <button
         type="button"
         className={active ? 'chip chip-active' : 'chip'}
-        // Seven rows and nine controls, so every button has to say which one it
-        // changes. The name starts with the visible word, per WCAG label-in-name.
-        aria-label={active ? setupFloorCopy.cancelLabel(label) : setupFloorCopy.remapLabel(label)}
+        // Nine of these on one page, all reading "Remap", so the accessible name
+        // is the only thing telling them apart — and it names the ROW, because
+        // Attack is on all three nail rows and naming by control alone gave three
+        // buttons called "Remap Attack".
+        aria-label={
+          active
+            ? setupFloorCopy.cancelLabel(label)
+            : named
+              ? setupFloorCopy.remapControlLabel(label, row)
+              : setupFloorCopy.remapLabel(row)
+        }
         onClick={() => (active ? onCancel() : onStart(action))}
       >
         {active ? setupFloorCopy.cancel : setupFloorCopy.remap}
@@ -221,6 +232,7 @@ export function SetupFloor() {
                   <ControlLine
                     key={action}
                     action={action}
+                    row={setupCheckLabels[check]}
                     named={compound}
                     bindings={bindings}
                     padBindings={padBindings}

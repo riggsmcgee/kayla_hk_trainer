@@ -230,8 +230,21 @@ export const setupFloorCopy = {
    * pages away.
    */
   remap: 'Remap',
-  remapLabel: (control: string): string => `Remap ${control}`,
   cancel: 'Cancel',
+
+  /**
+   * Nine Remap buttons on one page, all reading "Remap", so the accessible name
+   * is the only thing telling them apart — and it has to name the ROW, not the
+   * control. Attack appears on all three nail rows, so naming by control alone
+   * gave three buttons called "Remap Attack" and a screen-reader user listing
+   * the page's controls no way to know which slash they had landed on.
+   *
+   * A row that needs one control is named by the row; a row that needs two names
+   * both, because there the control is the thing being chosen between. The name
+   * starts with the visible word either way, per WCAG label-in-name.
+   */
+  remapLabel: (row: string): string => `Remap ${row}`,
+  remapControlLabel: (control: string, row: string): string => `Remap ${control} for ${row}`,
   cancelLabel: (control: string): string => `Stop remapping ${control}`,
 
   /**

@@ -118,7 +118,7 @@ describe('the Remap on every row', () => {
     renderFloor();
     const jump = row(setupCheckLabels.jump);
     expect(
-      within(jump).getByRole('button', { name: setupFloorCopy.remapLabel('Jump') }),
+      within(jump).getByRole('button', { name: setupFloorCopy.remapLabel(setupCheckLabels.jump) }),
     ).toBeDefined();
     expect(within(jump).getAllByRole('button')).toHaveLength(1);
   });
@@ -129,10 +129,14 @@ describe('the Remap on every row', () => {
     renderFloor();
     const slashUp = row(setupCheckLabels.slashUp);
     expect(
-      within(slashUp).getByRole('button', { name: setupFloorCopy.remapLabel('Up') }),
+      within(slashUp).getByRole('button', {
+        name: setupFloorCopy.remapControlLabel('Up', setupCheckLabels.slashUp),
+      }),
     ).toBeDefined();
     expect(
-      within(slashUp).getByRole('button', { name: setupFloorCopy.remapLabel('Attack') }),
+      within(slashUp).getByRole('button', {
+        name: setupFloorCopy.remapControlLabel('Attack', setupCheckLabels.slashUp),
+      }),
     ).toBeDefined();
   });
 
@@ -149,7 +153,9 @@ describe('the Remap on every row', () => {
   it('takes the next key she presses and shows it on the row', () => {
     renderFloor();
     const jump = row(setupCheckLabels.jump);
-    fireEvent.click(within(jump).getByRole('button', { name: setupFloorCopy.remapLabel('Jump') }));
+    fireEvent.click(
+      within(jump).getByRole('button', { name: setupFloorCopy.remapLabel(setupCheckLabels.jump) }),
+    );
     expect(jump.textContent).toContain(setupFloorCopy.pressPrompt('Jump'));
 
     fireEvent.keyDown(window, { code: 'KeyQ' });
@@ -163,7 +169,9 @@ describe('the Remap on every row', () => {
   it('lets Escape put it back the way it was', () => {
     renderFloor();
     const jump = row(setupCheckLabels.jump);
-    fireEvent.click(within(jump).getByRole('button', { name: setupFloorCopy.remapLabel('Jump') }));
+    fireEvent.click(
+      within(jump).getByRole('button', { name: setupFloorCopy.remapLabel(setupCheckLabels.jump) }),
+    );
     fireEvent.keyDown(window, { code: 'Escape' });
 
     const after = row(setupCheckLabels.jump);
@@ -177,7 +185,11 @@ describe('the Remap on every row', () => {
     // two rows down.
     renderFloor();
     const slashUp = row(setupCheckLabels.slashUp);
-    fireEvent.click(within(slashUp).getByRole('button', { name: setupFloorCopy.remapLabel('Up') }));
+    fireEvent.click(
+      within(slashUp).getByRole('button', {
+        name: setupFloorCopy.remapControlLabel('Up', setupCheckLabels.slashUp),
+      }),
+    );
     fireEvent.keyDown(window, { code: 'KeyI' });
 
     expect(row(setupCheckLabels.slashUp).textContent).toContain('I');
@@ -210,5 +222,21 @@ describe('the way out', () => {
     expect(screen.getByRole('link', { name: /^Next: / }).getAttribute('href')).toBe(
       '/lessons/pogo',
     );
+  });
+});
+
+describe('nine Remap buttons on one page', () => {
+  it('gives every one of them a different name', () => {
+    // They all read "Remap", so the accessible name is the only thing telling
+    // them apart, and Attack is on all three nail rows. Naming by control alone
+    // produced three buttons called "Remap Attack" — which a browser found and
+    // this file did not, because every test above asked for a button by a name
+    // it had already decided was right.
+    seed({ controller: 'leverless', setupChecks: [] });
+    renderFloor();
+    const names = screen
+      .getAllByRole('button')
+      .map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '');
+    expect(new Set(names).size).toBe(names.length);
   });
 });
