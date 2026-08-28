@@ -14,14 +14,13 @@
  * playtest 8 picked candidate B, A and C were deleted, and this file needed no
  * edit to stop offering a choice that had been made.
  *
- * What it still asks, with one drawing on it:
- *
- * 1. **The bow tie's yellow**, which is genuinely undecided. The tie is passed
- *    into the painter as a parameter precisely so this page can walk it
- *    through a shortlist without touching the painter.
- * 2. **The likeness.** A photograph is coming, one revised face goes into
- *    `riggsB.ts`, and this page is how it comes back as a PICTURE rather than
- *    as a paragraph about a picture.
+ * Both of its questions are now answered — the drawing is candidate B and the
+ * tie is Citron — so what this page is FOR has changed. It is no longer a
+ * ballot; it is the mirror the likeness round works in front of. A photograph
+ * arrived, the face inside B's locked style was redrawn from it, and this page
+ * is how a revision comes back as a PICTURE rather than as a paragraph about a
+ * picture. The tie strip stays because it costs nothing, and because a colour
+ * picked once is still worth seeing on a drawing that has changed under it.
  *
  * Usage:  node scripts/build-riggs-gallery.mjs [outfile]
  * Default outfile: .proactive/scratch/riggs-gallery.html
@@ -439,16 +438,16 @@ function page(script, candidates, ties) {
   <div class="ask">
     <h2>While this page is still open</h2>
     <p>
-      The drawing is settled and the other two are deleted. Two things are still open, and both are
-      faster to answer looking at this page than in the abstract:
+      The drawing is settled, the other two are deleted, and the tie is Citron. What is left is the
+      LIKENESS, and it is the one thing on this project that cannot be reasoned about &mdash; it can
+      only be looked at. Five features carry a face at a 16&nbsp;px cell: hair shape and colour,
+      glasses or none, facial hair or none, face width, one expression. So:
     </p>
     <ol>
-      <li>Which yellow &mdash; and is it doing the job the foam finger does for Bill?</li>
-      <li>
-        The face: send the photograph. Five things carry a likeness at this cell size &mdash; hair
-        shape and colour, glasses or none, facial hair or none, face width, one expression &mdash;
-        and a photo is what makes those five correct rather than invented.
-      </li>
+      <li>Which of the five is furthest off?</li>
+      <li>Is the hair reading as CURLY, or just as big?</li>
+      <li>Is the stubble reading as three days unshaven, or as a beard?</li>
+      <li>Does the tie still work now that the face under it has changed?</li>
     </ol>
   </div>
 

@@ -3,10 +3,17 @@
  *
  * The 16 px cell was ratified because it buys roughly eleven times Bill's
  * facial area (Bill's face is ~36 sub-cells; this one is ~400). This candidate
- * is the argument that the area should actually be SPENT: glasses with a real
- * frame and a glint, a hairline with teeth in it, a brow that moves, a mouth
- * with two states, a dress collar with points, a placket with buttons, a
- * pocket, and three tones per material instead of two.
+ * is the argument that the area should actually be SPENT: a curly head of hair
+ * built clump by clump, three days of growth on the jaw, a hairline with teeth
+ * in it, a brow that moves, a mouth with two states, a dress collar with
+ * points, a placket with buttons, a pocket, and three tones per material
+ * instead of two.
+ *
+ * The face inside that style was redrawn from a PHOTOGRAPH in playtest 8. What
+ * changed: the hair went from a flat cap with a part to a curly mass, the
+ * glasses came off, and a stubble beard arrived. What did NOT change is the
+ * style around it — the cell, the ramps, the detail level, the stepped motion —
+ * because that was ratified and only the likeness was ever in question.
  *
  * The test it has to pass is "he is recognisably a PERSON, not a silhouette
  * with a prop". The test it can FAIL is drifting off the medium — every extra
@@ -58,7 +65,10 @@
  *   chin                336      (row 10)    /  face, 40 px each
  *   head                160 tall x 112 wide  (10 x 7 cells) = 0.70 aspect
  *   eye line            408      (row 5.5)   eyes 24 x 8, pupils 8 x 8
- *   glasses        416 -> 384    (rows 5..7) lenses 40 x 32, frame 8 px thick
+ *   eye shadow          400      (row 6)     the crease above and the shadow
+ *                                              under, 8 px each, doing what
+ *                                              the frame used to do
+ *   growth         360 -> 320    (rows 7.5..10) upper lip, jaw, chin
  *   mouth               352      (row 8.5)   48 wide = 0.43 of head width
  *   ear            416 -> 376    (rows 5..7.5) brow to nose base, as ears go
  *   neck           336 -> 288    64 wide = 0.57 of head width. 48 looked like
@@ -92,8 +102,10 @@
  * biggest: the shirt (#f2f0ea, and it is nearly half the drawing) and the face
  * (#e8c9a8). The third, the hair, is a mid warm brown that sits directly on
  * top of the bright face, so the silhouette never has dark meeting dark. The
- * only genuinely dark masses in the picture are the glasses and the pupils,
- * and both are small and both are surrounded by lit skin.
+ * only genuinely dark masses in the picture are the brows, the mouth and the
+ * pupils, all small and all surrounded by lit skin. The stubble is deliberately
+ * NOT one of them: drawn a step under the skin rather than in the hair tone, it
+ * stays a shadow on a face instead of becoming a third dark block.
  *
  * The light comes from the same side as Bill's — screen right — so every
  * material shades its rear (-x) column and lights its top edge and its +x
@@ -161,10 +173,10 @@ const P = {
   shirtHi: '#fbfaf6', //    new: shoulder line, collar edge, cuff, placket
   shirt: '#f2f0ea', //      reserved billShirt
   shirtShade: '#c6c3bd', // reserved: rear columns, the far sleeve, the cut
-  frame: '#39405c', //      new: the glasses. Cool, so they never read as hair
-  frameHi: '#7d88ad', //    new: the edge of the frame facing the light
-  lens: '#d8bfa4', //       new: his face seen through glass, one step cooler
-  glint: '#f6f2ea', //      new: one 8px square of window in the near lens
+  stubble: '#a98a70', //    new: three days of growth. One step under skinShade
+  //                        so it stays a SHADOW ON SKIN — in the hair tone it
+  //                        becomes a beard he could take hold of, and a
+  //                        different, older man
   eyeWhite: '#f4f2ec', //   reserved dogWhite
   ink: '#0b0e1a', //        reserved enemyDetail — pupils only
   lip: '#8f5b4a', //        new: the mouth line and its two smiling corners
@@ -189,38 +201,54 @@ function step(t: number, hz: number): number {
 // --- the head --------------------------------------------------------------
 /**
  * The whole head group, hung from `hr` — row 0 is the crown, row 10 the chin.
- * It is one function because the nod moves all of it at once, glasses
- * included; anything that lags behind the skull by a frame stops being a face.
+ * It is one function because the nod moves all of it at once, beard included;
+ * anything that lags behind the skull by a frame stops being a face.
  *
  * Feature tiers, in half-cells from hr (the classic thirds of a face):
- *   hr+0.0 .. hr+2.5   hair: cap, part, and a hairline with teeth in it
- *   hr+2.5 .. hr+4.5   forehead — the tallest unbroken plane, so it takes
+ *   hr+0.0 .. hr+2.5   hair: three crown clumps, a ragged mass, a hairline
+ *                      with teeth in it. No part — a parting is the one thing
+ *                      curly hair does not have
+ *   hr+2.5 .. hr+4.0   forehead — the tallest unbroken plane, so it takes
  *                      the highlight and does most of the modelling
- *   hr+4.5 .. hr+5.0   brow (lifts 8px when he speaks)
- *   hr+5.0 .. hr+7.0   glasses, with the eyes in the top half of the lenses
- *   hr+6.0 .. hr+7.5   nose, threaded between the two inner frame bars
- *   hr+7.5 .. hr+8.5   the shadow the nose casts, and the philtrum
- *   hr+8.5 .. hr+9.5   mouth
- *   hr+9.0 .. hr+10.0  jaw stepping in twice to a 64px chin
+ *   hr+4.0 .. hr+5.0   brow (lifts 8px on the nod). It stops 8px short of the
+ *                      temple hair on each side: same tone, and where they
+ *                      touch they fuse into one band across the whole face
+ *   hr+4.5 .. hr+6.5   sideburns, in front of the ears, handed on to the jaw
+ *   hr+5.0 .. hr+6.5   eyes: crease, eye, shadow — one 8px tier each
+ *   hr+6.0 .. hr+7.5   nose, with both long edges drawn now that no frame does
+ *   hr+6.5 .. hr+10.0  growth: jaw, jaw corner, chin
+ *   hr+7.5 .. hr+8.0   the upper lip's growth
+ *   hr+8.0 .. hr+9.0   mouth, its two ends lifted a tier above the line
+ *   hr+8.5 .. hr+10.0  jaw stepping in three times to a 64px chin, which is
+ *                      exactly the neck's width: narrower leaves a hole
  */
 function head(ctx: Ctx, hr: number, blink: boolean, browUp: boolean, mouthOpen: boolean): void {
-  // skull, then two steps of jaw: 112 wide at the cheekbones, 64 at the chin
+  // The skull KEEPS its full 112px width at the cheekbones. Narrowing it to 96
+  // was tried and rendered: at this cell size a narrow skull does not read as a
+  // narrow face, it reads as a skull, because the width is what holds the
+  // features apart. The narrowness comes from the JAW instead — three 16px
+  // steps below the mouth, ending exactly as wide as the 64px neck under it, so
+  // the taper is visible and the silhouette still has no holes in it.
   ctx.fillStyle = P.skin;
-  r(ctx, -3.5, hr + 1, 7, 8);
-  r(ctx, -3, hr + 9, 6, 0.5);
+  r(ctx, -3.5, hr + 1, 7, 7.5);
+  r(ctx, -3, hr + 8.5, 6, 0.5);
+  r(ctx, -2.5, hr + 9, 5, 0.5);
   r(ctx, -2, hr + 9.5, 4, 0.5);
 
-  // the rear column of the face, plus a hollow under the far cheekbone
+  // the rear column of the face, and the hollow under the far cheekbone
   ctx.fillStyle = P.skinShade;
-  r(ctx, -3.5, hr + 3, 0.5, 6);
-  r(ctx, -3, hr + 7, 1, 1.5);
-  r(ctx, -3, hr + 9, 1.5, 0.5);
+  r(ctx, -3.5, hr + 3, 0.5, 5.5);
+  r(ctx, -3, hr + 7, 0.5, 1.5);
+  r(ctx, -3, hr + 8.5, 0.5, 0.5);
 
-  // the modelling: forehead, cheekbone, chin. Light from screen right.
+  // modelling: the band of forehead the hairline leaves, then the near
+  // cheekbone as a lit plane with its own hollow directly under it — a single
+  // flat highlight bar gives a face no structure to be recognised by
   ctx.fillStyle = P.skinHi;
-  r(ctx, -0.5, hr + 3, 3, 1.5);
-  r(ctx, 1, hr + 7, 2, 0.5);
-  r(ctx, 0, hr + 9.5, 1.5, 0.5);
+  r(ctx, -0.5, hr + 3.5, 2.5, 0.5);
+  r(ctx, 1, hr + 6.5, 1.5, 0.5);
+  ctx.fillStyle = P.skinShade;
+  r(ctx, 1.5, hr + 7, 1, 0.5);
 
   // ears: brow to nose base, the near one lit, the far one wholly in shade
   ctx.fillStyle = P.skin;
@@ -229,43 +257,103 @@ function head(ctx: Ctx, hr: number, blink: boolean, browUp: boolean, mouthOpen: 
   r(ctx, 3.5, hr + 5.5, 0.5, 1);
   r(ctx, -4, hr + 5, 0.5, 2.5);
 
-  // hair: a cap 8px wider than the skull on each side, so it reads as volume
-  // rather than as paint. The temples are left bare — a hairline that runs
-  // straight across the whole forehead is a helmet, not hair.
+  // ---- the hair, which is most of the likeness ----------------------------
+  // It cannot be bought with height — row 0 is the ceiling, 496px above the
+  // origin against a 500px limit — so the volume is bought with WIDTH: 136px
+  // across the temples over a 112px skull. The outline is built one 8px tier
+  // at a time and no two tiers end in the same place, which is what stops a
+  // curly head from setting into a dome. The crown is three separate clumps
+  // with two notches of background bitten out between them, because the only
+  // edge that can be irregular at the very top is the top edge itself.
   ctx.fillStyle = P.hair;
-  r(ctx, -3.5, hr, 7, 0.5); // crown, corners cut off the cap below it
-  r(ctx, -4, hr + 0.5, 8, 2);
-  r(ctx, -3, hr + 2.5, 6, 0.5); // the hairline band
-  r(ctx, -4, hr + 2.5, 0.5, 2.5); // sides, down over the temples to the ears
-  r(ctx, 3.5, hr + 2.5, 0.5, 2.5);
-  // ...and the hairline itself is not a ruled line: five teeth of two lengths
-  r(ctx, -2.5, hr + 3, 0.5, 0.5);
-  r(ctx, -1.5, hr + 3, 0.5, 0.5);
-  r(ctx, -0.5, hr + 3, 1, 0.5); // the peak, one tier longer than its neighbours
-  r(ctx, -0.5, hr + 3.5, 0.5, 0.5);
-  r(ctx, 1, hr + 3, 0.5, 0.5);
-  r(ctx, 2, hr + 3, 0.5, 0.5);
-  ctx.fillStyle = P.hairHi;
-  r(ctx, -3, hr, 5.5, 0.5); // the crown takes the light first
-  ctx.fillStyle = P.hairShade;
-  r(ctx, -4, hr + 0.5, 0.5, 4.5); // rear column, cap and side in one go
-  r(ctx, 1.5, hr + 0.5, 0.5, 2); // the part
+  r(ctx, -3, hr, 1.5, 0.5); // crown, clump 1
+  r(ctx, -1, hr, 2, 0.5); //   clump 2, the widest of the three
+  r(ctx, 1.5, hr, 1, 0.5); //  clump 3, the narrowest
+  r(ctx, -3.5, hr + 0.5, 6.5, 0.5); // the mass swelling out under the crown,
+  r(ctx, -4.5, hr + 1, 8, 0.5); //    each tier stepping past the last on one
+  r(ctx, -4, hr + 1.5, 8.5, 0.5); //  side and back in on the other
+  r(ctx, -4.5, hr + 2, 8.5, 0.5);
+  // the hairline: high, with the temples left bare either side of the lobe
+  r(ctx, -4.5, hr + 2.5, 1.5, 0.5);
+  r(ctx, 3, hr + 2.5, 1.5, 0.5);
+  r(ctx, -1.5, hr + 2.5, 0.5, 0.5); // two teeth hanging below the band,
+  r(ctx, 0, hr + 2.5, 1, 0.5); //      unequal and off-centre: a curl does not
+  //                                   know where the middle of a face is
+  r(ctx, -4, hr + 3, 1, 0.5); // the sides tapering down past the temples
+  r(ctx, 3, hr + 3, 1, 0.5);
+  r(ctx, -3.5, hr + 3.5, 0.5, 0.5);
+  r(ctx, 3, hr + 3.5, 0.5, 0.5);
+  // Rows 4 and 4.5 stop at cols -3 and 3 and go no further in. That is not
+  // tidiness: the brow is the same brown as the hair, and where the two touch
+  // they fuse into one unbroken band across the whole upper face, which is
+  // what made an earlier attempt glower. There is 8px of skin between them.
+  r(ctx, -3.5, hr + 4, 0.5, 0.5);
+  r(ctx, 3, hr + 4, 0.5, 0.5);
+  r(ctx, -3.5, hr + 4.5, 0.5, 2); // sideburns, in front of the ears, down to
+  r(ctx, 3, hr + 4.5, 0.5, 2); //   the middle of them, where the jaw's own
+  //                                growth picks them up
 
-  // brow — the same brown as the hair, and the one feature that moves on its
-  // own. 8px is a whole tier at this scale, which is why it reads at all.
+  // the shade does two jobs: the rear column, which follows the ragged left
+  // edge tier by tier, and the SEPARATIONS — short stepped strokes running
+  // down inside the mass from the notches in the crown. Without those the
+  // whole thing is one brown shape with a bumpy edge instead of clumps.
+  ctx.fillStyle = P.hairShade;
+  r(ctx, -3, hr, 0.5, 0.5);
+  r(ctx, -3.5, hr + 0.5, 0.5, 0.5);
+  r(ctx, -4.5, hr + 1, 0.5, 0.5);
+  r(ctx, -4, hr + 1.5, 0.5, 0.5);
+  r(ctx, -4.5, hr + 2, 0.5, 1);
+  r(ctx, -4, hr + 3, 0.5, 0.5);
+  r(ctx, -3.5, hr + 3.5, 0.5, 1);
+  r(ctx, -3.5, hr + 4.5, 0.5, 2);
+  r(ctx, -1.5, hr + 0.5, 0.5, 1); // the first notch carried down into the
+  r(ctx, 1, hr + 0.5, 0.5, 0.5); //  mass; the second steps sideways as it
+  r(ctx, 1.5, hr + 1, 0.5, 0.5); //  goes, so it is a curl and not a parting
+  r(ctx, -2.5, hr + 1.5, 0.5, 1);
+  r(ctx, 2.5, hr + 1.5, 0.5, 0.5);
+  r(ctx, 0, hr + 2, 0.5, 0.5);
+  r(ctx, 3, hr + 2.5, 0.5, 0.5);
+
+  // and the light, landing on the top-right corner of clump after clump. Each
+  // one is a single 8px square: a highlight any longer joins its neighbours
+  // up and paints a helmet stripe across the whole crown.
+  ctx.fillStyle = P.hairHi;
+  r(ctx, -2, hr, 0.5, 0.5);
+  r(ctx, 0, hr, 1, 0.5);
+  r(ctx, 2, hr, 0.5, 0.5);
+  r(ctx, 2.5, hr + 0.5, 0.5, 0.5);
+  r(ctx, -1, hr + 1, 0.5, 0.5); // three of them are interior, well away from
+  r(ctx, 3, hr + 1, 0.5, 0.5); //  the edge, which is what says the mass has
+  r(ctx, 0.5, hr + 1.5, 0.5, 0.5); // curls in the middle of it and is not
+  r(ctx, 4, hr + 1.5, 0.5, 0.5); //  just a rim with texture round the outside
+  r(ctx, 2, hr + 2, 0.5, 0.5);
+  r(ctx, 3.5, hr + 2, 0.5, 0.5);
+  r(ctx, 4, hr + 2.5, 0.5, 0.5);
+  r(ctx, 3.5, hr + 3, 0.5, 0.5);
+
+  // brow — thick, near-straight, sat one tier above the eye. It is the one
+  // feature that moves on its own, still by exactly one 8px tier.
   const br = browUp ? 4 : 4.5;
   ctx.fillStyle = P.hair;
-  r(ctx, -3, hr + br, 2, 0.5);
-  r(ctx, 1, hr + br, 2, 0.5);
+  r(ctx, -2.5, hr + br, 2, 0.5);
+  r(ctx, 0.5, hr + br, 2, 0.5);
 
-  // glass first, then the eyes inside it, then the frame on top of both
-  ctx.fillStyle = P.lens;
-  r(ctx, -3, hr + 5, 2.5, 2);
-  r(ctx, 0.5, hr + 5, 2.5, 2);
+  // the eyes, with no frame around them any more. What the glasses were really
+  // doing was giving the eye an edge, so the edge is drawn instead: one 8px
+  // crease above and one 8px shadow below, with SKIN either side. Boxing each
+  // eye in a full square of shade was tried and it turns them into two holes.
+  ctx.fillStyle = P.skinShade;
+  r(ctx, -2.5, hr + 5, 1.5, 0.5);
+  r(ctx, 1, hr + 5, 1.5, 0.5);
+  r(ctx, -2.5, hr + 6, 1.5, 0.5); // the shadow under the eye that he has
+  r(ctx, 1, hr + 6, 1.5, 0.5);
 
   if (blink) {
-    // the lid comes DOWN: it is drawn 8px below where the open eye sits
-    ctx.fillStyle = P.skinShade;
+    // the lid comes DOWN: drawn 8px below where the open eye sits, and in hair
+    // rather than skin, because a lash line is the only thing at this size
+    // that reads as an eye SHUT rather than as an eye missing. It must never
+    // be LIGHTER than the shadow it replaces or the blink reads as a flicker.
+    ctx.fillStyle = P.hair;
     r(ctx, -2.5, hr + 6, 1.5, 0.5);
     r(ctx, 1, hr + 6, 1.5, 0.5);
   } else {
@@ -277,48 +365,63 @@ function head(ctx: Ctx, hr: number, blink: boolean, browUp: boolean, mouthOpen: 
     r(ctx, 1.5, hr + 5.5, 0.5, 0.5); // looking straight down the lens at her
   }
 
-  ctx.fillStyle = P.frame;
-  r(ctx, -3, hr + 5, 2.5, 0.5); // far lens: top, bottom, outer, inner
-  r(ctx, -3, hr + 6.5, 2.5, 0.5);
-  r(ctx, -3, hr + 5, 0.5, 2);
-  r(ctx, -1, hr + 5, 0.5, 2);
-  r(ctx, 0.5, hr + 5, 2.5, 0.5); // near lens, the same four bars
-  r(ctx, 0.5, hr + 6.5, 2.5, 0.5);
-  r(ctx, 0.5, hr + 5, 0.5, 2);
-  r(ctx, 2.5, hr + 5, 0.5, 2);
-  r(ctx, -0.5, hr + 5, 1, 0.5); // bridge
-  r(ctx, -4, hr + 5, 1, 0.5); // temples, running back to the ears
-  r(ctx, 3, hr + 5, 1, 0.5);
-  ctx.fillStyle = P.frameHi;
-  r(ctx, 2.5, hr + 5, 0.5, 2); // the frame edge that faces the light
-  ctx.fillStyle = P.glint;
-  r(ctx, 2, hr + 5.5, 0.5, 0.5); // ONE glint, in the near lens only: two
-  // reads as a mistake, one reads as a window
-
-  // nose: the bridge is threaded through the 16px gap between the inner frame
-  // bars, then it widens to a 24px ball at the base
+  // nose: a 16px bridge threaded down between the eyes, widening to a 24px
+  // ball. Both of its long edges are drawn now — shade on the rear, highlight
+  // on the lit one — because the inner frame bars used to do that job.
   ctx.fillStyle = P.skin;
   r(ctx, -0.5, hr + 6, 1, 1);
   r(ctx, -0.5, hr + 7, 1.5, 0.5);
+  ctx.fillStyle = P.skinShade;
+  r(ctx, -1, hr + 6, 0.5, 1.5);
   ctx.fillStyle = P.skinHi;
   r(ctx, 0, hr + 6, 0.5, 1.5);
-  ctx.fillStyle = P.skinShade;
-  r(ctx, -0.5, hr + 7.5, 1.5, 0.5); // the shadow under it, not a nostril: a
-  // nostril at 8px reads as a snout
 
-  // mouth: two states and two raised corners. The corners are in both states,
-  // so opening his mouth never wipes the smile off his face.
+  // THE BEARD, and every rect of it is drawn HERE, before the mouth block and
+  // outside its branches, so switching mouth states still costs exactly three
+  // rects and his stubble does not strobe on and off while he talks.
+  //
+  // All of it is P.stubble and none of it is P.hair. That one choice is the
+  // whole difference between a man who has not shaved for three days and a man
+  // with a mustache: drawn in hair colour the upper lip becomes the darkest
+  // mass on the face and ages him ten years. It runs continuously — sideburn,
+  // jaw, jaw corner, chin — because a beard with gaps in it is a chinstrap.
+  ctx.fillStyle = P.stubble;
+  r(ctx, -1.5, hr + 7.5, 3, 0.5); // the upper lip
+  r(ctx, -3.5, hr + 6.5, 0.5, 2); // the far jaw, taking over from the
+  r(ctx, -3, hr + 7.5, 0.5, 1); //    sideburn, and stepping IN as it drops:
+  r(ctx, 3, hr + 6.5, 0.5, 2); //     a straight inner edge reads as a
+  r(ctx, 2.5, hr + 7.5, 0.5, 1); //   sideburn continued, not as growth
+  r(ctx, -3, hr + 8.5, 1.5, 0.5); // along the jawline, following the taper in.
+  r(ctx, 1.5, hr + 8.5, 1.5, 0.5); // It stops 24px out from centre and the mouth
+  //                                  line starts at 16px, so 8px of plain skin
+  //                                  always separates growth from lip.
+  r(ctx, -2.5, hr + 9, 1, 0.5);
+  r(ctx, 1.5, hr + 9, 1, 0.5);
+  r(ctx, -2, hr + 9.5, 1, 0.5); // the chin, either side of its lit point
+  r(ctx, 1, hr + 9.5, 1, 0.5);
+
+  // mouth: a 32px line with both ENDS lifted a tier above it. Each end overlaps
+  // the line's last column, so the lift meets it along an EDGE — a block set one
+  // tier up and one column out touches only at a vertex, and at 8px that reads
+  // as a detached speck beside a flat line rather than as a smile. Both ends are
+  // outside the branch, so opening his mouth never wipes the smile off his face
+  // and switching states still costs exactly three rects.
+  //
+  // The line is 32px where the stubble on either side stops at 24px out, which
+  // leaves 8px of plain skin between them. Without that gap the mouth and the
+  // jaw growth join into one dark band straight across the face — the same
+  // smear, arriving by a different route.
   ctx.fillStyle = P.lip;
-  r(ctx, -2, hr + 8, 0.5, 0.5);
-  r(ctx, 1.5, hr + 8, 0.5, 0.5);
+  r(ctx, -1.5, hr + 8, 1, 0.5);
+  r(ctx, 0.5, hr + 8, 1, 0.5);
   if (mouthOpen) {
-    r(ctx, -1.5, hr + 8, 3, 0.5); // upper lip, and a dark gap under it
+    r(ctx, -0.5, hr + 8, 1, 0.5); // the two ends joined into a full upper lip
     ctx.fillStyle = P.lipDark;
     r(ctx, -1, hr + 8.5, 2, 1);
     ctx.fillStyle = P.skinHi;
     r(ctx, -1, hr + 9.5, 2, 0.5);
   } else {
-    r(ctx, -1.5, hr + 8.5, 3, 0.5);
+    r(ctx, -1, hr + 8.5, 2, 0.5);
     ctx.fillStyle = P.skinHi;
     r(ctx, -1, hr + 9, 2, 0.5); // the lower lip catching the light
   }

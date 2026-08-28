@@ -323,18 +323,32 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
      dispatcher over a candidate list. Note that the pick had been ratified for a session before
      it shipped — `DEFAULT_RIGGS_VARIANT` was still 0, so the last screen was drawing candidate A
      the whole time. A decision written down is not a decision in the code.
-     **Two things are still the user's**, and the gallery now asks only these two:
-     WHICH of the six yellows (`RIGGS_TIE`, one line), and THE LIKENESS — the photograph, then
-     one revised face inside B's locked style.
-     ~~The credits roll~~ is **DELETED** _(Session 16, `88ac90e`)_, playtest 8 note 2: "it just
-     doesn't add anything." `#/the-end` ends on his face and his last sentence with a quiet chip
-     back to the map, and Settings says "Read it again".
-     **The read-off types itself out** _(same commit)_, playtest 8 note 3: 12 characters a second,
-     1.2 s between messages, his mouth moving only while characters appear. Automatic, but forward
-     COMPLETES the sentence she is reading rather than skipping it — the clause that keeps it from
-     repeating the wave auto-advance that playtest 5 deleted. **What is left is the WORDS:** the
-     longer letter has to be spoken aloud by the user and shaped, and every 150 characters added
-     costs another twelve seconds of her sitting still.
+     **Both remaining questions are now answered.** The tie is **Citron `#d9c02b`** — the
+     shortlist's dark horse, the most legible of the six at 10.9 on the arena ground and also the
+     nearest to punishGold at 96, which the gallery flagged as "the reason this one is a question
+     rather than a recommendation". He read that and picked it, so the narrow gap is a decision.
+     The likeness came back on **one round-trip, as ratified**: a photograph, one revised face
+     inside B's locked style, and he reacts to a picture rather than to a paragraph.
+     **What the face changed** — the flat cap with a part became a curly mass built clump by
+     clump; the glasses came off; a stubble beard arrived. **What it did not change** is the style
+     around it: the 16 px cell, the three-tone ramps, the detail level, the stepped motion.
+     Two findings from doing it, both worth keeping:
+     - **A narrower skull does not read as a narrower face at this cell size — it reads as a
+       skull.** The width is what holds the features apart. The narrowness has to come from the
+       JAW, and the chin's last tier must stay as wide as the 64 px neck or the silhouette gets
+       holes in it where the head meets the body.
+     - **The stubble's TONE is the whole decision.** Drawn in the hair tone it is a beard he could
+       take hold of and a different, older man; drawn one step under `skinShade` it is three days
+       unshaven. `P.stubble` exists for exactly that one step.
+       ~~The credits roll~~ is **DELETED** _(Session 16, `88ac90e`)_, playtest 8 note 2: "it just
+       doesn't add anything." `#/the-end` ends on his face and his last sentence with a quiet chip
+       back to the map, and Settings says "Read it again".
+       **The read-off types itself out** _(same commit)_, playtest 8 note 3: 12 characters a second,
+       1.2 s between messages, his mouth moving only while characters appear. Automatic, but forward
+       COMPLETES the sentence she is reading rather than skipping it — the clause that keeps it from
+       repeating the wave auto-advance that playtest 5 deleted. **What is left is the WORDS:** the
+       longer letter has to be spoken aloud by the user and shaped, and every 150 characters added
+       costs another twelve seconds of her sitting still.
   6. **The copy extraction, continued.** `web/src/copy/` now holds `ending.ts`, `fight.ts` and
      `theEnd.ts` — **52 named strings, and every canvas string the boss fight draws**. That was
      the half the user named: pixels, not DOM. **The deck is being REPLACED, not extended** — playtest 8
