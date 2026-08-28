@@ -178,6 +178,25 @@ export function createKeyboardInput(bindings: Bindings = DEFAULT_BINDINGS): Keyb
 }
 
 /**
+ * A frame in which nothing is pressed.
+ *
+ * Frozen and shared: it is handed to a session on steps where the player's
+ * input is deliberately not being read — while she is rebinding a control, for
+ * instance — so the world keeps stepping (she still falls to the floor) and
+ * nothing she presses counts. Callers must never mutate it.
+ */
+export const NO_INPUT: InputFrame = Object.freeze({
+  left: false,
+  right: false,
+  up: false,
+  down: false,
+  jumpHeld: false,
+  jumpPressed: false,
+  attackPressed: false,
+  dashPressed: false,
+});
+
+/**
  * Did the player touch anything at all this frame? Used by the overlays that
  * say "press any key" — a ready screen, a demo skip, an end screen.
  *

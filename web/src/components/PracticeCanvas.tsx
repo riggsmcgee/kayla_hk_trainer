@@ -4,17 +4,24 @@
  * pixels. The session factory prop keeps this component generic across
  * practice modes; sessions own all game state and drawing.
  *
- * Keys come from the stored bindings (Settings page), read once on mount;
- * the caption under the canvas is generated from the same table.
- *
  * The canvas takes keyboard focus on mount: the keyboard adapter leaves a
  * focused button or link its own keys, so after a level chip is clicked the
  * game (remounted per pick) must own the keyboard again.
+ *
+ * THE SESSION AND THE INPUT ADAPTERS HAVE SEPARATE LIVES, and that separation
+ * is load-bearing rather than tidy. Both used to hang off one effect whose
+ * deps included the bindings, so changing a key rebuilt the session too — the
+ * Knight vanished and respawned. That was invisible while every remap happened
+ * on Settings, where there is no Knight. The sandbox puts the remap controls
+ * on the same screen as a live one, and "I pressed Remap and the game
+ * restarted" is exactly the failure `useBindings` was made a shared store to
+ * avoid. So: the session is built once per `createSession`, and rebinding
+ * swaps only the adapter under it.
  */
 import { useEffect, useRef } from 'react';
 import { CANVAS } from '../engine/constants';
-import { attachKeyboard, createKeyboardInput } from '../engine/input';
-import { createGamepadInput, mergeInput, readGamepads } from '../engine/gamepad';
+import { NO_INPUT, attachKeyboard, createKeyboardInput, type KeyboardInput } from '../engine/input';
+import { createGamepadInput, mergeInput, readGamepads, type GamepadInput } from '../engine/gamepad';
 import { noteInputSource } from '../engine/inputSource';
 import { useInputSource } from '../storage/useInputSource';
 import { useGamepadBindings } from '../storage/useGamepadBindings';
@@ -28,13 +35,49 @@ interface PracticeCanvasProps {
   label: string;
   /** Builds the session on mount; a new mount gets a fresh session. */
   createSession: () => GameSession;
+  /**
+   * Stop reading her input without stopping the world.
+   *
+   * True while the page is capturing a key or a button for a rebind: the loop
+   * keeps stepping (so the Knight still settles onto the floor rather than
+   * freezing mid-air), but the frame it is handed is empty, so the key she is
+   * assigning cannot also be played. The pad is why this exists at all — the
+   * keyboard adapter already ignores keys pressed while a button has focus,
+   * and nothing anywhere ignores a gamepad.
+   */
+  inputPaused?: boolean;
 }
 
-export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
+export function PracticeCanvas({ label, createSession, inputPaused = false }: PracticeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bindings] = useBindings();
   const [padBindings] = useGamepadBindings();
   const source = useInputSource();
+
+  // The loop reads these through refs so that changing a binding — or pausing
+  // — never re-runs the effect that owns the session.
+  const keyboardRef = useRef<KeyboardInput | null>(null);
+  const gamepadRef = useRef<GamepadInput | null>(null);
+  const pausedRef = useRef(inputPaused);
+  pausedRef.current = inputPaused;
+
+  // The keyboard adapter: rebuilt whenever her key bindings change, because the
+  // code→action table is baked in at construction.
+  useEffect(() => {
+    const keyboard = createKeyboardInput(bindings);
+    const detach = attachKeyboard(keyboard);
+    keyboardRef.current = keyboard;
+    return () => {
+      detach();
+      keyboardRef.current = null;
+    };
+  }, [bindings]);
+
+  // The pad adapter, same rule. Polled rather than evented, so it needs no
+  // listener of its own — the loop asks it for a frame.
+  useEffect(() => {
+    gamepadRef.current = createGamepadInput(padBindings);
+  }, [padBindings]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -42,18 +85,19 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
     if (!canvas || !ctx) return;
 
     const session = createSession();
-    const keyboard = createKeyboardInput(bindings);
-    const detachKeyboard = attachKeyboard(keyboard);
-    // The pad is polled where the keyboard is evented, so it is read inside
-    // simulate() rather than wired to a listener. Both produce an InputFrame
-    // and the session cannot tell which hand it came from.
-    const gamepad = createGamepadInput(padBindings);
     canvas.focus({ preventScroll: true });
 
     const loop = createGameLoop({
       simulate: (dt) => {
-        const fromKeys = keyboard.sample();
-        const fromPad = gamepad.sample(readGamepads());
+        // Sampled even while paused, and then thrown away. `sample()` clears
+        // the press edges, so draining them here is what stops the jump she
+        // pressed during a capture from firing the instant the capture ends.
+        const fromKeys = keyboardRef.current?.sample() ?? NO_INPUT;
+        const fromPad = gamepadRef.current?.sample(readGamepads()) ?? NO_INPUT;
+        if (pausedRef.current) {
+          session.step(NO_INPUT, dt);
+          return;
+        }
         // The last point in the whole pipeline where the two frames are still
         // told apart: mergeInput ORs them and the session cannot ask. Recorded
         // here so the copy on screen can name the button she just pressed.
@@ -64,11 +108,8 @@ export function PracticeCanvas({ label, createSession }: PracticeCanvasProps) {
     });
     loop.start();
 
-    return () => {
-      loop.stop();
-      detachKeyboard();
-    };
-  }, [createSession, bindings, padBindings]);
+    return () => loop.stop();
+  }, [createSession]);
 
   return (
     <figure className="practice-canvas-frame">
