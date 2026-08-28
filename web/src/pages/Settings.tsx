@@ -36,18 +36,11 @@ import { useDogLook } from '../storage/useDogLook';
 import { ROLL_VARIANTS } from '../engine/enemies';
 import { BILL_ENTRANCES } from '../engine/entrance';
 import { DOG_LOOKS } from '../engine/dogLook';
+import { actionLabelCopy, settingsCopy } from '../copy/settings';
 import { captureVerdict } from './settings.helpers';
 import '../styles/settings.css';
 
-const ACTION_LABELS: Record<Action, string> = {
-  left: 'Move left',
-  right: 'Move right',
-  up: 'Up',
-  down: 'Down',
-  jump: 'Jump',
-  attack: 'Attack',
-  dash: 'Dash',
-};
+const ACTION_LABELS: Record<Action, string> = actionLabelCopy;
 
 const DEFAULT_STORED = JSON.stringify(bindingsToSettings(DEFAULT_BINDINGS));
 /**
@@ -166,12 +159,12 @@ export function Settings() {
 
   return (
     <div className="settings">
-      <p className="eyebrow">The bench</p>
-      <h1>Settings</h1>
-      <p className="lede">Your keys, your comfort, your clean slate, Kayla.</p>
+      <p className="eyebrow">{settingsCopy.eyebrow}</p>
+      <h1>{settingsCopy.title}</h1>
+      <p className="lede">{settingsCopy.lede}</p>
 
       <section className="settings-section" aria-labelledby="settings-controls">
-        <h2 id="settings-controls">Controls</h2>
+        <h2 id="settings-controls">{settingsCopy.controlsHeading}</h2>
         <ul className="binding-list">
           {ACTIONS.map((action) => {
             const active = capturing === action;
@@ -180,9 +173,9 @@ export function Settings() {
                 <span className="binding-action">{ACTION_LABELS[action]}</span>
                 <span className="binding-keys">
                   {active ? (
-                    <span className="binding-prompt">press a key… (Esc cancels)</span>
+                    <span className="binding-prompt">{settingsCopy.keyPrompt}</span>
                   ) : bindings[action].length === 0 ? (
-                    <span className="binding-prompt">no key</span>
+                    <span className="binding-prompt">{settingsCopy.noKey}</span>
                   ) : (
                     // Both Shifts print as one chip, like the caption.
                     [...new Set(bindings[action].map(friendlyKeyName))].map((name) => (
@@ -199,19 +192,19 @@ export function Settings() {
                   className={active ? 'chip chip-active' : 'chip'}
                   aria-label={
                     active
-                      ? `Cancel changing key for ${ACTION_LABELS[action]}`
-                      : `Change key for ${ACTION_LABELS[action]}`
+                      ? settingsCopy.cancelChangeKey(ACTION_LABELS[action])
+                      : settingsCopy.changeKey(ACTION_LABELS[action])
                   }
                   onClick={() => setCapturing(active ? null : action)}
                 >
-                  {active ? 'Cancel' : 'Change'}
+                  {active ? settingsCopy.cancel : settingsCopy.change}
                 </button>
               </li>
             );
           })}
         </ul>
         <p className="sr-only" role="status">
-          {capturing ? `Press a key for ${ACTION_LABELS[capturing]}. Escape cancels.` : ''}
+          {capturing ? settingsCopy.keyCaptureStatus(ACTION_LABELS[capturing]) : ''}
         </p>
         <div className="btn-row">
           {/* Two buttons on this page read "Reset to defaults" — this one and
@@ -222,24 +215,25 @@ export function Settings() {
           <button
             type="button"
             className="chip"
-            aria-label="Reset to defaults for keyboard controls"
+            aria-label={settingsCopy.resetKeyboardLabel}
             disabled={isDefault}
             onClick={() => {
               setCapturing(null);
               setBindings(DEFAULT_BINDINGS);
             }}
           >
-            Reset to defaults
+            {settingsCopy.reset}
           </button>
         </div>
       </section>
 
       <section className="settings-section" aria-labelledby="settings-controller">
-        <h2 id="settings-controller">Controller</h2>
+        <h2 id="settings-controller">{settingsCopy.controllerHeading}</h2>
         {pads.length === 0 ? (
           <p className="settings-note">
-            No controller yet. Plug it in and <strong>press any button on it</strong> — browsers
-            keep a controller hidden until you do, so pressing a button is what wakes it up.
+            {settingsCopy.noPadLead}
+            <strong>{settingsCopy.noPadStrong}</strong>
+            {settingsCopy.noPadTail}
           </p>
         ) : (
           <ul className="pad-list">
@@ -247,10 +241,7 @@ export function Settings() {
               <li key={`${padInfo.id}-${i}`} className="pad-row">
                 <span className="pad-name">{padInfo.id}</span>
                 {!padInfo.standard && (
-                  <span className="fine-print">
-                    — your browser could not match this to a standard layout, so the buttons below
-                    may sit in odd places. Re-map the ones that are wrong.
-                  </span>
+                  <span className="fine-print">{settingsCopy.padNonStandard}</span>
                 )}
               </li>
             ))}
@@ -265,9 +256,9 @@ export function Settings() {
                 <span className="binding-action">{ACTION_LABELS[action]}</span>
                 <span className="binding-keys">
                   {active ? (
-                    <span className="binding-prompt">press a button…</span>
+                    <span className="binding-prompt">{settingsCopy.buttonPrompt}</span>
                   ) : padBindings[action].length === 0 ? (
-                    <span className="binding-prompt">no button</span>
+                    <span className="binding-prompt">{settingsCopy.noButton}</span>
                   ) : (
                     padBindings[action].map((index) => (
                       <kbd key={index} className="key-chip">
@@ -281,44 +272,43 @@ export function Settings() {
                   className={active ? 'chip chip-active' : 'chip'}
                   aria-label={
                     active
-                      ? `Cancel changing button for ${ACTION_LABELS[action]}`
-                      : `Change button for ${ACTION_LABELS[action]}`
+                      ? settingsCopy.cancelChangeButton(ACTION_LABELS[action])
+                      : settingsCopy.changeButton(ACTION_LABELS[action])
                   }
                   onClick={() => setCapturingPad(active ? null : action)}
                 >
-                  {active ? 'Cancel' : 'Change'}
+                  {active ? settingsCopy.cancel : settingsCopy.change}
                 </button>
               </li>
             );
           })}
         </ul>
         <p className="sr-only" role="status">
-          {capturingPad ? `Press a button for ${ACTION_LABELS[capturingPad]}.` : ''}
+          {capturingPad ? settingsCopy.buttonCaptureStatus(ACTION_LABELS[capturingPad]) : ''}
         </p>
         <div className="btn-row">
           <button
             type="button"
             className="chip"
-            aria-label="Reset to defaults for controller buttons"
+            aria-label={settingsCopy.resetControllerLabel}
             disabled={padIsDefault}
             onClick={() => {
               setCapturingPad(null);
               setPadBindings(padDefaults);
             }}
           >
-            Reset to defaults
+            {settingsCopy.reset}
           </button>
         </div>
         <p className="fine-print settings-note">
-          Buttons are named by <em>where they are</em>, not by the letter printed on them — every
-          controller disagrees about the letters, and none of them disagree about the positions. The
-          keyboard keeps working the whole time; the controller is an extra pair of hands, not a
-          replacement.
+          {settingsCopy.padNoteLead}
+          <em>{settingsCopy.padNoteEm}</em>
+          {settingsCopy.padNoteTail}
         </p>
       </section>
 
       <section className="settings-section" aria-labelledby="settings-comfort">
-        <h2 id="settings-comfort">Comfort</h2>
+        <h2 id="settings-comfort">{settingsCopy.comfortHeading}</h2>
         <ComfortToggles value={comfort} onChange={setComfort} />
       </section>
 
@@ -328,7 +318,7 @@ export function Settings() {
           the one beat the whole ending is built to protect. */}
       {progress.finaleBossCleared && (
         <section className="settings-section" aria-labelledby="settings-ending">
-          <h2 id="settings-ending">The ending</h2>
+          <h2 id="settings-ending">{settingsCopy.endingHeading}</h2>
           <div className="btn-row">
             <Link className="chip" to="/the-end">
               {theEndCopy.settingsReadAgain}
@@ -339,7 +329,7 @@ export function Settings() {
       )}
 
       <section className="settings-section" aria-labelledby="settings-progress">
-        <h2 id="settings-progress">Progress</h2>
+        <h2 id="settings-progress">{settingsCopy.progressHeading}</h2>
         {resetStage === 'idle' && (
           <div className="btn-row">
             <button
@@ -348,19 +338,19 @@ export function Settings() {
               className="chip"
               onClick={() => setResetStage('confirm')}
             >
-              Reset my progress
+              {settingsCopy.resetProgress}
             </button>
           </div>
         )}
         {resetStage === 'confirm' && (
           <div ref={confirmRef} className="settings-confirm" tabIndex={-1}>
-            <p>This clears every cleared level, enemy and run. Sure?</p>
+            <p>{settingsCopy.resetConfirm}</p>
             <div className="btn-row">
               <button type="button" className="button" onClick={resetProgress}>
-                Yes
+                {settingsCopy.resetYes}
               </button>
               <button type="button" className="chip" onClick={() => setResetStage('idle')}>
-                No
+                {settingsCopy.resetNo}
               </button>
             </div>
           </div>
@@ -368,7 +358,7 @@ export function Settings() {
         {/* Always rendered (settings.css keeps it zero-height while empty), so the
             status region exists before its text arrives and the announcement is reliable. */}
         <p ref={doneRef} className="settings-done" role="status" tabIndex={-1}>
-          {resetStage === 'cleared' ? 'Cleared. The map starts at Dirtmouth again.' : ''}
+          {resetStage === 'cleared' ? settingsCopy.resetDone : ''}
         </p>
       </section>
 
