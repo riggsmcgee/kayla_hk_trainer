@@ -449,3 +449,42 @@ Observations (Session 16):
   for this app (hash routing needs a real reload; the dev server wants `--strictPort` from inside
   `web/`). The skill would have re-derived all of that. Worth an entry only because it is now three
   sprints in a row, which makes it a pattern rather than an omission.
+
+## Session 19 — the practice floor, and the handoff drained
+
+| #   | Skill                | Where it was reached for                 | What it was asked to do                                            | Landed | Verdict                                                                                                                                                            |
+| --- | -------------------- | ---------------------------------------- | ------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 53  | `proactive`          | Four hours, playtest 9's note, user away | The sandbox on its own page with in-place remap, then the backlog  | ✅     | Seven commits, 869 → 899 tests. The clock is what made it a slice-by-slice sprint rather than one enormous commit.                                                 |
+| 54  | `workflow-authoring` | Before both Workflow calls               | The script API, the pipeline-vs-barrier rule, the quality patterns | ✅     | The pipeline shape is the part that paid: each survey lens verified its own riskiest claim as soon as it finished, instead of ten agents waiting on the slowest.   |
+| 55  | `Workflow` (survey)  | After scouting, before writing a line    | Five read-only lenses over what the change would touch             | ✅     | Found two blockers in the migration I was about to write. See below — this is the entry that earned the whole experiment.                                          |
+| 56  | `Workflow` (review)  | After the feature landed                 | Six adversarial review dimensions over the sprint diff             | ✅     | Ran while the browser pass and the docs were written, which is the right shape for it: it costs wall-clock nothing if it overlaps work that does not depend on it. |
+
+**What the sprint learned.**
+
+- **The survey workflow paid for itself in one finding, and it was a finding I had already talked
+  myself past.** I had designed the gate's migration around "`setupChecks === undefined` means a save
+  from before the sandbox existed". The gate lens walked it and found that the sentinel is destroyed
+  by the first frame she moves on the floor — `markSetupChecks(['left'])` turns `undefined` into
+  `['left']`, so chapter 1 would have un-completed the moment she walked left out of curiosity. I had
+  noticed the same hole and mis-sized it. **The value was not "an agent knew something I did not"; it
+  was that an agent was made to walk every population through the code while I was busy wanting the
+  design to work.**
+
+- **Give reviewing agents repo tools and forbid writing in capitals.** Both workflows carried an
+  absolute read-only rule in every prompt, because a previous sprint had subagents edit the repo
+  while it was being verified. Nothing wrote. The rule needs to be in the prompt, not in the task
+  description — agents read the task.
+
+- **A survey is worth more BEFORE the code than a review is after it.** The review found things worth
+  fixing; the survey changed what got built. Same token cost, different leverage. If only one runs,
+  run it first.
+
+- **`tdd` was again followed by hand rather than invoked** — three sprints running. What the
+  discipline actually contributed here was the deliberate red: the no-rebuild assertion was confirmed
+  by putting the bindings back in the effect's dependency array, and the round-trip test by deleting
+  a field from the reader. A test nobody has watched fail is a test nobody has watched.
+
+- **The browser is still the only thing that can judge a screen, and it is now two-for-two.** Last
+  sprint it found a persistence bug every unit test passed. This sprint it found the checklist's old
+  `li span:first-child` rule centring every label in a 1 ch box the moment the row grew a second
+  span — invisible to the type checker, invisible to 899 tests, obvious in a screenshot.

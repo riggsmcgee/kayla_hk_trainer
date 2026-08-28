@@ -265,20 +265,38 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ## 8. Later / on the radar
 
-- **The controller hole — MOSTLY BUILT** _(playtest 8 note 5; Session 17)_. Picking a controller
-  now applies a layout that fits it (`3fc01e2`), and the sandbox and its checklist are live
-  (`4e30f21`, `6c911ed`). **What is left is the GATE, and it is a decision before it is code:**
-  - Setup's completion is still `progress.controller !== undefined` (`storage/progress.ts:111`).
-    Requiring the seven ticks would **un-complete chapter 1 for every save that already exists**,
-    Kayla's included, and the map, the chapter strip and every downstream gate read that field.
-  - So the choice is: grandfather saves that answered the controller before the sandbox existed, or
-    ask her to prove seven things she has already proved by playing. **Nobody has decided, and it
-    should not be decided unattended.**
-  - The skip playtest 8 promised alongside the gate has nothing to skip until the gate exists, so
-    the two ship in one slice.
-  - **The preset is a guess and is meant to be.** Her leverless enumerates as a gamepad; which
-    INDEX each of its buttons reports on is still unknown, and only the four-button capture can
-    settle it. That is why the capture is offered on the answer card rather than buried in Settings.
+- **The controller hole — CLOSED** _(playtest 8 note 5; playtest 9; Sessions 17 and 19)_. Picking a
+  controller applies a layout that fits it (`3fc01e2`), the sandbox and its checklist are live
+  (`4e30f21`, `6c911ed`), and **the gate that was left as a decision is now built and shipped.**
+  - **The sandbox is its own page** at `/lessons/setup/floor` (`SETUP_FLOOR_ROUTE` in
+    `chapters.ts`), and it is a PAGE and not a seventh stop. The map's road is six hand-fitted
+    stops — five bezier legs whose ten endpoints are typed-in ±36 offsets from stop centres, five
+    chained strata bands each copying the band above, six hand-inked glyphs, and a strip sized to
+    fit six across a laptop. A seventh is a redraw and a ratified decision. The chain runs
+    Setup → floor → Pogo without touching `CHAPTERS`.
+  - **Every checklist row carries its own Remap**, and the capture takes the next KEY OR BUTTON she
+    presses. That is the ratified answer to hardware nobody has measured: her leverless enumerates
+    as a gamepad whose button index map is still unknown, so "press the one you mean" is the only
+    thing that can be right about it. The two nail rows need two controls each and show two lines.
+  - **Setup is done when the controller is answered AND the seven are ticked**, and it is skippable
+    like every other gate (`markSkipped('setup')`).
+  - **THE MIGRATION IS THE PART TO NOT RE-DERIVE.** A save that answered the controller before the
+    sheet existed is credited with the whole sheet, and it is credited by MATERIALISING the seven in
+    `readProgress` rather than by inferring completeness from a missing key. An inference does not
+    survive contact with the page: `markSetupChecks(['left'])` turns `undefined` into `['left']`,
+    so chapter 1 would un-complete the moment she walked left out of curiosity — revoked by the
+    exact action the floor invites. Materialising makes every later write idempotent.
+    **From here on `setController` seeds an EMPTY sheet**, which is what gates a new save: an
+    absent sheet means grandfathered, an empty one means gated. Six tests in `local.test.ts` hold
+    that distinction, including one whose only job is to stop a future "drop empty arrays to keep
+    the blob small" tidy-up from silently promoting every gated player.
+  - **What the rule cannot distinguish** is a pre-floor save from a post-floor save that never
+    opened the floor. Deliberate: the promise is "nothing already complete becomes incomplete".
+  - **What this costs:** the map never points at the floor, because its sign names the first
+    unfinished CHAPTER and the floor is not one. Every route runs through Setup. A chip in the
+    answer card or a header entry would fix it; nobody has asked.
+  - **The preset is still a guess and is still meant to be.** The Remap on the row is now the
+    cheapest way for her real hardware to overrule it — one screen, no Settings trip.
 
 - ~~**The controller hole — UNBLOCKED**~~ _(playtest 8 note 5; the gating question answered 2026-08-27)_.
   **Her leverless reports as a GAMEPAD, not a keyboard.** The user has tested it and is certain. That
@@ -364,46 +382,50 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
        repeating the wave auto-advance that playtest 5 deleted. **What is left is the WORDS:** the
        longer letter has to be spoken aloud by the user and shaped, and every 150 characters added
        costs another twelve seconds of her sitting still.
-  6. **The copy extraction — the DOM half is now MOSTLY DONE** _(Session 18)_. `web/src/copy/`
-     holds eight modules and **176 named strings**: the three canvas modules from Session 17
-     (`ending.ts`, `fight.ts`, `theEnd.ts` — 38) and five new ones — `nav.ts` (31: the site header
-     and footer, the gate panel, the chapter strip, the forward button, the level chips),
-     `play.ts` (29: both mini-game pages and the finale's three beats), `home.ts` (17: the front
-     page), `settings.ts` (45: the whole bench) and `setup.ts` (2: the controller diagrams'
-     accessible descriptions). **The deck is being REPLACED, not extended** — playtest 8 note 4:
-     "the copy deck makes no sense to me... I just want a one-to-one recreation of the site that I
-     can edit the text in easily." `scripts/build-copy-deck.mjs` is what the replacement retires.
+  6. **The copy extraction — DONE** _(Sessions 18 and 19)_. `web/src/copy/` holds **nine modules
+     and 258 named strings**: the three canvas modules from Session 17 (`ending.ts`, `fight.ts`,
+     `theEnd.ts` — 38), the five DOM modules from Session 18 (`nav.ts` 31, `play.ts` 29,
+     `home.ts` 17, `settings.ts` 45, `setup.ts` — since grown to 72), and `lessons.ts` (26) from
+     Session 19, which finished it. The playtest-8 estimate of "~52 strings across 23 files" was
+     arithmetic off the canvas count and was low by about five times; that is recorded rather than
+     quietly dropped, because it is what sizes item 8.
 
-     **The playtest-8 estimate of "~52 strings across 23 files" was low by roughly three times.**
-     It was arithmetic from the canvas count, not a recount, and the last handoff said so. The
-     real figure for what has been extracted so far is 138 in five modules, and it is not finished.
+     **The rule the last judgement call was decided on**, applied in order, and worth not
+     re-deriving:
 
-     **Still to do, in order:**
-     - **`pages/LessonSetup.tsx`, `LessonPogo.tsx`, `LessonReadingEnemies.tsx`** — the short
-       strings only; the lesson PROSE is ratified to stay in its pages and be shown read-only.
-       This is the judgement call left, and it is the reason the three were not done unattended:
-       deciding where a heading stops and a paragraph begins is a taste call.
-     - **The sixteen labels printed ON the controller diagrams** (`ControllerDiagrams.tsx`,
-       `Label` and `Callout`) — single words like Jump and Attack that partly duplicate
-       `actionLabelCopy` in `copy/settings.ts`, so whether they share that table or keep their own
-       is a decision, not a rename.
-     - **Then the one-to-one editor**, which depends on all of it — a tool where half the words
-       are greyed out is the same failure in a different costume.
+     1. **Furniture always extracts** — eyebrow, headings, buttons, accessible names, legends,
+        status lines. Names, not sentences.
+     2. **A body paragraph STAYS**, with exactly two exceptions: the lede and the `.thesis`
+        pull-quote. Every non-lesson page already has those two in `copy/`, and leaving them behind
+        is the only thing that would make the editor inconsistent from page to page.
+     3. **A list extracts only if EVERY item is markup-free and quotes no derived number.** One
+        editable item beside two greyed-out ones is playtest 8's own complaint at list scale, and a
+        sentence carrying a simulated constant must never become a text box — `lessonPogo.helpers.ts`
+        exists because this project has twice shipped a number that had stopped being true.
 
-     **What the extraction settled, worth not re-deriving:**
-     - **A sentence with a `<Link>` or an `<em>` in the middle is the one shape this can silently
-       break.** JSX drops a line that holds only whitespace, so the spaces either side of the
-       inline element have to travel INSIDE the strings. Every such sentence is split into
-       lead/element/tail fragments for that reason, and an editor must never offer one as a single
-       box or the anchor can be edited away.
+     **What is deliberately NOT in `copy/`:** `chapters.ts`'s own place/title/line/done (already
+     named, and the one list every part of the road reads), the dev drawers' strings (PLAN §7 removes
+     those drawers in the final build), and `ControllerDiagrams`' printed labels are in `copy/` but
+     in their OWN table rather than sharing `actionLabelCopy` — that table names an action she can
+     rebind and every screen printing it must follow her, while the diagram describes the board as it
+     comes out of the box and must not change when she remaps.
+
+     **Four things the extraction settled:**
+
+     - **A sentence with a `<Link>`, `<strong>` or `<em>` in the middle is the one shape this can
+       silently break.** JSX drops a whitespace-only line, so the spaces travel INSIDE the strings.
+       Every such sentence is lead/element/tail fragments, and the editor must never offer one as a
+       single box or the anchor can be edited away.
      - **A test that derives its expectation from the same copy constant cannot see a missing
-       space.** Both assertions are needed: one against the copy, which pins the join, and one
-       against the prose, which pins the words. `components/roadChrome.test.tsx` does both.
-     - **HTML entities do not survive contact with a text box.** `Kayla&apos;s` and
-       `surveyed &amp; inked` are real characters now.
-     - **Dev-drawer strings are deliberately NOT extracted.** PLAN §7's standing note removes those
-       drawers in the final build; naming them here would put them in front of the user in the
-       editor and make deleting them a two-file job.
+       space.** Both assertions are needed — one against the copy, which pins the join, and one
+       against the prose, which pins the words.
+     - **HTML entities do not survive contact with a text box.** `&apos;` and `&amp;` are real
+       characters now.
+     - **An extraction that rewords is not an extraction.** Setup's offer sentence keeps its
+       lower-case "jump", "attack", "dash" in a three-word table of its own rather than borrowing
+       the capitalised `actionLabelCopy`. Two voices for the same seven words is a real distinction.
+
+     **Item 8, the one-to-one editor, is now unblocked and is the whole of the remaining contract.**
 
   7. **Where the cast marks sit is now decided, and the published gap figure does not reproduce.**
      `castMarks` lays **nine evenly spaced slots** across the 1168 px arena — pitch 129.8 px, wider
@@ -494,5 +516,5 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 ## 9. Pointers
 
 - `docs/research/hk-frame-data.md` — decompiled physics/combat constants, canvas-scale conversion (48 px Knight, 1 u = 40 px), and the recommended `PHYS`/`ENEMIES` starting values. **Read before touching engine constants.** Gravity is the only estimated value; everything else is exact — tune gravity, not the rest.
-- `docs/feedback/` — dated playtest notes from the user with diagnosis and decisions; PLAN.md carries the ratified outcomes, the notes carry the why.
+- `docs/feedback/` — dated playtest notes from the user with diagnosis and decisions; PLAN.md carries the ratified outcomes, the notes carry the why. **`2026-08-28-playtest-9.md` is the odd one out**: one screenshot and two sentences with no interview, so its "what the sprint decided" half is marked as the sprint's reading rather than as anything he ratified in the room.
 - `docs/skills-log.md` — the skills experiment: every skill invocation on this project gets logged there with a verdict. Keep logging.
