@@ -133,19 +133,31 @@ function ControlLine({
   );
 }
 
-/** She arrived without answering chapter 1's question, so there is no board to prove. */
+/**
+ * She arrived without answering chapter 1's question, so there is no board to
+ * prove. Shaped like every other gate on the road — eyebrow, rule, one obvious
+ * way back — and it keeps the chapter strip for the same reason `ChapterGate`
+ * does: bouncing off a gate should not cost her the map.
+ *
+ * It has no skip, and that is the one way it differs. Every other gate skips
+ * past a CHALLENGE; this one is waiting on an answer that takes one click, and
+ * the floor has nothing to show until it has one.
+ */
 function NeedsController() {
   return (
-    <section className="gate" aria-labelledby="floor-gate-h">
-      <p className="eyebrow">{setupFloorCopy.needsControllerEyebrow}</p>
-      <h1 id="floor-gate-h">{setupFloorCopy.needsControllerHeading}</h1>
-      <p className="gate-done">{setupFloorCopy.needsControllerLine}</p>
-      <div className="gate-actions">
-        <Link className="button" to={chapterById('setup').route}>
-          {setupFloorCopy.needsControllerBack}
-        </Link>
-      </div>
-    </section>
+    <>
+      <section className="gate" aria-labelledby="floor-gate-h">
+        <p className="eyebrow">{setupFloorCopy.needsControllerEyebrow}</p>
+        <h1 id="floor-gate-h">{setupFloorCopy.needsControllerHeading}</h1>
+        <p className="gate-done">{setupFloorCopy.needsControllerLine}</p>
+        <div className="gate-actions">
+          <Link className="button" to={chapterById('setup').route}>
+            {setupFloorCopy.needsControllerBack}
+          </Link>
+        </div>
+      </section>
+      <ChapterNav current="setup" />
+    </>
   );
 }
 
