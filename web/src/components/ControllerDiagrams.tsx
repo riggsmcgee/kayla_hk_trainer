@@ -5,6 +5,7 @@
  * on Kayla's desk. Gold = the controls Hollow Knight cares about (on the
  * Joy-Con that includes the stick — she moves and pogos from it).
  */
+import { setupCopy } from '../copy/setup';
 
 interface LabelProps {
   x: number;
@@ -55,7 +56,7 @@ export function JoyConDiagram() {
       className="cd"
       viewBox="-4 -20 236 168"
       role="img"
-      aria-label="A pair of Joy-Con in the grip. On the right half, B (bottom of the diamond) is Jump, Y (left) is Attack, and the ZR trigger behind the shoulder is Dash. On the left half, the stick moves you, and holding it down while you attack is a pogo. The Down button under the stick is a more reliable down if pogos keep coming out as side slashes."
+      aria-label={setupCopy.joyConDescription}
     >
       {/* grip bridge and handles */}
       <rect className="cd-grip" x="36" y="10" width="108" height="78" rx="6" />
@@ -169,7 +170,7 @@ export function LeverlessDiagram() {
       className="cd cd-leverless"
       viewBox="-4 -18 270 168"
       role="img"
-      aria-label="A leverless all-button controller. Left hand: Left, Down and Right buttons under three fingers, with a large Up button below for the thumb. Right hand: two rows of four. In Switch mode the top row is Y X R L and the bottom row is B A ZR ZL, so Attack (Y) and Jump (B) sit under the same finger until remapped; Dash is ZR."
+      aria-label={setupCopy.leverlessDescription}
     >
       <rect className="cd-body" x="0" y="0" width="260" height="126" rx="8" />
       {/* function buttons along the top edge */}
