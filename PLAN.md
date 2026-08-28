@@ -364,15 +364,47 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
        repeating the wave auto-advance that playtest 5 deleted. **What is left is the WORDS:** the
        longer letter has to be spoken aloud by the user and shaped, and every 150 characters added
        costs another twelve seconds of her sitting still.
-  6. **The copy extraction, continued.** `web/src/copy/` now holds `ending.ts`, `fight.ts` and
-     `theEnd.ts` — **52 named strings, and every canvas string the boss fight draws**. That was
-     the half the user named: pixels, not DOM. **The deck is being REPLACED, not extended** — playtest 8
-     note 4: "the copy deck makes no sense to me... I just want a one-to-one recreation of the site
-     that I can edit the text in easily." `scripts/build-copy-deck.mjs` is what the replacement
-     retires. **Still to do, in order:** the ~52 short page and component strings across 23 files
-     (the lesson PROSE is ratified to stay in its pages), and then the one-to-one editor, which
-     depends on them — a tool where half the words are greyed out is the same failure in a
-     different costume.
+  6. **The copy extraction — the DOM half is now MOSTLY DONE** _(Session 18)_. `web/src/copy/`
+     holds eight modules and **176 named strings**: the three canvas modules from Session 17
+     (`ending.ts`, `fight.ts`, `theEnd.ts` — 38) and five new ones — `nav.ts` (31: the site header
+     and footer, the gate panel, the chapter strip, the forward button, the level chips),
+     `play.ts` (29: both mini-game pages and the finale's three beats), `home.ts` (17: the front
+     page), `settings.ts` (45: the whole bench) and `setup.ts` (2: the controller diagrams'
+     accessible descriptions). **The deck is being REPLACED, not extended** — playtest 8 note 4:
+     "the copy deck makes no sense to me... I just want a one-to-one recreation of the site that I
+     can edit the text in easily." `scripts/build-copy-deck.mjs` is what the replacement retires.
+
+     **The playtest-8 estimate of "~52 strings across 23 files" was low by roughly three times.**
+     It was arithmetic from the canvas count, not a recount, and the last handoff said so. The
+     real figure for what has been extracted so far is 138 in five modules, and it is not finished.
+
+     **Still to do, in order:**
+     - **`pages/LessonSetup.tsx`, `LessonPogo.tsx`, `LessonReadingEnemies.tsx`** — the short
+       strings only; the lesson PROSE is ratified to stay in its pages and be shown read-only.
+       This is the judgement call left, and it is the reason the three were not done unattended:
+       deciding where a heading stops and a paragraph begins is a taste call.
+     - **The sixteen labels printed ON the controller diagrams** (`ControllerDiagrams.tsx`,
+       `Label` and `Callout`) — single words like Jump and Attack that partly duplicate
+       `actionLabelCopy` in `copy/settings.ts`, so whether they share that table or keep their own
+       is a decision, not a rename.
+     - **Then the one-to-one editor**, which depends on all of it — a tool where half the words
+       are greyed out is the same failure in a different costume.
+
+     **What the extraction settled, worth not re-deriving:**
+     - **A sentence with a `<Link>` or an `<em>` in the middle is the one shape this can silently
+       break.** JSX drops a line that holds only whitespace, so the spaces either side of the
+       inline element have to travel INSIDE the strings. Every such sentence is split into
+       lead/element/tail fragments for that reason, and an editor must never offer one as a single
+       box or the anchor can be edited away.
+     - **A test that derives its expectation from the same copy constant cannot see a missing
+       space.** Both assertions are needed: one against the copy, which pins the join, and one
+       against the prose, which pins the words. `components/roadChrome.test.tsx` does both.
+     - **HTML entities do not survive contact with a text box.** `Kayla&apos;s` and
+       `surveyed &amp; inked` are real characters now.
+     - **Dev-drawer strings are deliberately NOT extracted.** PLAN §7's standing note removes those
+       drawers in the final build; naming them here would put them in front of the user in the
+       editor and make deleting them a two-file job.
+
   7. **Where the cast marks sit is now decided, and the published gap figure does not reproduce.**
      `castMarks` lays **nine evenly spaced slots** across the 1168 px arena — pitch 129.8 px, wider
      than the widest body — and gives the roster five of the ones the Knight and the Bills are not

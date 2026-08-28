@@ -424,3 +424,28 @@ Observations (Session 16):
   times this sprint the work was sized against a mental estimate of elapsed time that was roughly
   three times the real figure. `sprint.js status` is the only honest clock, and checking it turned a
   "one slice will fit" plan into three shipped slices.
+
+## Session 18 — the copy extraction's DOM half
+
+| #   | Skill       | Where it was reached for | What it was asked to do                     | Landed | Verdict                                                                                                                                                                                                      |
+| --- | ----------- | ------------------------ | ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 52  | `proactive` | One hour, no focus given | Pick the queue's top item that needs nobody | ✅     | Six commits, 860 → 868 tests, 138 strings into five new `copy/` modules. Picking the task took four minutes because the last handoff had already named which item was gated on a decision and which was not. |
+
+**What the sprint learned.**
+
+- **A handoff that says which item is blocked is worth more than one that says what was built.**
+  No focus was given, so the whole of Phase 2 was reading the last handoff's "Needs you" and its
+  suggested next session. Item 7's gate was marked as a decision, item 2 as needing the user in the
+  room, item 5 as needing nobody. That is a work order, and it cost four minutes to act on.
+
+- **`tdd` was again followed by hand rather than invoked.** A pure extraction has no red step: the
+  strings already render correctly, and the test is written to hold them there. What the discipline
+  did contribute was the deliberate red — the spacing assertion was confirmed to bite by deleting
+  the space it guards and watching the suite fail, then restoring it. Without that, a test that
+  derives its expectation from the same constant it checks proves nothing.
+
+- **`webapp-testing` was not invoked and the raw `playwright-core` scripts were used instead**, the
+  same as the last two sprints, because the previous sessions' scratch scripts are already shaped
+  for this app (hash routing needs a real reload; the dev server wants `--strictPort` from inside
+  `web/`). The skill would have re-derived all of that. Worth an entry only because it is now three
+  sprints in a row, which makes it a pattern rather than an omission.
