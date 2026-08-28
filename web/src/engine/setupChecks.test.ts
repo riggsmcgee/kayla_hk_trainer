@@ -61,9 +61,12 @@ describe('the seven items', () => {
   it('tells every item which controls could be the broken one', () => {
     // The floor's Remap button is only as good as this table: a row whose
     // actions are wrong offers to rebind something that was never the problem.
-    for (const check of SETUP_CHECKS) {
-      expect(SETUP_CHECK_ACTIONS[check].length).toBeGreaterThan(0);
-    }
+    // Named one by one rather than looped, because a loop over the keys only
+    // proves the table is non-empty — it cannot notice 'jump' pointing at dash.
+    expect(SETUP_CHECK_ACTIONS.left).toEqual(['left']);
+    expect(SETUP_CHECK_ACTIONS.right).toEqual(['right']);
+    expect(SETUP_CHECK_ACTIONS.jump).toEqual(['jump']);
+    expect(SETUP_CHECK_ACTIONS.dash).toEqual(['dash']);
   });
 
   it('asks for a swing on all three nail directions, and a direction on two', () => {

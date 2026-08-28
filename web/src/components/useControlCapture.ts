@@ -71,7 +71,19 @@ export function useControlCapture(
   useEffect(() => {
     if (open === null) return;
     const { action } = open;
+    /**
+     * One capture, one binding, even if two presses land before React unwinds.
+     *
+     * Clearing the state does not tear this effect down synchronously — the
+     * listener is still attached and the interval still scheduled until the
+     * re-render commits. Two pad polls inside one frame, or two keys down in the
+     * same tick, would otherwise rebind twice: the second one wins, and it is a
+     * key she never meant to assign.
+     */
+    let taken = false;
     const finish = (control: CapturedControl): void => {
+      if (taken) return;
+      taken = true;
       setOpen(null);
       handler.current(action, control);
     };
