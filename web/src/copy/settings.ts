@@ -65,6 +65,16 @@ export const settingsCopy = {
   noPadTail:
     ' — browsers keep a controller hidden until you do, so pressing a button is what wakes it up.',
 
+  /**
+   * What the browser says the pad has, next to its name.
+   *
+   * Not decoration: which index each button reports on is the one fact about her
+   * board nobody has established, and the preset is a guess about it. The count
+   * does not settle it, but a board that does not report the standard 17 is a
+   * board whose preset should be read as a starting point.
+   */
+  padButtons: (count: number): string => `${count} buttons`,
+
   /** Appended to a pad the browser could not fit to the standard layout. */
   padNonStandard:
     '— your browser could not match this to a standard layout, so the buttons below may sit in odd places. Re-map the ones that are wrong.',

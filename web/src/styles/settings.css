@@ -136,3 +136,10 @@
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+
+/* What the browser reports the pad has. Small print beside its name: it is a
+   diagnostic she reads out once, not something she needs on every visit. */
+.pad-buttons {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}

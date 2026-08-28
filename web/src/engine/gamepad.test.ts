@@ -248,9 +248,20 @@ describe('the DOM edge', () => {
   it('names pads for Settings, and flags one the browser could not fit', () => {
     const nav = { getGamepads: () => [fakePad(), fakePad({ mapping: '' })] };
     expect(connectedPads(nav)).toEqual([
-      { id: 'Fake Pad (Vendor: 0000 Product: 0000)', standard: true },
-      { id: 'Fake Pad (Vendor: 0000 Product: 0000)', standard: false },
+      { id: 'Fake Pad (Vendor: 0000 Product: 0000)', standard: true, buttons: 2 },
+      { id: 'Fake Pad (Vendor: 0000 Product: 0000)', standard: false, buttons: 2 },
     ]);
+  });
+
+  it('reports how many buttons the browser says the pad has', () => {
+    // The one fact about Kayla's board nobody has established is which index
+    // each button reports on, and the preset is a guess about exactly that. The
+    // count does not answer it; it is the cheapest thing that narrows it, and a
+    // board that does not report the standard seventeen is a board whose preset
+    // should be read as a starting point.
+    const seventeen = Array.from({ length: 17 }, () => ({ pressed: false }));
+    const nav = { getGamepads: () => [fakePad({ buttons: seventeen })] };
+    expect(connectedPads(nav)[0]?.buttons).toBe(17);
   });
 });
 

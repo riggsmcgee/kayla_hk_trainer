@@ -214,6 +214,7 @@ export function Settings() {
             {pads.map((padInfo, i) => (
               <li key={`${padInfo.id}-${i}`} className="pad-row">
                 <span className="pad-name">{padInfo.id}</span>
+                <span className="pad-buttons">{settingsCopy.padButtons(padInfo.buttons)}</span>
                 {!padInfo.standard && (
                   <span className="fine-print">{settingsCopy.padNonStandard}</span>
                 )}

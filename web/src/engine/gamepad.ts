@@ -350,6 +350,17 @@ export interface ConnectedPad {
   id: string;
   /** False when the browser could not fit this pad to the standard layout. */
   standard: boolean;
+  /**
+   * How many buttons the browser says it has.
+   *
+   * The one fact about Kayla's board that nobody has ever established is which
+   * INDEX each of its buttons reports on, and the preset in `gamepadDefaultsFor`
+   * is a guess about exactly that. The count does not answer the question, but
+   * it is the cheapest thing that narrows it: a standard-mapped pad reports 17,
+   * and a board reporting something else is a board whose preset should be
+   * treated as a starting point rather than as a layout.
+   */
+  buttons: number;
 }
 
 /**
@@ -362,7 +373,7 @@ export function connectedPads(nav: GamepadNavigator = navigator): ConnectedPad[]
   const out: ConnectedPad[] = [];
   for (const pad of pads) {
     if (!pad || !pad.connected) continue;
-    out.push({ id: pad.id, standard: pad.mapping === 'standard' });
+    out.push({ id: pad.id, standard: pad.mapping === 'standard', buttons: pad.buttons.length });
   }
   return out;
 }
