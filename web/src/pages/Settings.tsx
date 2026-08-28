@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ControllerChoice } from '@dojo/shared';
 import { Link } from 'react-router';
 import { ComfortToggles } from '../components/ComfortToggles';
+import { useControlCapture } from '../components/useControlCapture';
 import { theEndCopy } from '../copy/theEnd';
 import {
   ACTIONS,
@@ -19,8 +20,6 @@ import {
   gamepadDefaultsFor,
   buttonName,
   connectedPads,
-  pressedButton,
-  readGamepads,
   rebindButton,
   type ConnectedPad,
 } from '../engine/gamepad';
@@ -37,7 +36,6 @@ import { ROLL_VARIANTS } from '../engine/enemies';
 import { BILL_ENTRANCES } from '../engine/entrance';
 import { DOG_LOOKS } from '../engine/dogLook';
 import { actionLabelCopy, settingsCopy } from '../copy/settings';
-import { captureVerdict } from './settings.helpers';
 import '../styles/settings.css';
 
 const ACTION_LABELS: Record<Action, string> = actionLabelCopy;
@@ -79,34 +77,24 @@ export function Settings() {
   const [dogLook, setDogLook] = useDogLook();
   const [padBindings, setPadBindings] = useGamepadBindings();
   const [pads, setPads] = useState<ConnectedPad[]>([]);
-  const [capturing, setCapturing] = useState<Action | null>(null);
-  const [capturingPad, setCapturingPad] = useState<Action | null>(null);
+  /**
+   * Two captures, deliberately kept narrow.
+   *
+   * The bench asks the narrow question on purpose: the Controls section is the
+   * keyboard's and the Controller section is the pad's, and a key taken while
+   * she is looking at the pad's list would be a surprise. The practice floor
+   * asks the wide one — press whatever you mean — because there the row is the
+   * control rather than the hand. Same hook, one argument apart.
+   */
+  const keyCapture = useControlCapture((action, control) => {
+    if (control.kind === 'key') setBindings(rebind(bindings, action, control.code));
+  }, 'key');
+  const padCapture = useControlCapture((action, control) => {
+    if (control.kind === 'button') setPadBindings(rebindButton(padBindings, action, control.index));
+  }, 'button');
+  const capturing = keyCapture.capturing;
+  const capturingPad = padCapture.capturing;
   const [resetStage, setResetStage] = useState<ResetStage>('idle');
-
-  // Capture state: the next keydown becomes that action's only key. Which
-  // keys are taken, refused or cancel is settings.helpers.ts (captureVerdict);
-  // a refused key is never prevented, so F5 still reloads and Ctrl+R is Ctrl+R.
-  useEffect(() => {
-    if (capturing === null) return;
-    const onKeyDown = (e: KeyboardEvent): void => {
-      if (e.repeat) return;
-      const verdict = captureVerdict(e);
-      if (verdict === 'ignore') return;
-      if (verdict === 'cancel') {
-        // Tab is left alone so the browser moves her focus on out of here.
-        if (e.code !== 'Tab') e.preventDefault();
-        setCapturing(null);
-        return;
-      }
-      // Taken: prevent the default, or a Space/Enter would also click the
-      // focused Cancel button and start the capture over.
-      e.preventDefault();
-      setBindings(rebind(bindings, capturing, e.code));
-      setCapturing(null);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [capturing, bindings, setBindings]);
 
   // Which pads are here, refreshed on a timer. A pad stays invisible to the
   // browser until she presses something on it, so this is also what turns
@@ -117,20 +105,6 @@ export function Settings() {
     const timer = window.setInterval(poll, PAD_POLL_MS);
     return () => window.clearInterval(timer);
   }, []);
-
-  // Capture: the next button held on any pad becomes that action's only
-  // button. Same shape as the keyboard capture above, but polled rather than
-  // evented, because that is the only way the Gamepad API can be read.
-  useEffect(() => {
-    if (capturingPad === null) return;
-    const timer = window.setInterval(() => {
-      const index = pressedButton(readGamepads());
-      if (index === null) return;
-      setPadBindings(rebindButton(padBindings, capturingPad, index));
-      setCapturingPad(null);
-    }, PAD_POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [capturingPad, padBindings, setPadBindings]);
 
   const isDefault = JSON.stringify(bindingsToSettings(bindings)) === DEFAULT_STORED;
   const padDefaults = gamepadDefaultsFor(progress.controller);
@@ -195,7 +169,7 @@ export function Settings() {
                       ? settingsCopy.cancelChangeKey(ACTION_LABELS[action])
                       : settingsCopy.changeKey(ACTION_LABELS[action])
                   }
-                  onClick={() => setCapturing(active ? null : action)}
+                  onClick={() => (active ? keyCapture.cancel() : keyCapture.start(action))}
                 >
                   {active ? settingsCopy.cancel : settingsCopy.change}
                 </button>
@@ -218,7 +192,7 @@ export function Settings() {
             aria-label={settingsCopy.resetKeyboardLabel}
             disabled={isDefault}
             onClick={() => {
-              setCapturing(null);
+              keyCapture.cancel();
               setBindings(DEFAULT_BINDINGS);
             }}
           >
@@ -275,7 +249,7 @@ export function Settings() {
                       ? settingsCopy.cancelChangeButton(ACTION_LABELS[action])
                       : settingsCopy.changeButton(ACTION_LABELS[action])
                   }
-                  onClick={() => setCapturingPad(active ? null : action)}
+                  onClick={() => (active ? padCapture.cancel() : padCapture.start(action))}
                 >
                   {active ? settingsCopy.cancel : settingsCopy.change}
                 </button>
@@ -293,7 +267,7 @@ export function Settings() {
             aria-label={settingsCopy.resetControllerLabel}
             disabled={padIsDefault}
             onClick={() => {
-              setCapturingPad(null);
+              padCapture.cancel();
               setPadBindings(padDefaults);
             }}
           >
