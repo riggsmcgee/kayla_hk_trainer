@@ -488,3 +488,36 @@ Observations (Session 16):
   sprint it found a persistence bug every unit test passed. This sprint it found the checklist's old
   `li span:first-child` rule centring every label in a 1 ch box the moment the row grew a second
   span — invisible to the type checker, invisible to 899 tests, obvious in a screenshot.
+
+**What the REVIEW found, added after it landed.**
+
+The review workflow ran forty-five agents over six dimensions and produced twenty-eight findings,
+each handed to a second agent told to refute it. Eighteen survived, of which nine were real defects
+and three of those broke the feature outright:
+
+- **After a Remap, the key she had just bound did nothing.** `attachKeyboard` ignores keys pressed
+  while a button has focus — and focus was still on the Remap button. The feature failed at the last
+  inch, silently, and every test in the file passed because they all asked about the ROWS.
+- **Rebinding a pad button fired a phantom press of the action she just bound**, because a fresh
+  adapter has no previous poll to diff against.
+- **A save holding a half-filled sheet from the build before the gate lost a chapter it had already
+  finished.** I had designed the migration around an absent key and written "nothing already
+  complete becomes incomplete" in three documents; the review found the one door that rule leaves
+  open. It is now `setupGated`.
+
+**The lesson is not "reviews find bugs".** It is _which_ bugs. Every one of these three is invisible
+to the type checker and invisible to a test suite that agrees with itself — the focus bug because
+nine tests all queried by a name they had already decided was right, the migration bug because the
+tests covered absent, empty and full sheets and never a partial one. **A test written by whoever
+wrote the code inherits its blind spot.** That is the argument for an adversarial pass, and it is
+sharper than the argument for more tests.
+
+Two more worth recording, both cheap and both mine:
+
+- The extraction **respelled an accessible name** "color" → "colour" — exactly the reword this
+  sprint's own rule forbids, taken from a survey agent's suggestion without noticing it broke the
+  rule I had written down four commits earlier.
+- Writing the missing test for the pad capture **found a double-bind**: clearing the capture state
+  does not tear the effect down synchronously, so two polls in one frame bound twice. **The test
+  that closes a coverage gap is worth writing even when you are sure the code is fine** — the point
+  was never the coverage number.

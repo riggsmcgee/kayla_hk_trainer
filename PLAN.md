@@ -280,23 +280,44 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
     thing that can be right about it. The two nail rows need two controls each and show two lines.
   - **Setup is done when the controller is answered AND the seven are ticked**, and it is skippable
     like every other gate (`markSkipped('setup')`).
-  - **THE MIGRATION IS THE PART TO NOT RE-DERIVE.** A save that answered the controller before the
-    sheet existed is credited with the whole sheet, and it is credited by MATERIALISING the seven in
-    `readProgress` rather than by inferring completeness from a missing key. An inference does not
-    survive contact with the page: `markSetupChecks(['left'])` turns `undefined` into `['left']`,
-    so chapter 1 would un-complete the moment she walked left out of curiosity — revoked by the
-    exact action the floor invites. Materialising makes every later write idempotent.
-    **From here on `setController` seeds an EMPTY sheet**, which is what gates a new save: an
-    absent sheet means grandfathered, an empty one means gated. Six tests in `local.test.ts` hold
-    that distinction, including one whose only job is to stop a future "drop empty arrays to keep
-    the blob small" tidy-up from silently promoting every gated player.
-  - **What the rule cannot distinguish** is a pre-floor save from a post-floor save that never
-    opened the floor. Deliberate: the promise is "nothing already complete becomes incomplete".
+  - **THE MIGRATION IS THE PART TO NOT RE-DERIVE**, and it took two attempts.
+    - A save from before the gate is credited with the whole sheet, by MATERIALISING the seven in
+      `readProgress` rather than by inferring completeness. An inference does not survive contact
+      with the page: `markSetupChecks(['left'])` turns `undefined` into `['left']`, so chapter 1
+      would un-complete the moment she walked left out of curiosity — revoked by the exact action
+      the floor invites. Materialising makes every later write idempotent.
+    - **WHAT DECIDES IT IS `setupGated`, NOT THE SHEET'S CONTENTS**, and that is the correction an
+      adversarial review forced. The sandbox shipped a session BEFORE the gate did, so a save can
+      hold a half-filled sheet from a build where filling it proved nothing and chapter 1 was
+      finished by answering one question. An absent-key rule reads that save as gated at two of
+      seven and takes away a chapter it had already finished — the exact harm the migration exists
+      to prevent, arriving through the one door the first design left open. `setupGated` is written
+      by `setController` from the moment the gate shipped, so its absence means "written before the
+      gate" whatever the sheet holds.
+    - Ten tests in `local.test.ts` hold it, including one whose only job is to stop a future "drop
+      empty arrays to keep the blob small" tidy-up from silently promoting every gated player.
+  - **What the rule cannot distinguish** is a pre-gate save from a post-gate save that never opened
+    the floor. Deliberate: the promise is "nothing already complete becomes incomplete".
+  - **Where the lock actually lands, if it ever does.** `chapterState` tests `chapterDone` before
+    `chapterLocked`, so a stop she has genuinely cleared still draws as done on the map; it is
+    `ChapterGate` — which calls `chapterLocked` directly — that replaces the PAGE body. So an
+    un-completed chapter 1 shows up as two locked pages over cleared content, not as an unlit map.
   - **What this costs:** the map never points at the floor, because its sign names the first
     unfinished CHAPTER and the floor is not one. Every route runs through Setup. A chip in the
     answer card or a header entry would fix it; nobody has asked.
   - **The preset is still a guess and is still meant to be.** The Remap on the row is now the
     cheapest way for her real hardware to overrule it — one screen, no Settings trip.
+  - **Three things about the remap that are not obvious and cost a review to find.**
+    - **Focus has to go back to the canvas when a capture closes.** `attachKeyboard` ignores keys
+      pressed while a BUTTON has focus — deliberately, so Space toggles a checkbox rather than
+      jumping — and after a Remap the focus is still on the Remap button. Without the hand-back the
+      key she just assigned does nothing until she clicks the game: the feature failing at the last
+      inch, silently.
+    - **A rebuilt pad adapter fires a phantom press.** A press edge is the difference against the
+      previous poll and a fresh adapter has no previous poll, so the button still under her finger
+      reads as newly pressed. `PracticeCanvas` primes the new adapter with one discarded poll.
+    - **The capture is keyed by "check:action", not by the action.** Attack is on all three nail
+      rows, so an action-keyed capture opened all three prompts at once.
 
 - ~~**The controller hole — UNBLOCKED**~~ _(playtest 8 note 5; the gating question answered 2026-08-27)_.
   **Her leverless reports as a GAMEPAD, not a keyboard.** The user has tested it and is certain. That
