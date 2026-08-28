@@ -190,6 +190,23 @@ export function applyPogoBounce(p: Player): boolean {
 }
 
 /**
+ * Which way a nail swing goes, given what she is holding and whether she is on
+ * the ground.
+ *
+ * Exported because the Setup sandbox's checklist has to agree with it exactly.
+ * A checklist that kept its own copy of this rule could tick "slash down" for
+ * a swing the Knight threw sideways, which would be the site lying to her
+ * about her own controller on the one screen built to prove it works.
+ *
+ * DOWN IS AIRBORNE-ONLY, and that single fact is what lets the sandbox verify
+ * the pogo without anything to bounce off: a down swing cannot happen unless
+ * she performed the compound mid-air press the pogo is built on.
+ */
+export function nailDirection(input: InputFrame, grounded: boolean): 'side' | 'up' | 'down' {
+  return input.down && !grounded ? 'down' : input.up ? 'up' : 'side';
+}
+
+/**
  * Advance the player by one fixed step. Velocity is SET, never ramped —
  * instant accel/decel with full air control is the core of the HK feel.
  */
@@ -225,7 +242,7 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
     p.nailCooldownTimer = PHYSICS.nailCadence;
     p.attackBufferTimer = 0;
     p.nailFacing = p.facing;
-    p.nailDir = input.down && !p.grounded ? 'down' : input.up ? 'up' : 'side';
+    p.nailDir = nailDirection(input, p.grounded);
     p.pogoedThisSwing = false;
     p.swingId += 1;
   }

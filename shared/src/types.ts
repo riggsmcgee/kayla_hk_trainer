@@ -92,6 +92,15 @@ export interface PracticeRun {
 export type ControllerChoice = 'joycon' | 'leverless';
 
 /**
+ * The seven things the Setup sandbox asks her to prove her controller can do.
+ *
+ * The whole player kit (PLAN §5) and nothing more: no double jump, no spells.
+ * `slashDown` is the load-bearing one — the downslash is airborne-only, so
+ * ticking it proves the compound mid-air press the pogo needs.
+ */
+export type SetupCheck = 'left' | 'right' | 'jump' | 'dash' | 'slashSide' | 'slashUp' | 'slashDown';
+
+/**
  * Course progress, version 1 — what is DONE, as opposed to what was merely
  * opened (the visited list) or recorded (runs). Stored in localStorage under
  * its own key; the map, the gates and the chapter strip all derive from it.
@@ -100,6 +109,12 @@ export interface ProgressV1 {
   version: 1;
   /** Her answer to "Which controller will you use?"; unset until answered. */
   controller?: ControllerChoice;
+  /**
+   * Sandbox checklist items she has performed at least once. Optional because
+   * every save written before the sandbox existed has none, and an absent list
+   * has to read as "none ticked" rather than as a broken blob.
+   */
+  setupChecks?: SetupCheck[];
   /** Pogo course levels reached-the-goal at least once (1–3 in the Bounce Bog). */
   courseLevelsCleared: number[];
   /** Dodge Arena enemies whose stage has been passed (survive + required hits). */

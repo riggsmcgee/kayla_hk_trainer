@@ -8,7 +8,14 @@
  * degrades to an in-memory-less no-op rather than throwing.
  */
 
-import type { ControllerChoice, EnemyId, PracticeRun, ProgressV1, SettingsV1 } from '@dojo/shared';
+import type {
+  ControllerChoice,
+  EnemyId,
+  PracticeRun,
+  ProgressV1,
+  SetupCheck,
+  SettingsV1,
+} from '@dojo/shared';
 import { runCleared } from './bests';
 
 /** The subset of the DOM Storage interface this module needs. */
@@ -137,6 +144,8 @@ export interface LocalStore {
   markFinaleBossCleared(): void;
   /** Her answer to chapter 1's question; answering again overwrites. */
   setController(controller: ControllerChoice): void;
+  /** Record sandbox checklist items she has just performed. */
+  markSetupChecks(checks: readonly SetupCheck[]): void;
   /** Skip a chapter ('pogo-course') or a sub-step ('pogo-course:level:2', 'finale:wave:2'). */
   markSkipped(key: string): void;
   /** "Reset my progress": removes runs, visited and progress. Settings stay. */
@@ -256,6 +265,11 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
     markFinaleLevelCleared: () => updateProgress((p) => ({ ...p, finaleLevelCleared: true })),
     markFinaleBossCleared: () => updateProgress((p) => ({ ...p, finaleBossCleared: true })),
     setController: (controller) => updateProgress((p) => ({ ...p, controller })),
+    markSetupChecks: (checks) =>
+      updateProgress((p) => ({
+        ...p,
+        setupChecks: checks.reduce(addUnique, p.setupChecks ?? []),
+      })),
     markSkipped: (key) => updateProgress((p) => ({ ...p, skipped: addUnique(p.skipped, key) })),
     clearAllProgress: () => {
       remove(KEYS.runs);

@@ -10,5 +10,6 @@ export type {
   PracticeRun,
   SettingsV1,
   ControllerChoice,
+  SetupCheck,
   ProgressV1,
 } from './types.js';
