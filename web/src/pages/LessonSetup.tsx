@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import type { ControllerChoice } from '@dojo/shared';
-import { chapterById, chapterIndex } from '../chapters';
+import { SETUP_FLOOR_ROUTE, chapterById, chapterIndex } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
-import { ChapterNext } from '../components/ChapterNext';
 import { JoyConDiagram, LeverlessDiagram } from '../components/ControllerDiagrams';
+import { NextButton } from '../components/NextButton';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useGamepadBindings } from '../storage/useGamepadBindings';
-import { PracticeCanvas } from '../components/PracticeCanvas';
-import { SETUP_CHECKS, SETUP_CHECK_LABELS } from '../engine/setupChecks';
-import { createSetupSandbox } from '../engine/setupSandboxSession';
-import type { SetupCheck } from '@dojo/shared';
+import { setupHandoffCopy } from '../copy/setup';
 import '../styles/setup.css';
 import { buttonName, gamepadDefaultsFor } from '../engine/gamepad';
 
@@ -116,80 +113,6 @@ function ControllerQuestion({
   );
 }
 
-/**
- * A bare floor, her Knight, and a list of the seven things the kit can do.
- *
- * Playtest 8, note 5. The sandbox has no pass and no fail — "just a bare
- * floor" — and the checklist is what makes it worth her time twice over: it
- * PROVES the buttons work and reading it is how she learns what she is
- * supposed to be able to do.
- *
- * The last item is the one that pays. `nailDir` is 'down' only in the air, so
- * ticking "slash down" is proof of the compound mid-air press the pogo needs,
- * without the floor needing anything to bounce off.
- */
-function ControllerSandbox() {
-  const { progress } = useProgress();
-
-  /**
-   * The sheet lives in a ref, not in state, and the factory below has no
-   * dependencies — both for the same reason. `PracticeCanvas` rebuilds its
-   * session whenever `createSession` changes identity, so a factory that
-   * closed over changing state would restart the Knight on every tick.
-   */
-  const doneRef = useRef<Set<SetupCheck>>(new Set(progress.setupChecks ?? []));
-  const [ticked, setTicked] = useState<readonly SetupCheck[]>(() => [...doneRef.current]);
-
-  const createSession = useCallback(
-    () =>
-      createSetupSandbox({
-        alreadyDone: doneRef.current,
-        onEarned: (earned) => {
-          for (const check of earned) doneRef.current.add(check);
-          progressStore.markSetupChecks(earned);
-          setTicked([...doneRef.current]);
-        },
-      }),
-    [],
-  );
-
-  const remaining = SETUP_CHECKS.filter((check) => !ticked.includes(check)).length;
-
-  return (
-    <section className="setup-sandbox" aria-labelledby="sandbox-h">
-      <h2 id="sandbox-h">Try it out</h2>
-      <p>
-        A floor and nothing else — nothing to fight, nothing to fall off, no clock. Move around
-        until your controller feels like yours. The list is the whole kit: everything the dojo will
-        ever ask you to do is one of these seven.
-      </p>
-      <PracticeCanvas
-        label="A practice floor with your Knight on it, and nothing else"
-        createSession={createSession}
-      />
-      <ul className="setup-checklist">
-        {SETUP_CHECKS.map((check) => {
-          const done = ticked.includes(check);
-          return (
-            <li key={check} className={done ? 'is-done' : undefined}>
-              <span aria-hidden="true">{done ? '✔' : '·'}</span>
-              <span>{SETUP_CHECK_LABELS[check]}</span>
-              <span className="sr-only">{done ? ' — done' : ' — not yet'}</span>
-            </li>
-          );
-        })}
-      </ul>
-      {/* aria-live so the count is announced as she works, without a screen
-          reader user having to go hunting through the list for what changed. */}
-      <p className="fine-print" role="status">
-        {remaining === 0
-          ? 'That is all seven. Your controller does everything the dojo needs.'
-          : `${remaining} still to try.`}
-      </p>
-    </section>
-  );
-}
-
 export function LessonSetup() {
   const chapter = chapterById('setup');
   const { progress, refresh } = useProgress();
@@ -290,12 +213,19 @@ export function LessonSetup() {
 
       <ControllerQuestion controller={controller} onChoose={choose} />
 
-      {/* Only after she has committed to a board: the sandbox exists to prove
-          THAT controller, and offering it before the choice would be asking
-          her to test hardware she has not picked yet. */}
-      {controller !== undefined && <ControllerSandbox />}
-
-      <ChapterNext current="setup" />
+      {/* The floor is chapter 1's proof, so this is the page's forward button
+          rather than a link in the margin — and it replaces ChapterNext, which
+          can only name a stop on the road and would send her straight past it.
+          The floor carries the "Next: Pogo" button once she is done there. */}
+      <section className="setup-handoff" aria-labelledby="setup-handoff-h">
+        <h2 id="setup-handoff-h">{setupHandoffCopy.heading}</h2>
+        <p>{setupHandoffCopy.line}</p>
+      </section>
+      <NextButton
+        title={setupHandoffCopy.button}
+        to={SETUP_FLOOR_ROUTE}
+        where={setupHandoffCopy.where}
+      />
       <ChapterNav current="setup" />
     </ChapterGate>
   );

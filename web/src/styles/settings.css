@@ -40,21 +40,8 @@
   min-height: 1.9rem;
 }
 
-/* A keycap: flat top, thicker bottom edge, the letter in lumafly blue. */
-.key-chip {
-  display: inline-block;
-  font-family: var(--font-body);
-  font-size: 0.92rem;
-  line-height: 1.3;
-  min-width: 2.1rem;
-  text-align: center;
-  padding: 0.15rem 0.55rem;
-  border: 1px solid var(--rock);
-  border-bottom-width: 3px;
-  border-radius: 6px;
-  background: var(--bg-raised);
-  color: var(--accent-strong);
-}
+/* .key-chip moved to styles.css — two pages draw keycaps now (the bench and
+   the practice floor), which makes it a base primitive like .chip. */
 
 /* "press a key…" while a row is listening, and "no key" for an empty row. */
 .binding-prompt {

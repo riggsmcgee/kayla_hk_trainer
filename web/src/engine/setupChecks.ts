@@ -23,6 +23,7 @@
  */
 
 import type { SetupCheck } from '@dojo/shared';
+import type { Action } from './input';
 import { nailDirection } from './player';
 import type { InputFrame } from './types';
 
@@ -41,17 +42,27 @@ export const SETUP_CHECKS: readonly SetupCheck[] = [
   'slashDown',
 ];
 
-/** What each item asks her to do, in her own words rather than the code's. */
-export const SETUP_CHECK_LABELS: Readonly<Record<SetupCheck, string>> = Object.freeze({
-  left: 'Walk left',
-  right: 'Walk right',
-  jump: 'Jump',
-  dash: 'Dash',
-  slashSide: 'Slash sideways',
-  slashUp: 'Slash up',
-  // Named for what it costs her, not for what it is: this is the only item
-  // that cannot be done standing still, and that is the point of it.
-  slashDown: 'Slash down — in the air',
+/**
+ * Which controls each item actually needs, so a row can offer to rebind them.
+ *
+ * This is what lets the checklist answer "Jump doesn't work" on the spot
+ * instead of sending her to Settings: the row knows that Jump is one control
+ * and that a down-slash is two. The three nail rows all include `attack`
+ * because a direction without a swing proves nothing — `earnedSetupChecks`
+ * only reads a direction on a step where a swing actually started.
+ *
+ * Ordered so the control most likely to be the problem comes first: for the
+ * two compound rows that is the DIRECTION, since attack has already been
+ * proved by the sideways slash above them.
+ */
+export const SETUP_CHECK_ACTIONS: Readonly<Record<SetupCheck, readonly Action[]>> = Object.freeze({
+  left: ['left'],
+  right: ['right'],
+  jump: ['jump'],
+  dash: ['dash'],
+  slashSide: ['attack'],
+  slashUp: ['up', 'attack'],
+  slashDown: ['down', 'attack'],
 });
 
 /** What the checklist needs to know about the Knight this step. */

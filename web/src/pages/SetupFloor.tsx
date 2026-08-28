@@ -1,0 +1,264 @@
+/**
+ * The practice floor — a bare floor, her Knight, and the seven things her
+ * hands need to be able to do.
+ *
+ * Playtest 8 asked for the sandbox; playtest 9 moved it here and gave it the
+ * second half of its job. It used to be the bottom third of the Setup lesson,
+ * below two controller diagrams and eight paragraphs, which is a long way to
+ * scroll to find out whether your buttons work. And it could only ever TELL
+ * her a control was wrong — the fix was two pages away in Settings.
+ *
+ * Now every row carries its own Remap. "It should say Jump and next it would
+ * be Remap, and it's not working." A control that does not answer is rebound
+ * on the line it failed on, from whichever hand she reaches for: the capture
+ * listens to the keyboard and the pad at once and takes the first press. That
+ * is not a convenience — her board enumerates as a gamepad whose button
+ * numbering nobody has ever established, so "press the one you mean" is the
+ * only thing that can be right.
+ *
+ * Not a chapter, so no `ChapterGate`: gating the floor on Setup's completion
+ * would lock it behind the very checks it exists to collect.
+ */
+import { useCallback, useRef, useState } from 'react';
+import type { SetupCheck } from '@dojo/shared';
+import { Link } from 'react-router';
+import { chapterById, chapterIndex } from '../chapters';
+import { ChapterNav } from '../components/ChapterNav';
+import { ChapterNext } from '../components/ChapterNext';
+import { PracticeCanvas } from '../components/PracticeCanvas';
+import { useControlCapture } from '../components/useControlCapture';
+import { actionLabelCopy } from '../copy/settings';
+import { setupCheckLabels, setupFloorCopy } from '../copy/setup';
+import { buttonName, rebindButton, type GamepadBindings } from '../engine/gamepad';
+import { rebind, type Action, type Bindings } from '../engine/input';
+import { SETUP_CHECKS, SETUP_CHECK_ACTIONS } from '../engine/setupChecks';
+import { createSetupSandbox } from '../engine/setupSandboxSession';
+import { friendlyKeyName } from '../storage/keyNames';
+import { progressStore, useProgress } from '../storage/useChapterProgress';
+import { useBindings } from '../storage/useBindings';
+import { useGamepadBindings } from '../storage/useGamepadBindings';
+import '../styles/gates.css';
+import '../styles/setup.css';
+
+/**
+ * What is bound to one action right now, keys and buttons together.
+ *
+ * Both hands, always, and never "the one she last used": the point of the row
+ * is that she can see what SHOULD work, and a row that hid the pad while she
+ * was typing would hide the exact thing she came here to check.
+ */
+function ControlChips({
+  action,
+  bindings,
+  padBindings,
+}: {
+  action: Action;
+  bindings: Bindings;
+  padBindings: GamepadBindings;
+}) {
+  // Both Shifts, and a button bound twice, print once.
+  const keys = [...new Set(bindings[action].map(friendlyKeyName))];
+  const buttons = [...new Set(padBindings[action].map(buttonName))];
+  if (keys.length === 0 && buttons.length === 0) {
+    return <span className="control-chips is-unbound">{setupFloorCopy.unbound}</span>;
+  }
+  return (
+    <span className="control-chips">
+      {keys.map((name) => (
+        <kbd key={`k:${name}`} className="key-chip">
+          {name}
+        </kbd>
+      ))}
+      {buttons.map((name) => (
+        <kbd key={`b:${name}`} className="key-chip pad-chip">
+          {name}
+        </kbd>
+      ))}
+    </span>
+  );
+}
+
+/** One rebindable control: what it is bound to, and the button that changes it. */
+function ControlLine({
+  action,
+  named,
+  bindings,
+  padBindings,
+  capturing,
+  onStart,
+  onCancel,
+}: {
+  action: Action;
+  /** True on a compound row, where the action needs naming of its own. */
+  named: boolean;
+  bindings: Bindings;
+  padBindings: GamepadBindings;
+  capturing: Action | null;
+  onStart: (action: Action) => void;
+  onCancel: () => void;
+}) {
+  const label = actionLabelCopy[action];
+  const active = capturing === action;
+  return (
+    <span className={active ? 'control-line is-capturing' : 'control-line'}>
+      {named && <span className="control-name">{label}</span>}
+      {active ? (
+        <span className="control-prompt">{setupFloorCopy.pressPrompt(label)}</span>
+      ) : (
+        <ControlChips action={action} bindings={bindings} padBindings={padBindings} />
+      )}
+      <button
+        type="button"
+        className={active ? 'chip chip-active' : 'chip'}
+        // Seven rows and nine controls, so every button has to say which one it
+        // changes. The name starts with the visible word, per WCAG label-in-name.
+        aria-label={
+          active ? setupFloorCopy.cancelLabel(label) : setupFloorCopy.remapLabel(label)
+        }
+        onClick={() => (active ? onCancel() : onStart(action))}
+      >
+        {active ? setupFloorCopy.cancel : setupFloorCopy.remap}
+      </button>
+    </span>
+  );
+}
+
+/** She arrived without answering chapter 1's question, so there is no board to prove. */
+function NeedsController() {
+  return (
+    <section className="gate" aria-labelledby="floor-gate-h">
+      <p className="eyebrow">{setupFloorCopy.needsControllerEyebrow}</p>
+      <h1 id="floor-gate-h">{setupFloorCopy.needsControllerHeading}</h1>
+      <p className="gate-done">{setupFloorCopy.needsControllerLine}</p>
+      <div className="gate-actions">
+        <Link className="button" to={chapterById('setup').route}>
+          {setupFloorCopy.needsControllerBack}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+export function SetupFloor() {
+  const { progress, refresh } = useProgress();
+  const [bindings, setBindings] = useBindings();
+  const [padBindings, setPadBindings] = useGamepadBindings();
+
+  /**
+   * The sheet lives in a ref, and the session factory has no dependencies —
+   * both for the same reason. `PracticeCanvas` rebuilds its session whenever
+   * `createSession` changes identity, so a factory that closed over changing
+   * state would restart the Knight on every tick.
+   */
+  const doneRef = useRef<Set<SetupCheck>>(new Set(progress.setupChecks ?? []));
+  const [ticked, setTicked] = useState<readonly SetupCheck[]>(() => [...doneRef.current]);
+
+  const createSession = useCallback(
+    () =>
+      createSetupSandbox({
+        alreadyDone: doneRef.current,
+        onEarned: (earned) => {
+          for (const check of earned) doneRef.current.add(check);
+          progressStore.markSetupChecks(earned);
+          setTicked([...doneRef.current]);
+        },
+      }),
+    [],
+  );
+
+  // A capture writes through the shared binding stores, so the rows, the
+  // caption under the canvas and the adapter the Knight is driven by all change
+  // together — and the session underneath is not rebuilt (PracticeCanvas).
+  const capture = useControlCapture((action, control) => {
+    if (control.kind === 'key') setBindings(rebind(bindings, action, control.code));
+    else setPadBindings(rebindButton(padBindings, action, control.index));
+  });
+
+  const skip = (): void => {
+    progressStore.markSkipped('setup');
+    refresh();
+  };
+
+  if (progress.controller === undefined) return <NeedsController />;
+
+  const chapter = chapterById('setup');
+  const remaining = SETUP_CHECKS.filter((check) => !ticked.includes(check)).length;
+  const skipped = progress.skipped.includes('setup');
+
+  return (
+    <>
+      <p className="eyebrow">
+        Chapter {chapterIndex('setup')} · {chapter.place}
+      </p>
+      <h1>{setupFloorCopy.title}</h1>
+      <p className="lede">{setupFloorCopy.lede}</p>
+      <p>{setupFloorCopy.kit}</p>
+
+      <PracticeCanvas
+        label={setupFloorCopy.canvasLabel}
+        createSession={createSession}
+        // While a capture is open the key she presses is being ASSIGNED, not
+        // played — otherwise assigning Jump would also jump, and could tick the
+        // box using the binding she is in the middle of replacing.
+        inputPaused={capture.capturing !== null}
+      />
+
+      <ul className="setup-checklist">
+        {SETUP_CHECKS.map((check) => {
+          const done = ticked.includes(check);
+          const actions = SETUP_CHECK_ACTIONS[check];
+          const compound = actions.length > 1;
+          return (
+            <li key={check} className={done ? 'is-done' : undefined}>
+              <span className="check-mark" aria-hidden="true">
+                {done ? '✔' : '·'}
+              </span>
+              <span className={compound ? 'check-body is-compound' : 'check-body'}>
+                <span className="check-label">
+                  {setupCheckLabels[check]}
+                  <span className="sr-only">
+                    {done ? setupFloorCopy.srDone : setupFloorCopy.srNotYet}
+                  </span>
+                </span>
+                {actions.map((action) => (
+                  <ControlLine
+                    key={action}
+                    action={action}
+                    named={compound}
+                    bindings={bindings}
+                    padBindings={padBindings}
+                    capturing={capture.capturing}
+                    onStart={capture.start}
+                    onCancel={capture.cancel}
+                  />
+                ))}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* aria-live so the count is announced as she works, without a screen
+          reader user having to go hunting through the list for what changed. */}
+      <p className="fine-print" role="status">
+        {remaining === 0 ? setupFloorCopy.allDone : setupFloorCopy.remaining(remaining)}
+      </p>
+
+      {remaining > 0 && !skipped && (
+        <p className="fine-print">
+          <button type="button" className="text-button" onClick={skip}>
+            {setupFloorCopy.skip}
+          </button>
+        </p>
+      )}
+      {skipped && (
+        <p className="fine-print" role="status">
+          {setupFloorCopy.skipped}
+        </p>
+      )}
+
+      <ChapterNext current="setup" />
+      <ChapterNav current="setup" />
+    </>
+  );
+}

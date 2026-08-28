@@ -80,7 +80,10 @@ export const CHAPTERS: readonly Chapter[] = [
     title: 'Your Setup',
     route: '/lessons/setup',
     line: 'Sit on the bench, pick one controller, keep it.',
-    done: 'Answer one question — which controller?',
+    // Two things since playtest 9: the question, and the floor that proves the
+    // answer. The sign and every gate panel print this line, so it has to name
+    // both or the map promises less than the chapter asks.
+    done: 'Pick a controller, then prove it on the floor',
   },
   {
     id: 'pogo',
@@ -130,6 +133,21 @@ export const CHAPTERS: readonly Chapter[] = [
     done: FINALE_DONE,
   },
 ];
+
+/**
+ * The practice floor, which is a PAGE and deliberately not a stop.
+ *
+ * It belongs to chapter 1 — it proves the controller that chapter asks her to
+ * pick — and it sits between Setup and Pogo in the forward chain. It is not in
+ * CHAPTERS because the road is six hand-fitted stops: five bezier legs whose
+ * endpoints are typed-in offsets from stop centres, five chained strata bands,
+ * six hand-inked glyphs and a strip that fits six across a laptop. A seventh
+ * stop is a redraw and a ratified decision, not a list append.
+ *
+ * Named here rather than written out at each of its three call sites because
+ * this is the file anyone looks in for a route.
+ */
+export const SETUP_FLOOR_ROUTE = '/lessons/setup/floor';
 
 export function chapterById(id: ChapterId): Chapter {
   const found = CHAPTERS.find((c) => c.id === id);

@@ -13,9 +13,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { SetupCheck } from '@dojo/shared';
+import { setupCheckLabels } from '../copy/setup';
 import {
   SETUP_CHECKS,
-  SETUP_CHECK_LABELS,
+  SETUP_CHECK_ACTIONS,
   earnedSetupChecks,
   setupChecksComplete,
 } from './setupChecks';
@@ -53,14 +54,31 @@ describe('the seven items', () => {
 
   it('gives every item something to read', () => {
     for (const check of SETUP_CHECKS) {
-      expect(SETUP_CHECK_LABELS[check].length).toBeGreaterThan(3);
+      expect(setupCheckLabels[check].length).toBeGreaterThan(3);
     }
+  });
+
+  it('tells every item which controls could be the broken one', () => {
+    // The floor's Remap button is only as good as this table: a row whose
+    // actions are wrong offers to rebind something that was never the problem.
+    for (const check of SETUP_CHECKS) {
+      expect(SETUP_CHECK_ACTIONS[check].length).toBeGreaterThan(0);
+    }
+  });
+
+  it('asks for a swing on all three nail directions, and a direction on two', () => {
+    // A direction with no swing proves nothing — earnedSetupChecks only reads a
+    // direction on a step where a swing actually started — and the sideways
+    // slash has no direction to hold, which is why it is the one-control row.
+    expect(SETUP_CHECK_ACTIONS.slashSide).toEqual(['attack']);
+    expect(SETUP_CHECK_ACTIONS.slashUp).toEqual(['up', 'attack']);
+    expect(SETUP_CHECK_ACTIONS.slashDown).toEqual(['down', 'attack']);
   });
 
   it('says out loud that the downslash needs the air', () => {
     // She cannot do this one standing still, and a label that did not say so
     // would leave her pressing down on the floor wondering why nothing ticks.
-    expect(SETUP_CHECK_LABELS.slashDown).toMatch(/air/i);
+    expect(setupCheckLabels.slashDown).toMatch(/air/i);
   });
 });
 

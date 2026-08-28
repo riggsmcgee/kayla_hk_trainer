@@ -22,7 +22,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { SETUP_CHECK_LABELS } from '../engine/setupChecks';
+import { SETUP_FLOOR_ROUTE } from '../chapters';
 import { LessonSetup } from './LessonSetup';
 
 beforeEach(() => {
@@ -131,45 +131,20 @@ describe('and then offers her the capture', () => {
   });
 });
 
-describe('the sandbox under the answer', () => {
-  it('is not offered until she has committed to a board', () => {
-    // It exists to prove THAT controller. Offering it first would be asking
-    // her to test hardware she has not picked.
+describe('and then hands her on to the floor', () => {
+  it('ends on the forward button that goes there, not past it', () => {
+    // The floor is chapter 1's proof. ChapterNext can only name a stop on the
+    // road, so it would have sent her to Pogo — which is now gated on the very
+    // checks the floor collects.
     renderSetup();
-    expect(screen.queryByRole('heading', { name: 'Try it out' })).toBeNull();
+    const forward = screen.getByRole('link', { name: /^Next: / });
+    expect(forward.getAttribute('href')).toBe(SETUP_FLOOR_ROUTE);
   });
 
-  it('appears once she has, with a floor and nothing else on it', () => {
+  it('offers it before she has answered, because the floor explains itself', () => {
+    // She can walk to the floor without a controller; it tells her to go back
+    // and pick one. That is a better dead end than a button that is not there.
     renderSetup();
-    choose('Leverless');
-    expect(screen.getByRole('heading', { name: 'Try it out' })).toBeDefined();
-    // The canvas is named for what it actually contains, because that name is
-    // the whole screen for anyone who cannot see it.
-    expect(screen.getByLabelText(/practice floor with your Knight on it/i)).toBeDefined();
+    expect(screen.getByRole('link', { name: /^Next: / })).toBeDefined();
   });
-
-  it('lists the whole kit, so she learns what she can do by reading it', () => {
-    // Seven items, and the sandbox is as much a teaching surface as a test:
-    // "we should make sure that all the core functionalities work AND that she
-    // knows what she's supposed to be able to do."
-    renderSetup();
-    choose('Leverless');
-    for (const label of Object.values(SETUP_CHECK_LABELS)) {
-      expect(screen.getByText(label)).toBeDefined();
-    }
-  });
-
-  it('says out loud how many are left, without her hunting the list', () => {
-    renderSetup();
-    choose('Leverless');
-    expect(screen.getByRole('status').textContent).toContain('7 still to try');
-  });
-
-  // NOT TESTED HERE: that a sheet filled in last week is still filled in when
-  // she comes back. The store is a module singleton that caches across tests in
-  // this file, so seeding it — by localStorage or through its own API — is not
-  // visible to a component rendered afterwards, and a test written around that
-  // would be testing the harness. The session honours `alreadyDone`
-  // (setupSandboxSession.test.ts) and the round trip is checked in a browser
-  // instead. Making it testable here means giving the store a reset seam.
 });

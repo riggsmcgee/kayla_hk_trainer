@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PracticeRun, SettingsV1 } from '@dojo/shared';
+import { SETUP_CHECKS } from '../engine/setupChecks';
 import { arenaBest, courseBest } from './bests';
 import { DEFAULT_PROGRESS, DEFAULT_SETTINGS, createLocalStore, type StorageLike } from './local';
 
@@ -248,6 +249,82 @@ describe('progress', () => {
       finaleWavesCleared: [1],
       finaleBossCleared: true,
       skipped: ['pogo-course:level:3'],
+      // Answering seeds an EMPTY sheet, which is what makes a new save gated:
+      // an absent sheet means grandfathered, and the two must not be confused.
+      setupChecks: [],
+    });
+  });
+
+  /**
+   * Playtest 9's gate rests on one distinction the store has to keep straight:
+   * an ABSENT sheet means "answered the controller before the floor existed,
+   * credit her with it", and an EMPTY sheet means "gated, nothing proved yet".
+   *
+   * These are the tests that stop the two collapsing into each other — which is
+   * the failure that would either un-complete chapter 1 under Kayla or hand
+   * every new save a free pass.
+   */
+  describe('the practice floor grandfather', () => {
+    it('credits a save that answered the controller before the sheet existed', () => {
+      const backend = createMemoryStorage();
+      backend.setItem(
+        'kayla-hk-dojo:progress',
+        JSON.stringify({ v: 1, data: { version: 1, controller: 'leverless', skipped: [] } }),
+      );
+      const store = createLocalStore(backend);
+      expect(store.getProgress().setupChecks).toEqual([...SETUP_CHECKS]);
+    });
+
+    it('keeps crediting her after she walks left on the floor out of curiosity', () => {
+      // The hole that sinks an inference-based migration: markSetupChecks turns
+      // an absent sheet into ['left'], and chapter 1 would un-complete on the
+      // first frame she moved. Materialising the seven makes the write a no-op.
+      const backend = createMemoryStorage();
+      backend.setItem(
+        'kayla-hk-dojo:progress',
+        JSON.stringify({ v: 1, data: { version: 1, controller: 'leverless', skipped: [] } }),
+      );
+      const store = createLocalStore(backend);
+      store.markSetupChecks(['left']);
+      expect(store.getProgress().setupChecks).toEqual([...SETUP_CHECKS]);
+    });
+
+    it('keeps crediting her when she re-picks the same board', () => {
+      // "change" then the same controller calls setController unconditionally.
+      const backend = createMemoryStorage();
+      backend.setItem(
+        'kayla-hk-dojo:progress',
+        JSON.stringify({ v: 1, data: { version: 1, controller: 'leverless', skipped: [] } }),
+      );
+      const store = createLocalStore(backend);
+      store.setController('leverless');
+      expect(store.getProgress().setupChecks).toEqual([...SETUP_CHECKS]);
+    });
+
+    it('does not credit a save that has an empty sheet', () => {
+      // The one a future "drop empty arrays to keep the blob small" tidy-up
+      // would break, silently, for every gated player.
+      const backend = createMemoryStorage();
+      backend.setItem(
+        'kayla-hk-dojo:progress',
+        JSON.stringify({
+          v: 1,
+          data: { version: 1, controller: 'leverless', setupChecks: [], skipped: [] },
+        }),
+      );
+      const store = createLocalStore(backend);
+      expect(store.getProgress().setupChecks).toEqual([]);
+    });
+
+    it('does not credit a save that never answered the controller', () => {
+      const store = createLocalStore(createMemoryStorage());
+      expect(store.getProgress().setupChecks).toBeUndefined();
+    });
+
+    it('gates a brand-new player from the moment she answers', () => {
+      const store = createLocalStore(createMemoryStorage());
+      store.setController('joycon');
+      expect(store.getProgress().setupChecks).toEqual([]);
     });
   });
 

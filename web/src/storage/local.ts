@@ -16,6 +16,7 @@ import type {
   SetupCheck,
   SettingsV1,
 } from '@dojo/shared';
+import { SETUP_CHECKS } from '../engine/setupChecks';
 import { runCleared } from './bests';
 
 /** The subset of the DOM Storage interface this module needs. */
@@ -203,6 +204,39 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
    * Read progress, filling any field a partial/older v1 blob lacks, so
    * callers always get the complete shape (and never the shared default).
    */
+  /**
+   * The sandbox sheet, and the one migration this store performs.
+   *
+   * Playtest 9 made Setup's completion require the seven ticks. Applied
+   * literally that would un-complete chapter 1 for every save that already
+   * exists — Kayla's included — and re-lock chapters 2 and 3 behind a gate she
+   * had already walked past. So a save that ANSWERED THE CONTROLLER BEFORE THE
+   * SHEET EXISTED is credited with the whole sheet.
+   *
+   * It is credited by MATERIALISING the seven, not by inferring completeness
+   * from a missing key, and that distinction is the whole correctness of it. An
+   * inference would be revoked by the first thing she did on the floor:
+   * `markSetupChecks(['left'])` turns `undefined` into `['left']`, and chapter 1
+   * would un-complete the moment she walked left out of curiosity. Materialising
+   * makes every later write idempotent — the seven are already there, so adding
+   * one changes nothing, and re-confirming the same controller preserves them.
+   *
+   * What the rule CANNOT distinguish is a save from before the floor existed and
+   * a save made after it that never opened it. That is deliberate: the promise
+   * is "nothing already complete becomes incomplete", and both of those are
+   * already complete. From here on `setController` seeds an empty sheet, so
+   * every save made after this change is gated for real.
+   *
+   * DO NOT "tidy" an empty `setupChecks` out of the stored blob. An absent key
+   * means grandfathered and an empty array means gated, and dropping empties
+   * would silently promote every gated save. `local.test.ts` holds that.
+   */
+  function readSetupChecks(stored: Partial<ProgressV1>): { setupChecks: SetupCheck[] } | null {
+    if (Array.isArray(stored.setupChecks)) return { setupChecks: [...stored.setupChecks] };
+    if (stored.controller) return { setupChecks: [...SETUP_CHECKS] };
+    return null;
+  }
+
   function readProgress(): ProgressV1 {
     const stored = read<Partial<ProgressV1> | null>(KEYS.progress, PROGRESS_VERSION, null);
     const fresh = freshProgress();
@@ -217,7 +251,7 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
       // is written on every change and silently dropped on every read, which
       // is exactly what the sandbox's ticks did until a browser reload showed
       // the sheet back at zero.
-      ...(Array.isArray(stored.setupChecks) ? { setupChecks: [...stored.setupChecks] } : {}),
+      ...(readSetupChecks(stored) ?? {}),
       courseLevelsCleared: Array.isArray(stored.courseLevelsCleared)
         ? [...stored.courseLevelsCleared]
         : fresh.courseLevelsCleared,
@@ -272,7 +306,13 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
       updateProgress((p) => ({ ...p, finaleWavesCleared: addUnique(p.finaleWavesCleared, wave) })),
     markFinaleLevelCleared: () => updateProgress((p) => ({ ...p, finaleLevelCleared: true })),
     markFinaleBossCleared: () => updateProgress((p) => ({ ...p, finaleBossCleared: true })),
-    setController: (controller) => updateProgress((p) => ({ ...p, controller })),
+    // The empty sheet is what makes a NEW save gated: without it the answer
+    // would leave `setupChecks` absent, which readSetupChecks reads as
+    // grandfathered. On a save that already has a sheet — including one just
+    // materialised by the grandfather — this preserves it, so pressing "change"
+    // and re-picking the same board cannot revoke anything.
+    setController: (controller) =>
+      updateProgress((p) => ({ ...p, controller, setupChecks: p.setupChecks ?? [] })),
     markSetupChecks: (checks) =>
       updateProgress((p) => ({
         ...p,

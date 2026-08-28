@@ -61,6 +61,22 @@ export function saveBindings(next: Bindings): void {
   for (const listener of listeners) listener();
 }
 
+/**
+ * Throw away the cached value and tell every mounted hook to read localStorage
+ * again.
+ *
+ * The cache exists because `useSyncExternalStore` needs `getSnapshot` to
+ * return the same object between changes, and the cost of that is a module-level
+ * value that outlives any component — which means seeding localStorage and then
+ * rendering does not change what `useBindings` returns. This is the seam that
+ * makes that testable, and it is the seam a cross-tab `storage` listener would
+ * use if the site ever grows one. Nothing in the app calls it today.
+ */
+export function reloadBindings(): void {
+  current = null;
+  for (const listener of listeners) listener();
+}
+
 /** Her keyboard bindings, and the one way to change them. */
 export function useBindings(): [Bindings, (next: Bindings) => void] {
   const bindings = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
