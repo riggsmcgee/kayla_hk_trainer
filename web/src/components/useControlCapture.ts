@@ -31,9 +31,19 @@ export type CapturedControl = { kind: 'key'; code: string } | { kind: 'button'; 
 export type CaptureAccepts = 'key' | 'button' | 'either';
 
 export interface ControlCapture {
-  /** The action waiting for a control, or null when nothing is capturing. */
-  capturing: Action | null;
-  start(action: Action): void;
+  /**
+   * The id of the control waiting, or null when nothing is capturing.
+   *
+   * An id and not the action, because the same action can appear on more than
+   * one row: Attack is on all three nail rows of the practice floor, and keying
+   * the capture by the action put all three of them into the capture state at
+   * once. The caller decides what an id means; the floor uses "check:action"
+   * and the bench uses the action, which is unique there.
+   */
+  capturing: string | null;
+  /** The action the open capture will bind, or null. */
+  capturingAction: Action | null;
+  start(id: string, action: Action): void;
   cancel(): void;
 }
 
@@ -50,7 +60,7 @@ export function useControlCapture(
   onCaptured: (action: Action, control: CapturedControl) => void,
   accept: CaptureAccepts = 'either',
 ): ControlCapture {
-  const [capturing, setCapturing] = useState<Action | null>(null);
+  const [open, setOpen] = useState<{ id: string; action: Action } | null>(null);
 
   // The callback almost always closes over the current bindings, which change
   // on every capture. Held in a ref so that does not tear the listeners down
@@ -59,10 +69,11 @@ export function useControlCapture(
   handler.current = onCaptured;
 
   useEffect(() => {
-    if (capturing === null) return;
+    if (open === null) return;
+    const { action } = open;
     const finish = (control: CapturedControl): void => {
-      setCapturing(null);
-      handler.current(capturing, control);
+      setOpen(null);
+      handler.current(action, control);
     };
 
     let detachKey: (() => void) | undefined;
@@ -76,7 +87,7 @@ export function useControlCapture(
         if (verdict === 'cancel') {
           // Tab is left alone so the browser moves her focus on out of here.
           if (e.code !== 'Tab') e.preventDefault();
-          setCapturing(null);
+          setOpen(null);
           return;
         }
         // Taken: prevented, or Space and Enter would also re-click the button
@@ -101,10 +112,15 @@ export function useControlCapture(
       detachKey?.();
       if (timer !== undefined) window.clearInterval(timer);
     };
-  }, [capturing, accept]);
+  }, [open, accept]);
 
-  const start = useCallback((action: Action) => setCapturing(action), []);
-  const cancel = useCallback(() => setCapturing(null), []);
+  const start = useCallback((id: string, action: Action) => setOpen({ id, action }), []);
+  const cancel = useCallback(() => setOpen(null), []);
 
-  return { capturing, start, cancel };
+  return {
+    capturing: open?.id ?? null,
+    capturingAction: open?.action ?? null,
+    start,
+    cancel,
+  };
 }

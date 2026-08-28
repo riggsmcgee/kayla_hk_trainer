@@ -60,13 +60,14 @@
   row-gap: 0.35rem;
 }
 
-.check-label {
-  flex: 0 0 auto;
+.setup-checklist .check-label {
+  /* Shrinkable, so a long label gives way before the row can overflow. */
+  flex: 0 1 auto;
   min-width: 10rem;
   text-align: left;
 }
 
-.control-line {
+.setup-checklist .control-line {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -74,21 +75,24 @@
   /* Grows into the row on a wide screen, wraps whole on a narrow one. */
   flex: 1 1 18rem;
   min-width: 0;
+  /* A keycap's height, so swapping the chips for the capture prompt does not
+     move the rows under her while she is looking at one. */
+  min-height: 2.1rem;
 }
 
 /* A row with two controls stacks them under the label, indented to the mark. */
-.check-body.is-compound .control-line {
+.setup-checklist .check-body.is-compound .control-line {
   flex-basis: 100%;
   padding-left: 1.2rem;
 }
 
-.control-name {
+.setup-checklist .control-name {
   color: var(--text-dim);
   font-size: 0.92rem;
   min-width: 4.5rem;
 }
 
-.control-chips {
+.setup-checklist .control-chips {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 0.3rem;
@@ -97,7 +101,7 @@
   flex: 1 1 auto;
 }
 
-.control-chips.is-unbound {
+.setup-checklist .control-chips.is-unbound {
   color: var(--text-dim);
   font-style: italic;
   font-size: 0.95rem;
@@ -105,14 +109,14 @@
 
 /* "Press the key or button you want for Jump." — in place of the chips, so the
    row does not change height while she is looking at it. */
-.control-prompt {
+.setup-checklist .control-prompt {
   flex: 1 1 auto;
   color: var(--gold);
   font-style: italic;
   font-size: 0.95rem;
 }
 
-.control-line .chip {
+.setup-checklist .control-line .chip {
   flex: 0 0 auto;
 }
 

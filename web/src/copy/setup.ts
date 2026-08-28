@@ -245,7 +245,8 @@ export const setupFloorCopy = {
    */
   remapLabel: (row: string): string => `Remap ${row}`,
   remapControlLabel: (control: string, row: string): string => `Remap ${control} for ${row}`,
-  cancelLabel: (control: string): string => `Stop remapping ${control}`,
+  /** Starts with the visible word, like every other name on the page. */
+  cancelLabel: (control: string): string => `Cancel remapping ${control}`,
 
   /**
    * The prompt while a capture is open. It says "or button" because the capture
@@ -288,7 +289,9 @@ export const setupFloorCopy = {
 /** What the Setup lesson says where the sandbox used to be. */
 export const setupHandoffCopy = {
   heading: 'Now prove it',
+  // The button names the page it opens, so it reads the page's own title
+  // rather than repeating it — two copies of "Try it out" can drift.
   line: 'A bare floor, your Knight, and a list of the seven things your hands need to be able to do. Anything that does not answer, you can rebind right there on the line it failed on.',
-  button: 'Try it out',
+  button: setupFloorCopy.title,
   where: 'Dirtmouth',
 } as const;

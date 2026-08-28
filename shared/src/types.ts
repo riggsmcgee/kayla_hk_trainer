@@ -115,6 +115,18 @@ export interface ProgressV1 {
    * has to read as "none ticked" rather than as a broken blob.
    */
   setupChecks?: SetupCheck[];
+  /**
+   * True on any save written since the practice floor's gate shipped.
+   *
+   * It exists to tell two saves apart that are otherwise identical: one whose
+   * sheet is half-filled because she is halfway through proving her controller,
+   * and one whose sheet is half-filled because she used the sandbox back when it
+   * proved nothing and chapter 1 was finished by answering one question. The
+   * first must stay gated; the second must not lose a chapter it had already
+   * finished. Absent means the second, and `readProgress` credits it with the
+   * whole sheet.
+   */
+  setupGated?: boolean;
   /** Pogo course levels reached-the-goal at least once (1–3 in the Bounce Bog). */
   courseLevelsCleared: number[];
   /** Dodge Arena enemies whose stage has been passed (survive + required hits). */

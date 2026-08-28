@@ -77,7 +77,7 @@ export const pogoLessonCopy = {
  * editable caption beside four read-only ones is worse than five read-only.
  */
 export const readingEnemiesCopy = {
-  legendLabel: 'Overlay colour legend',
+  legendLabel: 'Overlay color legend',
   legendRed: 'red — where it hurts',
   legendGreen: 'green — your nail beats this',
   legendGold: 'gold — the punish window',

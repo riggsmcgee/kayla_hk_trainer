@@ -249,8 +249,9 @@ describe('progress', () => {
       finaleWavesCleared: [1],
       finaleBossCleared: true,
       skipped: ['pogo-course:level:3'],
-      // Answering seeds an EMPTY sheet, which is what makes a new save gated:
-      // an absent sheet means grandfathered, and the two must not be confused.
+      // Answering is what marks a save as subject to the gate, and the empty
+      // sheet is what it starts from.
+      setupGated: true,
       setupChecks: [],
     });
   });
@@ -279,6 +280,7 @@ describe('progress', () => {
     const everything: Required<ProgressV1> = {
       version: 1,
       controller: 'leverless',
+      setupGated: true,
       setupChecks: ['left', 'slashDown'],
       courseLevelsCleared: [1, 3],
       arenaEnemiesCleared: ['duelist', 'warden'],
@@ -337,19 +339,54 @@ describe('progress', () => {
       expect(store.getProgress().setupChecks).toEqual([...SETUP_CHECKS]);
     });
 
-    it('does not credit a save that has an empty sheet', () => {
-      // The one a future "drop empty arrays to keep the blob small" tidy-up
-      // would break, silently, for every gated player.
+    it('does not credit a save that was written under the gate', () => {
       const backend = createMemoryStorage();
       backend.setItem(
         'kayla-hk-dojo:progress',
         JSON.stringify({
           v: 1,
-          data: { version: 1, controller: 'leverless', setupChecks: [], skipped: [] },
+          data: {
+            version: 1,
+            controller: 'leverless',
+            setupGated: true,
+            setupChecks: [],
+            skipped: [],
+          },
         }),
       );
       const store = createLocalStore(backend);
       expect(store.getProgress().setupChecks).toEqual([]);
+    });
+
+    it('credits a HALF-FILLED sheet from the build where filling it proved nothing', () => {
+      // The door an absent-key rule leaves open, and the one that would have hurt
+      // most. The sandbox shipped before the gate, so a save can hold two of seven
+      // from a build where chapter 1 was finished by answering one question. Read
+      // by the sheet alone that save is gated at 2/7 and loses a chapter it had
+      // already finished — the exact harm the whole migration exists to avoid.
+      const backend = createMemoryStorage();
+      backend.setItem(
+        'kayla-hk-dojo:progress',
+        JSON.stringify({
+          v: 1,
+          data: {
+            version: 1,
+            controller: 'leverless',
+            setupChecks: ['left', 'right'],
+            skipped: [],
+          },
+        }),
+      );
+      const store = createLocalStore(backend);
+      expect(store.getProgress().setupChecks).toEqual([...SETUP_CHECKS]);
+    });
+
+    it('keeps the mark once it is set, so the gate cannot be undone by playing', () => {
+      const store = createLocalStore(createMemoryStorage());
+      store.setController('leverless');
+      store.markSetupChecks(['left']);
+      expect(store.getProgress().setupGated).toBe(true);
+      expect(store.getProgress().setupChecks).toEqual(['left']);
     });
 
     it('does not credit a save that never answered the controller', () => {
@@ -360,6 +397,7 @@ describe('progress', () => {
     it('gates a brand-new player from the moment she answers', () => {
       const store = createLocalStore(createMemoryStorage());
       store.setController('joycon');
+      expect(store.getProgress().setupGated).toBe(true);
       expect(store.getProgress().setupChecks).toEqual([]);
     });
   });

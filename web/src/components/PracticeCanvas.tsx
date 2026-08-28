@@ -33,6 +33,14 @@ import { useBindings } from '../storage/useBindings';
 interface PracticeCanvasProps {
   /** Accessible name for the canvas. */
   label: string;
+  /**
+   * The canvas element, for a page that has to give it the keyboard back.
+   *
+   * The adapter ignores keys pressed while a button or link has focus, so a page
+   * with controls beside the game — the practice floor's Remap buttons — leaves
+   * the Knight deaf until focus comes back here.
+   */
+  canvasRef?: React.RefObject<HTMLCanvasElement | null>;
   /** Builds the session on mount; a new mount gets a fresh session. */
   createSession: () => GameSession;
   /**
@@ -48,7 +56,12 @@ interface PracticeCanvasProps {
   inputPaused?: boolean;
 }
 
-export function PracticeCanvas({ label, createSession, inputPaused = false }: PracticeCanvasProps) {
+export function PracticeCanvas({
+  label,
+  createSession,
+  inputPaused = false,
+  canvasRef: exposed,
+}: PracticeCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [bindings] = useBindings();
   const [padBindings] = useGamepadBindings();
@@ -76,7 +89,15 @@ export function PracticeCanvas({ label, createSession, inputPaused = false }: Pr
   // The pad adapter, same rule. Polled rather than evented, so it needs no
   // listener of its own — the loop asks it for a frame.
   useEffect(() => {
-    gamepadRef.current = createGamepadInput(padBindings);
+    const gamepad = createGamepadInput(padBindings);
+    // Primed with one discarded poll, and this line is load-bearing. A press
+    // edge is the difference against the previous poll, and a fresh adapter has
+    // no previous poll — so a button still HELD when the bindings changed would
+    // read as newly pressed. On the practice floor that is her finger still on
+    // the button she just assigned, and the Knight would jump the instant she
+    // finished telling it what jump means.
+    gamepad.sample(readGamepads());
+    gamepadRef.current = gamepad;
   }, [padBindings]);
 
   useEffect(() => {
@@ -114,7 +135,10 @@ export function PracticeCanvas({ label, createSession, inputPaused = false }: Pr
   return (
     <figure className="practice-canvas-frame">
       <canvas
-        ref={canvasRef}
+        ref={(el) => {
+          canvasRef.current = el;
+          if (exposed) exposed.current = el;
+        }}
         width={CANVAS.width}
         height={CANVAS.height}
         aria-label={label}

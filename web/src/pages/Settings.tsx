@@ -92,8 +92,9 @@ export function Settings() {
   const padCapture = useControlCapture((action, control) => {
     if (control.kind === 'button') setPadBindings(rebindButton(padBindings, action, control.index));
   }, 'button');
-  const capturing = keyCapture.capturing;
-  const capturingPad = padCapture.capturing;
+  // The bench's ids ARE the actions: each appears on exactly one row here.
+  const capturing = keyCapture.capturingAction;
+  const capturingPad = padCapture.capturingAction;
   const [resetStage, setResetStage] = useState<ResetStage>('idle');
 
   // Which pads are here, refreshed on a timer. A pad stays invisible to the
@@ -169,7 +170,7 @@ export function Settings() {
                       ? settingsCopy.cancelChangeKey(ACTION_LABELS[action])
                       : settingsCopy.changeKey(ACTION_LABELS[action])
                   }
-                  onClick={() => (active ? keyCapture.cancel() : keyCapture.start(action))}
+                  onClick={() => (active ? keyCapture.cancel() : keyCapture.start(action, action))}
                 >
                   {active ? settingsCopy.cancel : settingsCopy.change}
                 </button>
@@ -250,7 +251,7 @@ export function Settings() {
                       ? settingsCopy.cancelChangeButton(ACTION_LABELS[action])
                       : settingsCopy.changeButton(ACTION_LABELS[action])
                   }
-                  onClick={() => (active ? padCapture.cancel() : padCapture.start(action))}
+                  onClick={() => (active ? padCapture.cancel() : padCapture.start(action, action))}
                 >
                   {active ? settingsCopy.cancel : settingsCopy.change}
                 </button>

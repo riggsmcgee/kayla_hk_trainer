@@ -35,6 +35,10 @@ afterEach(cleanup);
 function seed(progress: Partial<ProgressV1>): void {
   const full: ProgressV1 = {
     version: 1,
+    // Every seed here is a save written under the gate. Without this the store
+    // grandfathers it and hands the page a full sheet, which is right for a save
+    // from before the floor existed and wrong for anything these tests describe.
+    setupGated: true,
     courseLevelsCleared: [],
     arenaEnemiesCleared: [],
     finaleLevelCleared: false,
@@ -214,14 +218,30 @@ describe('the way out', () => {
     expect(screen.getByRole('status').textContent).toContain(setupFloorCopy.allDone);
   });
 
-  it('points at the next stop on the road, which the floor is not', () => {
+  it('does not offer the road’s forward button while the floor is unfinished', () => {
+    // The gold button is the ROAD's, and the road is locked until this page is
+    // finished with. Offering it early points her one loud affordance straight
+    // at Pogo's gate panel — a loop, and the failure ChapterGate avoids by
+    // never rendering ChapterNext on a page that is itself locked.
     seed({ controller: 'leverless', setupChecks: [] });
+    renderFloor();
+    expect(screen.queryByRole('link', { name: /^Next: / })).toBeNull();
+  });
+
+  it('offers it the moment the seventh tick lands', () => {
+    seed({ controller: 'leverless', setupChecks: [...SETUP_CHECKS] });
     renderFloor();
     // The floor carries the button Setup used to: "Next: Pogo". Rendered in a
     // MemoryRouter, so the href is the bare path; the app's HashRouter adds the #.
     expect(screen.getByRole('link', { name: /^Next: / }).getAttribute('href')).toBe(
       '/lessons/pogo',
     );
+  });
+
+  it('offers it to someone who skipped, because a skip is a pass', () => {
+    seed({ controller: 'leverless', setupChecks: [], skipped: ['setup'] });
+    renderFloor();
+    expect(screen.getByRole('link', { name: /^Next: / })).toBeDefined();
   });
 });
 

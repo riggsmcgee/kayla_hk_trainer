@@ -19,7 +19,7 @@
  * Not a chapter, so no `ChapterGate`: gating the floor on Setup's completion
  * would lock it behind the very checks it exists to collect.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SetupCheck } from '@dojo/shared';
 import { Link } from 'react-router';
 import { chapterById, chapterIndex } from '../chapters';
@@ -35,6 +35,7 @@ import { rebind, type Action, type Bindings } from '../engine/input';
 import { SETUP_CHECKS, SETUP_CHECK_ACTIONS } from '../engine/setupChecks';
 import { createSetupSandbox } from '../engine/setupSandboxSession';
 import { friendlyKeyName } from '../storage/keyNames';
+import { chapterPassed } from '../storage/progress';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useBindings } from '../storage/useBindings';
 import { useGamepadBindings } from '../storage/useGamepadBindings';
@@ -82,6 +83,7 @@ function ControlChips({
 /** One rebindable control: what it is bound to, and the button that changes it. */
 function ControlLine({
   action,
+  id,
   row,
   named,
   bindings,
@@ -91,23 +93,33 @@ function ControlLine({
   onCancel,
 }: {
   action: Action;
+  /**
+   * The control's id — the CHECK and the action, not the action alone. Attack is
+   * on all three nail rows, so an action-keyed capture put all three of them
+   * into the capture state at once.
+   */
+  id: string;
   /** The checklist item this control belongs to, for the accessible name. */
   row: string;
   /** True on a compound row, where the action needs naming of its own. */
   named: boolean;
   bindings: Bindings;
   padBindings: GamepadBindings;
-  capturing: Action | null;
-  onStart: (action: Action) => void;
+  capturing: string | null;
+  onStart: (id: string, action: Action) => void;
   onCancel: () => void;
 }) {
   const label = actionLabelCopy[action];
-  const active = capturing === action;
+  const active = capturing === id;
   return (
-    <span className={active ? 'control-line is-capturing' : 'control-line'}>
+    <span className="control-line">
       {named && <span className="control-name">{label}</span>}
       {active ? (
-        <span className="control-prompt">{setupFloorCopy.pressPrompt(label)}</span>
+        // A live region, because the prompt is the whole instruction and it
+        // arrives without her having moved focus anywhere.
+        <span className="control-prompt" role="status">
+          {setupFloorCopy.pressPrompt(label)}
+        </span>
       ) : (
         <ControlChips action={action} bindings={bindings} padBindings={padBindings} />
       )}
@@ -125,7 +137,7 @@ function ControlLine({
               ? setupFloorCopy.remapControlLabel(label, row)
               : setupFloorCopy.remapLabel(row)
         }
-        onClick={() => (active ? onCancel() : onStart(action))}
+        onClick={() => (active ? onCancel() : onStart(id, action))}
       >
         {active ? setupFloorCopy.cancel : setupFloorCopy.remap}
       </button>
@@ -183,10 +195,26 @@ export function SetupFloor() {
           for (const check of earned) doneRef.current.add(check);
           progressStore.markSetupChecks(earned);
           setTicked([...doneRef.current]);
+          // The strip under the canvas and the forward button both read the
+          // store, and ticking the seventh check is exactly the moment they
+          // stop being true. `refresh` is stable, so this does not rebuild the
+          // session that just called it.
+          refresh();
         },
       }),
-    [],
+    [refresh],
   );
+
+  /**
+   * The canvas, so the keyboard can be handed back to it.
+   *
+   * The adapter ignores keys pressed while a BUTTON has focus — deliberately,
+   * so Space can toggle a checkbox rather than jump — and after a Remap the
+   * focus is still on the Remap button she pressed. Without this the key she
+   * just assigned does nothing until she clicks the game, which is the feature
+   * failing at the last inch.
+   */
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // A capture writes through the shared binding stores, so the rows, the
   // caption under the canvas and the adapter the Knight is driven by all change
@@ -194,18 +222,32 @@ export function SetupFloor() {
   const capture = useControlCapture((action, control) => {
     if (control.kind === 'key') setBindings(rebind(bindings, action, control.code));
     else setPadBindings(rebindButton(padBindings, action, control.index));
+    // Straight back to the game, so she can try the control she just bound.
+    canvasRef.current?.focus({ preventScroll: true });
   });
 
+  const skippedRef = useRef<HTMLParagraphElement>(null);
   const skip = (): void => {
     progressStore.markSkipped('setup');
     refresh();
   };
+  // The skip swaps the button she pressed for a line of text; move her focus
+  // with it, the way the bench's reset flow does, or it drops to the document.
+  const skipped = progress.skipped.includes('setup');
+  const wasSkipped = useRef(skipped);
+  useEffect(() => {
+    if (wasSkipped.current === skipped) return; // first render: leave focus alone
+    wasSkipped.current = skipped;
+    if (skipped) skippedRef.current?.focus();
+  }, [skipped]);
 
   if (progress.controller === undefined) return <NeedsController />;
 
   const chapter = chapterById('setup');
   const remaining = SETUP_CHECKS.filter((check) => !ticked.includes(check)).length;
-  const skipped = progress.skipped.includes('setup');
+  // The forward button is the road's, and the road is locked until this page is
+  // finished with. Offering it early would point her gold button at Pogo's gate.
+  const passed = chapterPassed('setup', progress);
 
   return (
     <>
@@ -221,6 +263,7 @@ export function SetupFloor() {
         // played — otherwise assigning Jump would also jump, and could tick the
         // box using the binding she is in the middle of replacing.
         inputPaused={capture.capturing !== null}
+        canvasRef={canvasRef}
       />
 
       <ul className="setup-checklist">
@@ -244,6 +287,7 @@ export function SetupFloor() {
                   <ControlLine
                     key={action}
                     action={action}
+                    id={`${check}:${action}`}
                     row={setupCheckLabels[check]}
                     named={compound}
                     bindings={bindings}
@@ -272,13 +316,16 @@ export function SetupFloor() {
           </button>
         </p>
       )}
-      {skipped && (
-        <p className="fine-print" role="status">
+      {/* Only while it is still the reason she is past this page. Once all seven
+          are ticked, "you skipped this" and "that is all seven" would be on
+          screen together saying opposite things. */}
+      {skipped && remaining > 0 && (
+        <p className="fine-print" role="status" tabIndex={-1} ref={skippedRef}>
           {setupFloorCopy.skipped}
         </p>
       )}
 
-      <ChapterNext current="setup" />
+      {passed && <ChapterNext current="setup" />}
       <ChapterNav current="setup" />
     </>
   );

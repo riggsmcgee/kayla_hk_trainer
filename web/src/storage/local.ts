@@ -221,19 +221,22 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
    * makes every later write idempotent — the seven are already there, so adding
    * one changes nothing, and re-confirming the same controller preserves them.
    *
-   * What the rule CANNOT distinguish is a save from before the floor existed and
-   * a save made after it that never opened it. That is deliberate: the promise
-   * is "nothing already complete becomes incomplete", and both of those are
-   * already complete. From here on `setController` seeds an empty sheet, so
-   * every save made after this change is gated for real.
+   * WHAT DECIDES IT IS `setupGated`, NOT THE SHEET'S CONTENTS. The sandbox
+   * shipped before the gate did, so a save can hold a HALF-FILLED sheet from a
+   * build where filling it proved nothing and chapter 1 was finished by
+   * answering one question. Read by the sheet alone, that save would be gated at
+   * two of seven and would lose a chapter it had already finished — which is the
+   * exact harm this whole migration exists to avoid, arriving through the one
+   * door an absent-key rule leaves open. `setupGated` is written by
+   * `setController` from the moment the gate shipped, so its absence means
+   * "written before the gate" no matter what the sheet says.
    *
-   * DO NOT "tidy" an empty `setupChecks` out of the stored blob. An absent key
-   * means grandfathered and an empty array means gated, and dropping empties
-   * would silently promote every gated save. `local.test.ts` holds that.
+   * DO NOT "tidy" `setupGated` or an empty `setupChecks` out of the stored blob.
+   * `local.test.ts` holds both.
    */
   function readSetupChecks(stored: Partial<ProgressV1>): { setupChecks: SetupCheck[] } | null {
+    if (stored.controller && stored.setupGated !== true) return { setupChecks: [...SETUP_CHECKS] };
     if (Array.isArray(stored.setupChecks)) return { setupChecks: [...stored.setupChecks] };
-    if (stored.controller) return { setupChecks: [...SETUP_CHECKS] };
     return null;
   }
 
@@ -256,6 +259,7 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
       // ticks did until a browser reload showed the sheet back at zero.
       // `local.test.ts` round-trips every declared field so the next one cannot.
       ...(readSetupChecks(stored) ?? {}),
+      ...(stored.setupGated === true ? { setupGated: true } : {}),
       courseLevelsCleared: Array.isArray(stored.courseLevelsCleared)
         ? [...stored.courseLevelsCleared]
         : fresh.courseLevelsCleared,
@@ -310,13 +314,17 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
       updateProgress((p) => ({ ...p, finaleWavesCleared: addUnique(p.finaleWavesCleared, wave) })),
     markFinaleLevelCleared: () => updateProgress((p) => ({ ...p, finaleLevelCleared: true })),
     markFinaleBossCleared: () => updateProgress((p) => ({ ...p, finaleBossCleared: true })),
-    // The empty sheet is what makes a NEW save gated: without it the answer
-    // would leave `setupChecks` absent, which readSetupChecks reads as
-    // grandfathered. On a save that already has a sheet — including one just
-    // materialised by the grandfather — this preserves it, so pressing "change"
-    // and re-picking the same board cannot revoke anything.
+    // Answering is what marks a save as subject to the gate, and the empty
+    // sheet is what it starts from. On a save the grandfather has already
+    // credited, `p.setupChecks` is the full seven by the time this runs, so
+    // pressing "change" and re-picking the same board cannot revoke anything.
     setController: (controller) =>
-      updateProgress((p) => ({ ...p, controller, setupChecks: p.setupChecks ?? [] })),
+      updateProgress((p) => ({
+        ...p,
+        controller,
+        setupGated: true,
+        setupChecks: p.setupChecks ?? [],
+      })),
     markSetupChecks: (checks) =>
       updateProgress((p) => ({
         ...p,
