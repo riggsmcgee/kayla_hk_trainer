@@ -21,6 +21,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { ChapterId } from '../chapters';
+import { gateCopy } from '../copy/nav';
 import { chapterGate, chapterLocked } from '../storage/progress';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { ChapterNav } from './ChapterNav';
@@ -47,21 +48,20 @@ export function ChapterGate({ current, children }: ChapterGateProps) {
     refresh();
   };
 
-  // "Finish the Pogo Course first" — but "Finish Your Setup first".
-  const gateName = gate.kind === 'mini-game' ? `the ${gate.title}` : gate.title;
+  const gateName = gateCopy.gateName(gate.title, gate.kind === 'mini-game');
 
   return (
     <>
       <section className="gate" aria-labelledby="gate-heading">
-        <p className="eyebrow">Not yet</p>
-        <h1 id="gate-heading">Finish {gateName} first</h1>
+        <p className="eyebrow">{gateCopy.eyebrow}</p>
+        <h1 id="gate-heading">{gateCopy.heading(gateName)}</h1>
         <p className="gate-done">{gate.done}</p>
         <div className="gate-actions">
           <Link className="button" to={gate.route}>
-            Back to {gate.place}
+            {gateCopy.back(gate.place)}
           </Link>
           <button type="button" className="text-button" onClick={skip}>
-            Skip this challenge
+            {gateCopy.skip}
           </button>
         </div>
       </section>

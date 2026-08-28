@@ -11,6 +11,7 @@
  */
 import { Link } from 'react-router';
 import { CHAPTERS, countWord, nextChapter, type ChapterId } from '../chapters';
+import { nextCopy } from '../copy/nav';
 import { NextButton } from './NextButton';
 
 interface ChapterNextProps {
@@ -22,8 +23,9 @@ export function ChapterNext({ current }: ChapterNextProps) {
   if (!next) {
     return (
       <p className="next-button-end">
-        That’s the whole map — {countWord(CHAPTERS.length)} stops.{' '}
-        <Link to="/">Back to the start</Link> and go again.
+        {nextCopy.endLead(countWord(CHAPTERS.length))}
+        <Link to="/">{nextCopy.endLink}</Link>
+        {nextCopy.endTail}
       </p>
     );
   }

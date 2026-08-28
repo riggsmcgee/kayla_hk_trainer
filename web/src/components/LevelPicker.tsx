@@ -9,6 +9,7 @@
  */
 import { useState } from 'react';
 import type { ProgressV1 } from '@dojo/shared';
+import { levelPickerCopy } from '../copy/nav';
 import { POGO_COURSES } from '../engine/course';
 import { COURSE_LEVEL_COUNT } from '../engine/roster';
 import { levelLocked } from '../storage/progress';
@@ -28,7 +29,7 @@ interface LevelPickerProps {
 const LEVELS = Array.from({ length: COURSE_LEVEL_COUNT }, (_, i) => i + 1);
 
 function levelName(level: number): string {
-  return POGO_COURSES[level - 1]?.name ?? `Level ${level}`;
+  return POGO_COURSES[level - 1]?.name ?? levelPickerCopy.fallbackName(level);
 }
 
 function CheckMark() {
@@ -64,7 +65,7 @@ export function LevelPicker({ progress, selected, onSelect, onSkip }: LevelPicke
 
   return (
     <div className="level-picker">
-      <div className="btn-row" role="group" aria-label="Choose a level">
+      <div className="btn-row" role="group" aria-label={levelPickerCopy.label}>
         {LEVELS.map((level) => {
           const cleared = progress.courseLevelsCleared.includes(level);
           const locked = levelLocked(level, progress);
@@ -93,8 +94,8 @@ export function LevelPicker({ progress, selected, onSelect, onSkip }: LevelPicke
               <span className="level-name">{levelName(level)}</span>
               {cleared && <CheckMark />}
               {locked && <Lock />}
-              {cleared && <span className="sr-only">, cleared</span>}
-              {locked && <span className="sr-only">, locked</span>}
+              {cleared && <span className="sr-only">{levelPickerCopy.srCleared}</span>}
+              {locked && <span className="sr-only">{levelPickerCopy.srLocked}</span>}
             </button>
           );
         })}
@@ -102,13 +103,13 @@ export function LevelPicker({ progress, selected, onSelect, onSkip }: LevelPicke
 
       {gateLevel !== null && (
         <div className="level-gate" role="status">
-          <p className="level-gate-rule">Clear level {gateLevel - 1} first.</p>
+          <p className="level-gate-rule">{levelPickerCopy.gateRule(gateLevel - 1)}</p>
           <div className="gate-actions">
             <button type="button" className="button" onClick={() => pick(gateLevel - 1)}>
-              Play level {gateLevel - 1}
+              {levelPickerCopy.gateBack(gateLevel - 1)}
             </button>
             <button type="button" className="text-button" onClick={() => onSkip(gateLevel)}>
-              Skip this level
+              {levelPickerCopy.gateSkip}
             </button>
           </div>
         </div>

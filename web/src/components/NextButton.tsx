@@ -11,6 +11,7 @@
  * ChapterNext knows about chapters; this knows about buttons.
  */
 import { Link } from 'react-router';
+import { nextCopy } from '../copy/nav';
 import '../styles/next.css';
 
 interface NextButtonProps {
@@ -24,7 +25,7 @@ interface NextButtonProps {
 }
 
 export function NextButton({ title, to, onClick, where }: NextButtonProps) {
-  const label = `Next: ${title}`;
+  const label = nextCopy.button(title);
   return (
     <div className="next-button">
       {to !== undefined ? (
