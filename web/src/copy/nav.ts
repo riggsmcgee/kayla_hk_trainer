@@ -57,9 +57,34 @@ export const gateCopy = {
  */
 export const chapterNavCopy = {
   label: 'Chapters',
-  stateDone: ', done',
-  stateSkipped: ', skipped',
-  stateLocked: ', locked',
+} as const;
+
+/**
+ * How a stop's state is READ OUT, shared by the chapter strip and the map.
+ *
+ * Both draw state as lantern and colour, which a screen reader cannot see, so
+ * both append one of these to the stop's name inside the same link: "3. Bounce
+ * Bog, done". They start with a comma for that reason.
+ *
+ * One table rather than two because the strip is the map's road flattened into
+ * a row, and `components/ChapterNav.tsx` already promises the two can never
+ * disagree. `open` is null: a stop that is simply next has nothing to add.
+ * Only the map draws `visited` — the strip has no separate style for it — but
+ * the word lives here so the vocabulary stays in one place.
+ */
+export const stopStateCopy = {
+  done: ', done',
+  skipped: ', skipped',
+  visited: ', started',
+  locked: ', locked',
+  open: null,
+} as const;
+
+/** The map on the front page (`components/DojoMap.tsx`). */
+export const dojoMapCopy = {
+  label: 'Map of the dojo',
+  /** Appended after the state, so the Knight's stop reads "…, started, you are here". */
+  youAreHere: ', you are here',
 } as const;
 
 /**

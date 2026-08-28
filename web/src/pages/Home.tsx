@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { CHAPTERS, countWord, countWordCap } from '../chapters';
 import { DojoMap } from '../components/DojoMap';
 import { NextButton } from '../components/NextButton';
+import { homeCopy } from '../copy/home';
 import { mapProgress } from '../storage/progress';
 import { useProgress } from '../storage/useChapterProgress';
 import { bestLine } from './bestLine';
@@ -16,53 +17,51 @@ export function Home() {
   return (
     <div className="home">
       <div className="home-hero-block">
-        <h1 className="home-hero">Kayla, it starts at the well.</h1>
-        <p className="lede">
-          {countWordCap(CHAPTERS.length)} stops, one road down. Start where the Knight is standing.
-        </p>
+        <h1 className="home-hero">{homeCopy.hero}</h1>
+        <p className="lede">{homeCopy.lede(countWordCap(CHAPTERS.length))}</p>
       </div>
       <DojoMap />
       <div className="home-side">
-        <aside className="next-sign" aria-label="Next stop">
+        <aside className="next-sign" aria-label={homeCopy.signLabel}>
           {next ? (
             <>
-              <p className="eyebrow">Next stop</p>
+              <p className="eyebrow">{homeCopy.signEyebrow}</p>
               <p className="next-place">{next.place}</p>
               <p className="next-title">{next.title}</p>
               <p className="next-line">{next.line}</p>
               <div className="next-facts">
-                <p className="next-done">To finish: {next.done}</p>
+                <p className="next-done">{homeCopy.signToFinish(next.done)}</p>
                 {best && <p className="next-best">{best}</p>}
               </div>
               <NextButton title={next.title} to={next.route} where={next.place} />
             </>
           ) : (
             <>
-              <p className="eyebrow">The whole road</p>
-              <p className="next-title">You’ve walked all {stops} stops.</p>
-              <p className="next-line">Replay whatever you like — the well’s always open.</p>
+              <p className="eyebrow">{homeCopy.doneEyebrow}</p>
+              <p className="next-title">{homeCopy.doneTitle(stops)}</p>
+              <p className="next-line">{homeCopy.doneLine}</p>
               {best && (
                 <div className="next-facts">
                   <p className="next-best">{best}</p>
                 </div>
               )}
               <Link className="button" to={finale.route}>
-                Back down the well
+                {homeCopy.doneButton}
               </Link>
             </>
           )}
         </aside>
 
-        <ul className="map-legend" aria-label="Legend">
-          <li className="legend-lesson">chapter</li>
-          <li className="legend-game">mini-game</li>
-          <li className="legend-done">done</li>
-          <li className="legend-skipped">skipped</li>
-          <li className="legend-locked">locked</li>
+        <ul className="map-legend" aria-label={homeCopy.legendLabel}>
+          <li className="legend-lesson">{homeCopy.legendLesson}</li>
+          <li className="legend-game">{homeCopy.legendMiniGame}</li>
+          <li className="legend-done">{homeCopy.legendDone}</li>
+          <li className="legend-skipped">{homeCopy.legendSkipped}</li>
+          <li className="legend-locked">{homeCopy.legendLocked}</li>
         </ul>
 
-        <p className="thesis">The whole game in one line: hit them more than they hit you.</p>
-        <p className="signature">surveyed &amp; inked for Kbug</p>
+        <p className="thesis">{homeCopy.thesis}</p>
+        <p className="signature">{homeCopy.signature}</p>
       </div>
     </div>
   );

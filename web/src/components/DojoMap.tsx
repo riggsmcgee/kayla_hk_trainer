@@ -16,6 +16,7 @@
  */
 import { Link } from 'react-router';
 import { CHAPTERS, type ChapterId } from '../chapters';
+import { dojoMapCopy, stopStateCopy } from '../copy/nav';
 import type { ChapterState } from '../storage/progress';
 import { useMapProgress } from '../storage/useChapterProgress';
 import '../styles/map-states.css';
@@ -121,11 +122,11 @@ function Avatar() {
 
 /** Class and screen-reader suffix for each stop state. */
 const STATE_VIEW: Record<ChapterState, { cls: string; sr: string | null }> = {
-  done: { cls: 'is-lit is-done', sr: ', done' },
-  skipped: { cls: 'is-skipped', sr: ', skipped' },
-  visited: { cls: 'is-visited', sr: ', started' },
-  locked: { cls: 'is-locked', sr: ', locked' },
-  open: { cls: '', sr: null },
+  done: { cls: 'is-lit is-done', sr: stopStateCopy.done },
+  skipped: { cls: 'is-skipped', sr: stopStateCopy.skipped },
+  visited: { cls: 'is-visited', sr: stopStateCopy.visited },
+  locked: { cls: 'is-locked', sr: stopStateCopy.locked },
+  open: { cls: '', sr: stopStateCopy.open },
 };
 
 export function DojoMap() {
@@ -133,7 +134,7 @@ export function DojoMap() {
   const standingAt = next ?? CHAPTERS[CHAPTERS.length - 1]!;
 
   return (
-    <nav className="map" aria-label="Map of the dojo">
+    <nav className="map" aria-label={dojoMapCopy.label}>
       <svg className="map-art" viewBox={`0 0 ${W} ${H}`} aria-hidden="true" focusable="false">
         <defs>
           <pattern
@@ -278,7 +279,7 @@ export function DojoMap() {
                   </span>
                   <span className="map-title">{c.title}</span>
                   {view.sr && <span className="sr-only">{view.sr}</span>}
-                  {isHere && <span className="sr-only">, you are here</span>}
+                  {isHere && <span className="sr-only">{dojoMapCopy.youAreHere}</span>}
                 </span>
               </Link>
             </li>

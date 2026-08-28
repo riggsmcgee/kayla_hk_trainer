@@ -14,7 +14,7 @@
  */
 import { Link } from 'react-router';
 import { CHAPTERS, type ChapterId } from '../chapters';
-import { chapterNavCopy } from '../copy/nav';
+import { chapterNavCopy, stopStateCopy } from '../copy/nav';
 import type { ChapterState } from '../storage/progress';
 import { useMapProgress } from '../storage/useChapterProgress';
 import '../styles/gates.css';
@@ -24,9 +24,9 @@ interface ChapterNavProps {
 }
 
 const STATE_SR: Partial<Record<ChapterState, string>> = {
-  done: chapterNavCopy.stateDone,
-  skipped: chapterNavCopy.stateSkipped,
-  locked: chapterNavCopy.stateLocked,
+  done: stopStateCopy.done,
+  skipped: stopStateCopy.skipped,
+  locked: stopStateCopy.locked,
 };
 
 export function ChapterNav({ current }: ChapterNavProps) {
