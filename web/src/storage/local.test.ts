@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PracticeRun, SettingsV1 } from '@dojo/shared';
+import type { PracticeRun, ProgressV1, SettingsV1 } from '@dojo/shared';
 import { SETUP_CHECKS } from '../engine/setupChecks';
 import { arenaBest, courseBest } from './bests';
 import { DEFAULT_PROGRESS, DEFAULT_SETTINGS, createLocalStore, type StorageLike } from './local';
@@ -253,6 +253,42 @@ describe('progress', () => {
       // an absent sheet means grandfathered, and the two must not be confused.
       setupChecks: [],
     });
+  });
+
+  /**
+   * The reader's whitelist, closed.
+   *
+   * `readProgress` rebuilds ProgressV1 FIELD BY FIELD rather than spreading the
+   * stored blob, which is what keeps a hand-edited or older save from injecting
+   * junk. The cost is that a field nobody adds to the reader is written on every
+   * change and silently dropped on every read — which is exactly what the
+   * sandbox's ticks did until a browser reload showed the sheet back at zero,
+   * with every unit test green.
+   *
+   * `Required<ProgressV1>` is what closes it. The type forces this object to
+   * name every declared field, so adding one to the type breaks THIS TEST at
+   * compile time, and the person who fixes the compile error then watches it
+   * fail at runtime until they add the field to the reader too. That is the
+   * whole point: the failure arrives at the moment the field is invented,
+   * rather than in a browser a week later.
+   */
+  it('reads back every field of ProgressV1 that it was given', () => {
+    const store = createLocalStore(createMemoryStorage());
+    // Distinctive values throughout, so a field read back from the wrong source
+    // — or defaulted — cannot coincidentally match.
+    const everything: Required<ProgressV1> = {
+      version: 1,
+      controller: 'leverless',
+      setupChecks: ['left', 'slashDown'],
+      courseLevelsCleared: [1, 3],
+      arenaEnemiesCleared: ['duelist', 'warden'],
+      finaleLevelCleared: true,
+      finaleWavesCleared: [2],
+      finaleBossCleared: true,
+      skipped: ['finale:wave:1'],
+    };
+    store.saveProgress(everything);
+    expect(store.getProgress()).toEqual(everything);
   });
 
   /**
