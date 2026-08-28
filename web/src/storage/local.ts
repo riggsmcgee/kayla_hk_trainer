@@ -210,6 +210,14 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
     return {
       version: 1,
       ...(stored.controller ? { controller: stored.controller } : {}),
+      // Optional, so it is spread in only when present — but it MUST be read
+      // here. This reader rebuilds progress field by field rather than
+      // spreading the blob, which is what keeps a hand-edited or older save
+      // from injecting junk. The cost is that a new field which is not listed
+      // is written on every change and silently dropped on every read, which
+      // is exactly what the sandbox's ticks did until a browser reload showed
+      // the sheet back at zero.
+      ...(Array.isArray(stored.setupChecks) ? { setupChecks: [...stored.setupChecks] } : {}),
       courseLevelsCleared: Array.isArray(stored.courseLevelsCleared)
         ? [...stored.courseLevelsCleared]
         : fresh.courseLevelsCleared,

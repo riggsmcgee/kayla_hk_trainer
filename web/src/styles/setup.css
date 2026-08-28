@@ -1,0 +1,41 @@
+/*
+ * The Setup sandbox and its checklist (playtest 8, note 5).
+ *
+ * Its own sheet, imported by the page, which is how every other feature sheet
+ * here works: `styles.css` is the base and these override it at equal
+ * specificity, so they only win by loading later in the cascade.
+ */
+
+.setup-sandbox {
+  margin: 2.5rem 0 0;
+}
+
+.setup-checklist {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.setup-checklist li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  color: var(--text-dim);
+}
+
+.setup-checklist li span:first-child {
+  /* A fixed cell so the ticks line up as they arrive and the labels never
+     shift sideways under her while she is mid-input. */
+  width: 1ch;
+  text-align: center;
+}
+
+.setup-checklist li.is-done {
+  color: var(--text);
+}
+
+.setup-checklist li.is-done span:first-child {
+  color: var(--gold);
+}

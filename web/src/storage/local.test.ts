@@ -300,3 +300,34 @@ describe('progress', () => {
     expect(noop.getProgress()).toEqual(DEFAULT_PROGRESS);
   });
 });
+
+describe('the sandbox checklist survives being put down', () => {
+  it('is still there after a reload, which is the only reason to store it', () => {
+    // THE BUG THIS EXISTS FOR, caught by reloading a browser and not by any
+    // test: `readProgress` rebuilds progress field by field rather than
+    // spreading the stored blob — which is what keeps a hand-edited save from
+    // injecting junk — so a new field that nobody adds to the READER is
+    // written on every change and dropped on every read. The sheet filled up
+    // on screen and was back at zero the moment she came back.
+    // One backend, two stores: that is what a reload actually is.
+    const backend = createMemoryStorage();
+    const written = createLocalStore(backend);
+    written.markSetupChecks(['left', 'right']);
+    written.markSetupChecks(['right', 'jump']);
+
+    // A second store over the same backend is what a reload actually is.
+    const reloaded = createLocalStore(backend);
+    expect(reloaded.getProgress().setupChecks).toEqual(['left', 'right', 'jump']);
+  });
+
+  it('reads a save written before the sandbox existed as none ticked', () => {
+    // Every save Kayla already has is one of these. An absent list must not
+    // read as a broken blob, or her whole progress falls back to default.
+    const backend = createMemoryStorage();
+    const store = createLocalStore(backend);
+    store.markLevelCleared(1);
+    const reloaded = createLocalStore(backend);
+    expect(reloaded.getProgress().setupChecks).toBeUndefined();
+    expect(reloaded.getProgress().courseLevelsCleared).toEqual([1]);
+  });
+});
