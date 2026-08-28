@@ -244,13 +244,17 @@ export function createLocalStore(backend: StorageLike | null = detectBrowserStor
     return {
       version: 1,
       ...(stored.controller ? { controller: stored.controller } : {}),
-      // Optional, so it is spread in only when present — but it MUST be read
-      // here. This reader rebuilds progress field by field rather than
-      // spreading the blob, which is what keeps a hand-edited or older save
-      // from injecting junk. The cost is that a new field which is not listed
-      // is written on every change and silently dropped on every read, which
-      // is exactly what the sandbox's ticks did until a browser reload showed
-      // the sheet back at zero.
+      // Optional, so it is spread in only when present — and the one field that
+      // is not read straight out of the blob. See readSetupChecks: the absence
+      // of this key means "chapter 1 was finished before the sheet existed", and
+      // it is materialised rather than inferred.
+      //
+      // This whole reader rebuilds progress FIELD BY FIELD rather than spreading
+      // the blob, which is what keeps a hand-edited or older save from injecting
+      // junk. The cost is that a field nobody lists here is written on every
+      // change and silently dropped on every read — exactly what the sandbox's
+      // ticks did until a browser reload showed the sheet back at zero.
+      // `local.test.ts` round-trips every declared field so the next one cannot.
       ...(readSetupChecks(stored) ?? {}),
       courseLevelsCleared: Array.isArray(stored.courseLevelsCleared)
         ? [...stored.courseLevelsCleared]
