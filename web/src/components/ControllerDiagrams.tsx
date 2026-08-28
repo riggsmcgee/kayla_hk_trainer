@@ -5,7 +5,7 @@
  * on Kayla's desk. Gold = the controls Hollow Knight cares about (on the
  * Joy-Con that includes the stick — she moves and pogos from it).
  */
-import { setupCopy } from '../copy/setup';
+import { diagramCopy, setupCopy } from '../copy/setup';
 
 interface LabelProps {
   x: number;
@@ -114,27 +114,32 @@ export function JoyConDiagram() {
       <circle className="cd-btn" cx={R.x + 26} cy={R.y + 27} r="3.8" />
       <circle className="cd-btn cd-btn-hk" cx={R.x + 18} cy={R.y + 35} r="3.8" />
       <circle className="cd-btn cd-btn-hk" cx={R.x + 10} cy={R.y + 27} r="3.8" />
-      <Label x={R.x + 18} y={R.y + 20.4} text="X" />
-      <Label x={R.x + 26} y={R.y + 28.4} text="A" />
-      <Label x={R.x + 18} y={R.y + 36.4} text="B" />
-      <Label x={R.x + 10} y={R.y + 28.4} text="Y" />
+      <Label x={R.x + 18} y={R.y + 20.4} text={diagramCopy.joyConX} />
+      <Label x={R.x + 26} y={R.y + 28.4} text={diagramCopy.joyConA} />
+      <Label x={R.x + 18} y={R.y + 36.4} text={diagramCopy.joyConB} />
+      <Label x={R.x + 10} y={R.y + 28.4} text={diagramCopy.joyConY} />
       <circle className="cd-stick" cx={R.x + 18} cy={R.y + 60} r="8" />
       <circle className="cd-stick-cap" cx={R.x + 18} cy={R.y + 60} r="5" />
       <circle className="cd-btn-small" cx={R.x + 6} cy={R.y + 86} r="3" />
 
       {/* callouts */}
-      <Callout from={[R.x + 21, R.y + 37]} to={[178, 64]} text="B — jump" />
-      <Callout from={[R.x + 7, R.y + 27]} to={[104, 38]} text="Y — attack" anchor="end" />
+      <Callout from={[R.x + 21, R.y + 37]} to={[178, 64]} text={diagramCopy.joyConJump} />
+      <Callout
+        from={[R.x + 7, R.y + 27]}
+        to={[104, 38]}
+        text={diagramCopy.joyConAttack}
+        anchor="end"
+      />
       {/* Beside the right shoulder, on its own line: the top line belongs to the
           stick callout, which at this size runs all the way to x 180. The leader
           leaves the trigger's right corner so it clears the shoulder under it. */}
-      <Callout from={[R.x + 27, R.y - 7]} to={[178, 9]} text="ZR — dash" />
+      <Callout from={[R.x + 27, R.y - 7]} to={[178, 9]} text={diagramCopy.joyConDash} />
       {/* Top-left: the stick is hers. Drawn by hand rather than with <Callout> so the
           leader stops under the word instead of running into it. */}
       <g className="cd-callout">
         <line x1={L.x + 11} y1={L.y + 21} x2={8} y2={-4} />
         <text x={2} y={-9.8} textAnchor="start">
-          stick — move · hold ↓ + attack = pogo
+          {diagramCopy.joyConStick}
         </text>
       </g>
       {/* Bottom-left, faded: the one Joy-Con tip that fixes a pogo problem. */}
@@ -142,7 +147,7 @@ export function JoyConDiagram() {
         <Callout
           from={[L.x + 15, L.y + 69]}
           to={[0, 141]}
-          text="↓ button — a more reliable down"
+          text={diagramCopy.joyConDownButton}
           anchor="start"
         />
       </g>
@@ -183,10 +188,10 @@ export function LeverlessDiagram() {
       <circle className="cd-btn cd-btn-hk" cx="78" cy="50" r="12" />
       <circle className="cd-btn" cx="108" cy="56" r="12" />
       <circle className="cd-btn" cx="100" cy="100" r="15" />
-      <Label x={48} y={58} text="←" />
-      <Label x={78} y={52} text="↓" />
-      <Label x={108} y={58} text="→" />
-      <Label x={100} y={102} text="↑" />
+      <Label x={48} y={58} text={diagramCopy.leverlessLeft} />
+      <Label x={78} y={52} text={diagramCopy.leverlessDown} />
+      <Label x={108} y={58} text={diagramCopy.leverlessRight} />
+      <Label x={100} y={102} text={diagramCopy.leverlessUp} />
 
       {/* right hand */}
       {top.map(([x, y, t]) => (
@@ -206,17 +211,12 @@ export function LeverlessDiagram() {
       <Callout
         from={[78, 38]}
         to={[70, -7]}
-        text="middle finger holds ↓ for pogo"
+        text={diagramCopy.leverlessPogoFinger}
         anchor="middle"
       />
-      <Callout from={[148, 42]} to={[182, -7]} text="Y — attack" anchor="middle" />
-      <Callout
-        from={[151, 102]}
-        to={[96, 140]}
-        text="B — jump · same finger as Y, so remap one"
-        anchor="middle"
-      />
-      <Callout from={[207, 97]} to={[236, 140]} text="ZR — dash" anchor="middle" />
+      <Callout from={[148, 42]} to={[182, -7]} text={diagramCopy.leverlessAttack} anchor="middle" />
+      <Callout from={[151, 102]} to={[96, 140]} text={diagramCopy.leverlessJump} anchor="middle" />
+      <Callout from={[207, 97]} to={[236, 140]} text={diagramCopy.leverlessDash} anchor="middle" />
     </svg>
   );
 }

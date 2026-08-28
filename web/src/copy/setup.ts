@@ -161,6 +161,45 @@ export const setupCheckLabels: Readonly<Record<SetupCheck, string>> = Object.fre
 });
 
 /**
+ * The words drawn ON the two controller diagrams — the letters printed on the
+ * buttons, and the callouts that say what each one does.
+ *
+ * THESE DELIBERATELY DO NOT SHARE `actionLabelCopy`, and the reason is the
+ * whole point of the diagrams. That table names an action she can rebind, and
+ * every screen that prints it must follow her when she does. These describe the
+ * board AS IT COMES OUT OF THE BOX — "B — jump", "Y — attack" — which is a fact
+ * about the hardware in her hands and must NOT change when she remaps. The two
+ * tables read alike and mean opposite things, and merging them would make the
+ * diagram lie the moment she took the site's own advice.
+ *
+ * The letters are the letters silkscreened on the plastic. They are not
+ * positions, and they are the one place on the site allowed to say a letter.
+ */
+export const diagramCopy = {
+  /** The Joy-Con's right-hand diamond, as printed. */
+  joyConX: 'X',
+  joyConA: 'A',
+  joyConB: 'B',
+  joyConY: 'Y',
+  joyConJump: 'B — jump',
+  joyConAttack: 'Y — attack',
+  joyConDash: 'ZR — dash',
+  joyConStick: 'stick — move · hold ↓ + attack = pogo',
+  joyConDownButton: '↓ button — a more reliable down',
+
+  /** The leverless's left hand: three fingers and a thumb. */
+  leverlessLeft: '←',
+  leverlessDown: '↓',
+  leverlessRight: '→',
+  leverlessUp: '↑',
+  leverlessPogoFinger: 'middle finger holds ↓ for pogo',
+  leverlessAttack: 'Y — attack',
+  /** The clash the whole controller preset exists to move. */
+  leverlessJump: 'B — jump · same finger as Y, so remap one',
+  leverlessDash: 'ZR — dash',
+} as const;
+
+/**
  * The practice floor, `#/lessons/setup/floor` — its own page since playtest 9.
  *
  * It was the bottom third of the Setup lesson, under two controller diagrams
