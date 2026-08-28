@@ -398,3 +398,29 @@ Observations (Session 16):
   handing the page a timestamp of `0` — which collided with `0` as the "not started yet" sentinel
   and made the clock restamp itself every frame. A real browser never emits `0`, so nothing but a
   test was ever going to find it.
+
+## Session 17 — the controller hole, closed except its gate
+
+| #   | Skill       | Where it was reached for | What it was asked to do    | Landed | Verdict                                                                                                                                                        |
+| --- | ----------- | ------------------------ | -------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 51  | `proactive` | One hour, user away      | Playtest 8's items 6 and 7 | ✅     | Three commits, 820 → 860 tests. Its most valuable minute was the browser pass, which found a persistence bug that every unit test had passed straight through. |
+
+**What the sprint learned.**
+
+- **The browser found the bug; the tests could not have.** `readProgress` rebuilds `ProgressV1`
+  field by field rather than spreading the stored blob — deliberate, so a hand-edited save cannot
+  inject junk — which means a new field that nobody adds to the READER is written on every change
+  and dropped on every read. The checklist filled up on screen and was back at zero after a reload.
+  Forty passing tests said nothing. **A whitelist reader is a place where "the code compiles and the
+  tests pass" is not evidence of anything.**
+
+- **A test that fights the harness is not a test.** A page-level check that the sheet survives a
+  reload failed because the progress store is a module singleton caching across tests in a file.
+  Seeding it — by localStorage or through its own API — was invisible to a component rendered
+  afterwards. Dropping it and testing at the storage seam instead found the real bug in one go. The
+  note about why is in the test file, because the next person will try the same thing.
+
+- **The estimate was wrong in the safe direction, and only the clock said so.** Three separate
+  times this sprint the work was sized against a mental estimate of elapsed time that was roughly
+  three times the real figure. `sprint.js status` is the only honest clock, and checking it turned a
+  "one slice will fit" plan into three shipped slices.

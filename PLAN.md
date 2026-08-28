@@ -265,7 +265,22 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
 
 ## 8. Later / on the radar
 
-- **The controller hole — UNBLOCKED** _(playtest 8 note 5; the gating question answered 2026-08-27)_.
+- **The controller hole — MOSTLY BUILT** _(playtest 8 note 5; Session 17)_. Picking a controller
+  now applies a layout that fits it (`3fc01e2`), and the sandbox and its checklist are live
+  (`4e30f21`, `6c911ed`). **What is left is the GATE, and it is a decision before it is code:**
+  - Setup's completion is still `progress.controller !== undefined` (`storage/progress.ts:111`).
+    Requiring the seven ticks would **un-complete chapter 1 for every save that already exists**,
+    Kayla's included, and the map, the chapter strip and every downstream gate read that field.
+  - So the choice is: grandfather saves that answered the controller before the sandbox existed, or
+    ask her to prove seven things she has already proved by playing. **Nobody has decided, and it
+    should not be decided unattended.**
+  - The skip playtest 8 promised alongside the gate has nothing to skip until the gate exists, so
+    the two ship in one slice.
+  - **The preset is a guess and is meant to be.** Her leverless enumerates as a gamepad; which
+    INDEX each of its buttons reports on is still unknown, and only the four-button capture can
+    settle it. That is why the capture is offered on the answer card rather than buried in Settings.
+
+- ~~**The controller hole — UNBLOCKED**~~ _(playtest 8 note 5; the gating question answered 2026-08-27)_.
   **Her leverless reports as a GAMEPAD, not a keyboard.** The user has tested it and is certain. That
   ends four sessions of PLAN calling it "ten seconds to find out", and it means **nothing collapses**:
   the gamepad path runs, and `DEFAULT_GAMEPAD_BINDINGS` is the table a preset rewrites.

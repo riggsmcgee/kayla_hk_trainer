@@ -1,148 +1,127 @@
 # Proactive sprint handoff
 
-**Project:** Kayla's Hollow Knight Dojo **Branch:** `proactive/2026-08-27-1759` (from `proactive/2026-08-27-1426`)
-**Window:** 2026-08-27 17:59 to 19:59 local (120 min, "complete the handoff from last session")
+**Project:** Kayla's Hollow Knight Dojo **Branch:** `proactive/2026-08-28-0835` (from `riggs/photo-round`)
+**Window:** 2026-08-28 08:35 to 09:35 local (60 min, contract items 6 and 7)
 **Status:** done **Relaunches:** 0
 **Orchestrator model:** Opus **Cost so far:** see `.proactive/sprint.json` runs
 
-The contract was `docs/feedback/2026-08-27-playtest-8.md`. Nothing in it was re-decided.
-Its items **1 (the photo) and 2 (the longer read-off)** need you in the room and were not
-attempted. Items **3 and 4 are done**, and item **1's ratified half — B wins, A and C are
-deleted — was done too**, because it turned out never to have shipped and item 4 depended on it.
+Focus as given: the controller preset and the four-button capture offer in Setup (item 6), and the
+sandbox with its checklist gate (item 7). **Item 6 is done. Item 7 is done except its gate**, which
+is deliberately not built — see "Needs you", item 2.
 
 ---
 
 ## Needs you
 
-1. **The photo, and then one redraw of B's face.** This is still item 1 and still needs you.
-   `DEFAULT_RIGGS_VARIANT` was **still pointing at candidate A** when this sprint opened — the
-   pick was ratified in the contract but never landed in code, so the last screen has been
-   drawing the wrong man. It draws B now. The likeness round-trip is untouched: send the
-   photograph, one revised face goes into `riggsB.ts`, and `node scripts/build-riggs-gallery.mjs`
-   shows it back to you as a picture.
-2. **The bow tie is still an unpicked placeholder** (`RIGGS_TIE = '#a8891c'`). The gallery page
-   now asks only this and the likeness, since the drawing question is answered. One line to
-   answer.
-3. **The longer read-off, spoken aloud.** Item 2, unstarted. The typewriter that will carry it is
-   built and running, so the only thing missing is the words. The arithmetic to hold you to:
-   **12 characters a second**, so every 150 characters you add is another twelve seconds of her
-   sitting still. The four that exist run about **63 seconds** end to end.
-4. **The leverless, with the board in hand.** PLAN M7 has called this "ten seconds to find out"
-   for four sessions now and it is still the thing blocking item 6. What I could establish from
-   the code without hardware is below under _Ideas not acted on_; it does not substitute for
-   plugging it in.
-5. **Nothing is red.** 820 tests, lint, typecheck and build were green at baseline and are green
-   now. Two files at the repo root, `--full-page` and `--selector`, are stray output from a
-   mis-parsed screenshot command dated 26 Aug. They predate this sprint and I left them alone
-   rather than deleting files you might have meant to keep; they are junk and safe to remove.
+1. **Nothing is red.** 820 tests at baseline, **860 now**; lint, typecheck and build clean at both
+   ends. The browser pass is clean too.
+2. **The gate is the one thing I stopped short of, and it needs a decision, not an hour.** Setup's
+   completion is still `progress.controller !== undefined` (`storage/progress.ts:111`). Making it
+   require the seven ticks would **un-complete chapter 1 for every save that already exists** —
+   Kayla's included — and the map, the chapter strip and every downstream gate read that. That is a
+   migration question: either existing saves are grandfathered (treat a controller answered before
+   today as complete) or she is asked to do seven things she has already proved by playing. The
+   skip that playtest 8 promised alongside the gate has nothing to skip until the gate exists, so
+   the two ship together. **Your call on the grandfathering; the code is a few lines either way.**
+3. **The preset is a guess, on purpose, and it is worth one minute with the board.** Her leverless
+   enumerates as a gamepad — that is settled — but **which index each button reports on is not**,
+   and no preset can settle it. Open Setup, pick Leverless, and see whether the sentence under the
+   answer matches the buttons she actually presses. If it does not, the four-button capture in
+   Settings is one screen away and fixes it in about ten seconds. That mismatch is expected, not a
+   bug.
+4. **Two files at the repo root, `--full-page` and `--selector`**, are still stray output from a
+   mis-parsed screenshot command dated 26 Aug. They predate all of this. Junk, safe to delete; I
+   left them because they are not mine to remove.
 
 ## Change ledger
 
-| #   | Commit    | What                                                                                             | How to try it                                                      | Risk |
-| --- | --------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------ | ---- |
-| 1   | `317e8c5` | Candidate B becomes the only Riggs; A and C deleted; the painter's mouth takes a `speaking` flag | `node scripts/build-riggs-gallery.mjs` then open the HTML it names | low  |
-| 2   | `88ac90e` | The credits are deleted, and the letter types itself out at talking pace with his mouth moving   | `#/the-end` — watch it, then press Z mid-sentence                  | med  |
+| #   | Commit    | What                                                                                                               | How to try it                                                              | Risk |
+| --- | --------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ---- |
+| 1   | `3fc01e2` | Picking a controller applies a layout that fits it, and offers the capture. Settings' reset follows her controller | `#/lessons/setup` → pick Leverless → read the line under the answer        | med  |
+| 2   | `4e30f21` | The checklist's rules and storage, and `nailDirection` extracted from `stepPlayer`                                 | `npx vitest run --root web src/engine/setupChecks`                         | low  |
+| 3   | `6c911ed` | The sandbox itself: a bare floor, the Knight, the seven ticks, and the persistence bug they exposed                | `#/lessons/setup` → pick a board → play on the floor, then reload the page | med  |
 
-Merge everything: `git checkout proactive/2026-08-27-1426 && git merge proactive/2026-08-27-1759`
+Merge everything: `git checkout riggs/photo-round && git merge proactive/2026-08-28-0835`
 Drop one: `git revert <hash>` on the sprint branch first, then merge.
-
-**Why two commits and not three.** Deleting the credits (note 2) and typing the letter out
-(note 3) are one screen and one set of tests; an intermediate `TheEnd.tsx` with the credits gone
-and no typewriter is a version nobody would ship and whose tests I would have written twice. If
-you want the credits back, the revert of `88ac90e` brings the old advance-one-at-a-time page with
-them — it does not leave you the typewriter.
 
 ## Baseline (before any change)
 
-- `npm test` — **820 passed** (819 web across 39 files, 1 server). 38.5 s.
-- `npm run lint` — clean. `npm run typecheck` — clean. `npm run build` — clean.
-- Bundle: **JS 414.88 kB, CSS 27.42 kB**.
-- Nothing was broken at baseline. The jsdom `getContext()` warnings in the test output are noise
-  and predate this sprint.
+- `npm test` — **820 passed** (819 web across 39 files, 1 server).
+- `npm run lint`, `npm run typecheck`, `npm run build` — all clean.
+- Bundle: **JS 411.43 kB, CSS 26.84 kB**. Nothing was broken at baseline.
 
 ## Final check (after the last change)
 
-- `npm test` — **820 passed** (819 web, 1 server). The same count as baseline, which is a
-  coincidence worth spelling out rather than glossing: the two rewritten files held **37 tests
-  before and 37 after**. The credits roll took 6 with it and the three-candidate portfolio took
-  14 (7 shared tests run three times, collapsed to one painter); the typewriter, the forward
-  clause, the mouth and the reduced-motion path put 20 back.
+- `npm test` — **860 passed** (859 web across 42 files, 1 server). +40, in three new files
+  (`setupChecks`, `setupSandboxSession`, `LessonSetup`) plus the gamepad and storage suites.
 - `npm run lint`, `npm run typecheck`, `npm run build` — all clean.
-- Bundle: **JS 410.84 kB (−4.04), CSS 26.84 kB (−0.58)**. Two painters and a credits roll.
-- **Browser pass** (Playwright, dev server on 5199, `.proactive/scratch/the-end-watch.mjs`):
-  loaded `#/the-end`, watched it type, pressed forward mid-sentence, watched it finish by itself.
-  30 characters at two seconds; forward took that to the full 81 rather than jumping to message 2;
-  a second press moved on; it reached the last message unattended; the back-to-map chip appeared
-  and the advance controls went. **Zero console errors, warnings or failed requests.** Screenshots
-  in `.proactive/scratch/the-end/`.
+- Bundle: **JS 414.75 kB (+3.3), CSS 27.21 kB (+0.37)** — a canvas session, a checklist and a
+  stylesheet.
+- **Browser pass**, dev server on 5199, two scripts in `.proactive/scratch/`:
+  - `setup-check.mjs` — picked Leverless, read the line back (`jump bottom button, attack right
+button, dash right shoulder`), pressed change, picked Joy-Con, read it again (`attack left
+button`). Zero console errors.
+  - `sandbox-check.mjs` — drove the canvas with the real keys, watched the counter fall 7 → 1, then
+    **reloaded**. Screenshot in `.proactive/scratch/sandbox.png`.
 
 ## Started, sliced, continued in PLAN.md
 
-Nothing was sliced. What was not started, and why, is in PLAN §8 — items 5 (the ~52 remaining
-strings), 6 (the controller preset), 7 (the sandbox) and 8 (the one-to-one editor) are each
-larger than the time that was left, and 6 is blocked behind the leverless question anyway.
-The contract said "this is more than one session" and it was right.
+**Item 7's gate**, and only that. Written into PLAN §8 with the migration question spelled out. The
+sandbox ships without it: she can use the floor and fill the sheet today, and nothing gates on it,
+which is a strictly smaller change than gating and then having to un-gate.
 
 ## Tried and reverted
 
-Nothing. Two things were changed mid-task rather than reverted, both worth knowing:
+- **A page-level test for "the sheet is still there when she comes back" was written, failed, and
+  was dropped** — with a note in the test file saying why. The progress store is a module singleton
+  that caches across tests in a file, so seeding it (by localStorage or through its own API) is not
+  visible to a component rendered afterwards; a test written around that would be testing the
+  harness. **It was replaced by two tests at the storage seam, which is where the bug actually
+  was.** Making it testable at the page level means giving the store a reset seam — a real, small
+  improvement, and a candidate for a tidying pass.
+- **I created `web/src/styles/lessons.css` by accident** — an append to a file I assumed existed —
+  then briefly believed it was pre-existing dead code and said so in a comment. It was mine. It is
+  deleted; the rules live in `styles/setup.css`, imported by the page like every other feature
+  sheet. Worth knowing because the wrong version of that sentence nearly went into a commit.
 
-- **A latent bug the tests found.** The read-off's clock used `0` for "this message has not
-  started yet". Zero is a legal `requestAnimationFrame` timestamp, so a page that got one would
-  restamp its start every frame and never advance a character. It only surfaced because a test
-  handed it a 0 — in a real browser the first timestamp is never 0 and it would have sat there
-  for years. The sentinel is `null` now.
-- **The `aria-live` region.** The old page announced each message on a live region. Left as it
-  was, a screen reader would have read the typewriter one character at a time — "K", "Ka",
-  "Kay". The typed text is `aria-hidden` now and the whole message is announced beside it.
+## The bug the browser found and the tests did not
+
+The sheet filled up on screen and was back at zero the moment the page reloaded.
+
+`readProgress` rebuilds progress **field by field** rather than spreading the stored blob, which is
+what keeps a hand-edited or older save from injecting junk into `ProgressV1`. The cost is that a new
+field nobody adds to the READER is written on every change and silently dropped on every read. Every
+unit test passed throughout; only reloading a real browser showed it.
+
+Two storage tests hold it now — one reloads, one reads a save written before the sandbox existed —
+but **the general hazard is still live**: the next field added to `ProgressV1` will do this again.
+A test that round-trips every declared field would close it for good. Proposed, not built.
 
 ## Ideas not acted on
 
-**The controller hole, as far as code can answer it.** Mirrored into PLAN.md under M7.
-
-- `progress.controller` is written once and read in exactly two places, and the contract has
-  both. The one that matters for the gate is `storage/progress.ts:111`, where Setup's completion
-  is `progress.controller !== undefined` — so picking a controller both configures nothing _and_
-  is the entire proof that the chapter is done.
-- `DEFAULT_GAMEPAD_BINDINGS` (`engine/gamepad.ts:72`) binds `jump → faceDown` and
-  `attack → faceLeft`. On a pad those are different fingers, so **the clash the leverless
-  diagram warns about is a claim about the leverless's physical layout, not about these
-  bindings**. That matters for the ten-second check: if her board reports as a **keyboard**, this
-  whole table is never consulted and the fix belongs in the keyboard bindings, which is a
-  different file and a smaller job. If it reports as a **gamepad**, this is the table the preset
-  rewrites.
-- Nothing anywhere calls `navigator.getGamepads()` outside `PracticeCanvas`, so **there is no
-  place on the site that would tell you what her board reports as.** A one-screen diagnostic in
-  Settings that prints connected pads' `id` strings would turn "ten seconds with the board" into
-  ten seconds she can do herself and report back. I did not build it — it is a feature nobody
-  asked for and the ladder says those are your call — but it is the cheapest way to unblock item 6
-  without you being in the same room as her.
-
-**The message box's floor.** `.the-end-message` keeps `min-height: 7.5rem` so the button does not
-walk up the page sixty times a second while he is typing. On the _last_ message, where nothing
-more will ever arrive, that leaves a visible gap between his last sentence and the back link. It
-is deliberate rather than broken, and it is the kind of thing you are fast at judging from a
-picture: `.proactive/scratch/the-end/4-finished.png`.
+- **A store reset seam for tests.** See "Tried and reverted". It would make page-level persistence
+  testable and is a handful of lines.
+- **A round-trip test over every `ProgressV1` field**, so the reader's whitelist can never silently
+  drop a new one again.
+- **A Settings diagnostic printing connected pads' `id` and button count.** Still the cheapest way
+  to de-risk the preset without you and Kayla being in the same room — she could read it out. Still
+  a feature nobody asked for, so still a proposal.
 
 ## Environment changes
 
-None. No installs, no upgrades, no global tools, no config touched. The dev server was run on
-5199 as the traps file instructs and has been shut down.
+None. No installs, no upgrades, no config touched. The dev server ran on 5199 as the traps file
+instructs and has been shut down.
 
 ## Skills used
 
-Only `proactive` itself. `tdd` was suggested by the last handoff for item 4 and its discipline
-was followed by hand — the typewriter's tests derive their expected values from the ratified
-12 characters a second rather than from running the page, and the 144 Hz test exists because the
-spec named that failure. Invoking the skill would have added a process without changing the
-tests. Logged in `docs/skills-log.md`.
+Only `proactive`. `tdd` was again followed by hand rather than invoked — the checklist's expected
+values are derived from PLAN §5's kit and the leverless diagram's own accessible description, not
+from running the code. Logged in `docs/skills-log.md`.
 
 ## Suggested next session
 
-Sit down with it rather than running `/proactive` again — **the top three things all need you**:
-the photograph, the read-off spoken aloud, and the leverless plugged in. Those three unblock
-items 1, 2 and 6 in one sitting, and item 6 collapses to almost nothing if the board reports as a
-keyboard.
+**Decide the gate's migration** (grandfather existing saves, or not) and it is a short sprint to
+finish item 7 — gate plus skip, together.
 
-Then the next unattended sprint has a clean run at **item 5, the ~52 remaining strings**, which
-is mechanical, load-bearing under item 8, and needs nobody.
+After that the queue is unchanged and needs nobody: **item 5, the ~52 remaining strings**, which is
+mechanical and is what item 8 depends on.
