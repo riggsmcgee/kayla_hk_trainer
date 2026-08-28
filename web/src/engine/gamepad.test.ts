@@ -25,6 +25,8 @@ import {
   readGamepads,
   rebindButton,
   type GamepadSnapshot,
+  LEVERLESS_GAMEPAD_BINDINGS,
+  gamepadDefaultsFor,
 } from './gamepad';
 import { ACTIONS } from './input';
 import type { InputFrame } from './types';
@@ -249,5 +251,86 @@ describe('the DOM edge', () => {
       { id: 'Fake Pad (Vendor: 0000 Product: 0000)', standard: true },
       { id: 'Fake Pad (Vendor: 0000 Product: 0000)', standard: false },
     ]);
+  });
+});
+
+describe('the layout a controller starts on', () => {
+  /**
+   * The leverless right hand, taken from `LeverlessDiagram`'s own accessible
+   * description rather than from the bindings under test: "In Switch mode the
+   * top row is Y X R L and the bottom row is B A ZR ZL". Each COLUMN is one
+   * finger, which is the fact the whole preset turns on.
+   */
+  const LEVERLESS_COLUMNS: readonly (readonly number[])[] = [
+    [BUTTON.faceLeft, BUTTON.faceDown], //      Y over B — index finger
+    [BUTTON.faceUp, BUTTON.faceRight], //       X over A — middle finger
+    [BUTTON.shoulderRight, BUTTON.triggerRight], // R over ZR — ring finger
+    [BUTTON.shoulderLeft, BUTTON.triggerLeft], //  L over ZL — little finger
+  ];
+
+  /** Which finger a button sits under, or -1 for the left hand. */
+  function finger(button: number): number {
+    return LEVERLESS_COLUMNS.findIndex((column) => column.includes(button));
+  }
+
+  it('gives the leverless a layout with no two actions under one finger', () => {
+    // THE WHOLE POINT OF THE PRESET. The site's own diagram has been warning
+    // her that jump and attack share a finger, and for eight sessions picking
+    // a controller did nothing about it. Derived from the diagram's columns,
+    // not from the bindings: if someone moves attack back onto Y this goes red.
+    const used = new Map<number, string>();
+    for (const [action, buttons] of Object.entries(LEVERLESS_GAMEPAD_BINDINGS)) {
+      for (const button of buttons) {
+        const column = finger(button);
+        if (column < 0) continue; // left-hand movement buttons, one per finger already
+        const already = used.get(column);
+        // Dash binds two buttons in one column on purpose; that is one action.
+        if (already !== undefined && already !== action) {
+          throw new Error(`${action} shares finger ${column} with ${already}`);
+        }
+        used.set(column, action);
+      }
+    }
+    expect(finger(LEVERLESS_GAMEPAD_BINDINGS.jump[0]!)).not.toBe(
+      finger(LEVERLESS_GAMEPAD_BINDINGS.attack[0]!),
+    );
+  });
+
+  it('keeps jump, attack and dash on the row the hand rests on', () => {
+    // The Setup lesson sells the board on "one finger per button: jump,
+    // attack, dash and down can all be held at once". A preset that scattered
+    // them across both rows would make that sentence false.
+    const bottomRow: readonly number[] = [
+      BUTTON.faceDown,
+      BUTTON.faceRight,
+      BUTTON.triggerRight,
+      BUTTON.triggerLeft,
+    ];
+    expect(bottomRow).toContain(LEVERLESS_GAMEPAD_BINDINGS.jump[0]);
+    expect(bottomRow).toContain(LEVERLESS_GAMEPAD_BINDINGS.attack[0]);
+    expect(LEVERLESS_GAMEPAD_BINDINGS.dash.some((b) => bottomRow.includes(b))).toBe(true);
+  });
+
+  it('leaves the Joy-Con on the shape Hollow Knight ships in', () => {
+    // The clash is a leverless fact. Changing the pad's layout to "fix" it
+    // would break the muscle memory this whole chapter exists to protect.
+    expect(gamepadDefaultsFor('joycon')).toBe(DEFAULT_GAMEPAD_BINDINGS);
+  });
+
+  it('answers before she has picked, because every screen is reachable early', () => {
+    // A bookmark straight into the Pogo Course must not arrive with no
+    // bindings at all.
+    expect(gamepadDefaultsFor(undefined)).toBe(DEFAULT_GAMEPAD_BINDINGS);
+  });
+
+  it('moves nothing but attack between the two layouts', () => {
+    // A preset is a guess. The narrower the guess, the cheaper it is to be
+    // wrong about — and the capture in Settings is what corrects it.
+    const moved = ACTIONS.filter(
+      (action) =>
+        JSON.stringify(DEFAULT_GAMEPAD_BINDINGS[action]) !==
+        JSON.stringify(LEVERLESS_GAMEPAD_BINDINGS[action]),
+    );
+    expect(moved).toEqual(['attack']);
   });
 });

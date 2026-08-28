@@ -23,6 +23,7 @@
  * the board in her hands.
  */
 
+import type { ControllerChoice } from '@dojo/shared';
 import { ACTIONS, type Action } from './input';
 import type { InputFrame } from './types';
 
@@ -68,6 +69,9 @@ export const BUTTON = Object.freeze({
  * the left stick, because a leverless has no stick and a Joy-Con's d-pad is
  * four separate buttons — accepting both costs nothing and means neither
  * board arrives dead.
+ *
+ * This is the JOY-CON shape and the fallback for a controller nobody has
+ * picked yet. `gamepadDefaultsFor` is what turns a choice into a layout.
  */
 export const DEFAULT_GAMEPAD_BINDINGS: GamepadBindings = Object.freeze({
   left: [BUTTON.dpadLeft],
@@ -78,6 +82,57 @@ export const DEFAULT_GAMEPAD_BINDINGS: GamepadBindings = Object.freeze({
   attack: [BUTTON.faceLeft],
   dash: [BUTTON.shoulderRight, BUTTON.triggerRight],
 });
+
+/**
+ * The leverless layout, and the reason this function exists at all.
+ *
+ * The site has been telling her about a clash and doing nothing about it for
+ * eight sessions. `LeverlessDiagram`'s own screen-reader description says it
+ * outright: "In Switch mode the top row is Y X R L and the bottom row is
+ * B A ZR ZL, so Attack (Y) and Jump (B) sit under the same finger until
+ * remapped." On a leverless the right hand is two rows of four and each
+ * COLUMN is one finger, so Y and B are the same finger — and the shipped
+ * default put jump on B and attack on Y.
+ *
+ * The fix is to move attack one column along, to A: still the bottom row,
+ * which is where the hand rests, and now under the middle finger with jump
+ * under the index and dash under the ring. Three actions, three fingers, one
+ * row, all holdable at once — which is the thing the Setup lesson sells the
+ * board on in the first place.
+ *
+ * Dash keeps BOTH of its bindings. R and ZR are the same column and therefore
+ * the same finger, so neither collides with anything, and a board that
+ * reports one but not the other still arrives working.
+ */
+export const LEVERLESS_GAMEPAD_BINDINGS: GamepadBindings = Object.freeze({
+  left: [BUTTON.dpadLeft],
+  right: [BUTTON.dpadRight],
+  up: [BUTTON.dpadUp],
+  down: [BUTTON.dpadDown],
+  jump: [BUTTON.faceDown], // B — bottom row, index finger
+  attack: [BUTTON.faceRight], // A — bottom row, middle finger, off B's finger
+  dash: [BUTTON.shoulderRight, BUTTON.triggerRight], // R and ZR, ring finger
+});
+
+/**
+ * The layout a controller starts on.
+ *
+ * PRESET, THEN OFFER — ratified in playtest 8. This is the preset half: the
+ * moment she picks a board, a layout that fits it is applied. It is a GUESS,
+ * and it has to be, because "her leverless enumerates as a gamepad" (which she
+ * has confirmed) and "we know which index each of its buttons reports on" are
+ * different facts and only the first one is established. The offer half — the
+ * four-button capture in Settings — is how her real hardware overrules the
+ * guess, and it is the reason a wrong preset costs a remap rather than a
+ * broken board.
+ *
+ * `undefined` is a real case and not a defensive one: every screen can be
+ * reached before Setup is answered, and a bookmark straight into the Pogo
+ * Course must not arrive with no bindings at all.
+ */
+export function gamepadDefaultsFor(controller: ControllerChoice | undefined): GamepadBindings {
+  return controller === 'leverless' ? LEVERLESS_GAMEPAD_BINDINGS : DEFAULT_GAMEPAD_BINDINGS;
+}
 
 /**
  * How far the left stick must leave centre before it counts as a direction.

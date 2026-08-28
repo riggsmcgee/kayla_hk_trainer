@@ -4,6 +4,7 @@
  * and no strip. The real controllers get their check-and-remap here in M7.
  */
 import { useEffect, useRef, useState } from 'react';
+import type { ControllerChoice } from '@dojo/shared';
 import { Link } from 'react-router';
 import { ComfortToggles } from '../components/ComfortToggles';
 import { theEndCopy } from '../copy/theEnd';
@@ -15,7 +16,7 @@ import {
   type Action,
 } from '../engine/input';
 import {
-  DEFAULT_GAMEPAD_BINDINGS,
+  gamepadDefaultsFor,
   buttonName,
   connectedPads,
   pressedButton,
@@ -49,7 +50,18 @@ const ACTION_LABELS: Record<Action, string> = {
 };
 
 const DEFAULT_STORED = JSON.stringify(bindingsToSettings(DEFAULT_BINDINGS));
-const DEFAULT_PAD_STORED = JSON.stringify(DEFAULT_GAMEPAD_BINDINGS);
+/**
+ * "Reset to defaults" has to mean HER defaults.
+ *
+ * Since playtest 8 the pad's starting layout depends on the controller she
+ * picked in Setup — a leverless moves attack off jump's finger — so a reset
+ * that always restored the Joy-Con shape would quietly undo the preset and
+ * hand the clash back to her. The button was relabelled last sprint; this is
+ * the sprint where it also changed behaviour.
+ */
+function padDefaultsStored(controller: ControllerChoice | undefined): string {
+  return JSON.stringify(gamepadDefaultsFor(controller));
+}
 
 /**
  * How often the Controller section looks for pads.
@@ -128,7 +140,8 @@ export function Settings() {
   }, [capturingPad, padBindings, setPadBindings]);
 
   const isDefault = JSON.stringify(bindingsToSettings(bindings)) === DEFAULT_STORED;
-  const padIsDefault = JSON.stringify(padBindings) === DEFAULT_PAD_STORED;
+  const padDefaults = gamepadDefaultsFor(progress.controller);
+  const padIsDefault = JSON.stringify(padBindings) === padDefaultsStored(progress.controller);
 
   // The reset flow swaps the button she pressed for a panel, then a line of
   // text; move her focus along with it so the keyboard (and the screen
@@ -290,7 +303,7 @@ export function Settings() {
             disabled={padIsDefault}
             onClick={() => {
               setCapturingPad(null);
-              setPadBindings(DEFAULT_GAMEPAD_BINDINGS);
+              setPadBindings(padDefaults);
             }}
           >
             Reset to defaults

@@ -7,6 +7,8 @@ import { ChapterNav } from '../components/ChapterNav';
 import { ChapterNext } from '../components/ChapterNext';
 import { JoyConDiagram, LeverlessDiagram } from '../components/ControllerDiagrams';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
+import { useGamepadBindings } from '../storage/useGamepadBindings';
+import { buttonName, gamepadDefaultsFor } from '../engine/gamepad';
 
 const CONTROLLER_NAME: Record<ControllerChoice, string> = {
   joycon: 'Joy-Con',
@@ -32,6 +34,17 @@ function ControllerQuestion({
   };
 
   const answered = controller !== undefined && !changing;
+
+  // Named by POSITION, from the same helper Settings uses, so this line tells
+  // the truth after a remap instead of repeating the preset back at her.
+  const [padBindings] = useGamepadBindings();
+  // An action can be unbound, which is a legal state the capture allows. The
+  // sentence has to survive it rather than printing "undefined" at her.
+  const firstButton = (buttons: readonly number[]): string =>
+    buttons.length > 0 ? buttonName(buttons[0]!) : 'nothing yet';
+  const jump = firstButton(padBindings.jump);
+  const attack = firstButton(padBindings.attack);
+  const dash = firstButton(padBindings.dash);
 
   // A choice swaps the two buttons for the answer, and "change" swaps them
   // back, so keyboard focus follows the swap instead of dropping to the page.
@@ -61,6 +74,19 @@ function ControllerQuestion({
             change
           </button>
         </p>
+        {/* PRESET, THEN OFFER. The preset has already happened by the time
+            this renders; this is the offer, and it is a real one — the preset
+            is a guess about which index each button reports on, and only her
+            board can settle that. */}
+        <p className="fine-print settings-note">
+          Your buttons are set up for it already: <strong>jump {jump}</strong>,{' '}
+          <strong>attack {attack}</strong>, <strong>dash {dash}</strong>.{' '}
+          {controller === 'leverless'
+            ? 'Attack is off jump’s finger, so you can hold both.'
+            : 'The shape Hollow Knight ships in.'}{' '}
+          If your board presses back differently, teach it yours in{' '}
+          <Link to="/settings">Settings</Link> — four buttons, once.
+        </p>
       </section>
     );
   }
@@ -89,7 +115,23 @@ export function LessonSetup() {
   const chapter = chapterById('setup');
   const { progress, refresh } = useProgress();
   const controller = progress.controller;
+  const [, setPadBindings] = useGamepadBindings();
+
+  /**
+   * Picking a controller now DOES something (playtest 8, note 5).
+   *
+   * For eight sessions `progress.controller` was written here and read in two
+   * places — to print the answer back and to tick the chapter — while a single
+   * set of pad defaults served both boards, and the leverless diagram's own
+   * description told her that jump and attack shared a finger. The choice
+   * configures the layout now.
+   *
+   * It applies only when the choice CHANGES. Re-confirming the same board must
+   * not wipe a remap she made afterwards; telling us she has moved to a
+   * different board is a good reason to lay that board out from scratch.
+   */
   const choose = (choice: ControllerChoice) => {
+    if (choice !== controller) setPadBindings(gamepadDefaultsFor(choice));
     progressStore.setController(choice);
     refresh();
   };
