@@ -18,6 +18,8 @@ import { FinePrint } from '../components/FinePrint';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { blurOnPointerClick } from '../components/focus';
 import { endingCopy } from '../copy/ending';
+import { stopStateCopy } from '../copy/nav';
+import { finalePlayCopy } from '../copy/play';
 import { createBossSession } from '../engine/bossSession';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
 import type { ComfortSettings } from '../engine/juice';
@@ -476,11 +478,9 @@ export function PlayWell() {
         Mini-game · {chapterIndex(CHAPTER_ID)} · {chapter.place}
       </p>
       <h1>{chapter.title}</h1>
-      <p className="lede">
-        Everything you’ve learned, Kayla, all at once. Nothing down here is new.
-      </p>
+      <p className="lede">{finalePlayCopy.lede}</p>
 
-      <ol className="well-beats" aria-label="The three beats">
+      <ol className="well-beats" aria-label={finalePlayCopy.beatsLabel}>
         {BEATS.map((def) => {
           const done = beatDone(def.beat, progress);
           const locked = beatLocked(def.beat, progress);
@@ -509,8 +509,8 @@ export function PlayWell() {
                 </span>
                 <span className="well-beat-name">{def.name}</span>
                 {locked && <Lock className="well-mark" />}
-                {done && <span className="sr-only">, done</span>}
-                {locked && <span className="sr-only">, locked</span>}
+                {done && <span className="sr-only">{stopStateCopy.done}</span>}
+                {locked && <span className="sr-only">{stopStateCopy.locked}</span>}
               </button>
             </li>
           );
@@ -520,7 +520,7 @@ export function PlayWell() {
       {gateBeat !== null && (
         <div className="level-gate" role="status">
           <p className="level-gate-rule">
-            {gateBeat === 3 ? 'Clear the waves first.' : 'Clear the level first.'}
+            {gateBeat === 3 ? finalePlayCopy.gateRuleWaves : finalePlayCopy.gateRuleLevel}
           </p>
           <div className="gate-actions">
             <button
@@ -528,14 +528,14 @@ export function PlayWell() {
               className="button"
               onClick={() => selectBeat(gateBeat === 3 ? 2 : 1)}
             >
-              {gateBeat === 3 ? 'Play the waves' : 'Play the level'}
+              {gateBeat === 3 ? finalePlayCopy.gateBackWaves : finalePlayCopy.gateBackLevel}
             </button>
             <button
               type="button"
               className="text-button"
               onClick={gateBeat === 3 ? skipToBottom : skipLevel}
             >
-              {gateBeat === 3 ? 'Skip to the bottom' : 'Skip the level'}
+              {gateBeat === 3 ? finalePlayCopy.gateSkipWaves : finalePlayCopy.gateSkipLevel}
             </button>
           </div>
         </div>
@@ -547,9 +547,9 @@ export function PlayWell() {
 
       {finaleCleared(progress) && (
         <div className="well-done" role="status">
-          <p className="well-done-title">You walked the whole road, Kayla.</p>
+          <p className="well-done-title">{finalePlayCopy.roadDone}</p>
           <Link className="button" to="/">
-            Back to the map
+            {finalePlayCopy.roadDoneBack}
           </Link>
         </div>
       )}

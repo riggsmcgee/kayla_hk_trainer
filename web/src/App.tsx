@@ -4,6 +4,7 @@ import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router';
 import { chapterById } from './chapters';
 import { MAIN_ID } from './components/focus';
 import { ScrollToTop } from './components/ScrollToTop';
+import { siteChromeCopy } from './copy/nav';
 import { Home } from './pages/Home';
 import { LessonPogo } from './pages/LessonPogo';
 import { LessonReadingEnemies } from './pages/LessonReadingEnemies';
@@ -24,15 +25,15 @@ export function App() {
       <div className="shell">
         <header className="site-header">
           <NavLink to="/" className="site-title">
-            Kayla&apos;s Hollow Knight Dojo
+            {siteChromeCopy.title}
           </NavLink>
-          <nav className="site-nav" aria-label="Main">
+          <nav className="site-nav" aria-label={siteChromeCopy.navLabel}>
             <NavLink to="/" end>
-              Map
+              {siteChromeCopy.navMap}
             </NavLink>
-            <NavLink to={chapterById('pogo-course').route}>Pogo Course</NavLink>
-            <NavLink to={chapterById('dodge-arena').route}>Dodge Arena</NavLink>
-            <NavLink to="/settings">Settings</NavLink>
+            <NavLink to={chapterById('pogo-course').route}>{siteChromeCopy.navPogoCourse}</NavLink>
+            <NavLink to={chapterById('dodge-arena').route}>{siteChromeCopy.navDodgeArena}</NavLink>
+            <NavLink to="/settings">{siteChromeCopy.navSettings}</NavLink>
           </nav>
         </header>
         <main className="site-main" id={MAIN_ID} tabIndex={-1}>
@@ -57,7 +58,7 @@ export function App() {
           </Routes>
         </main>
         <footer className="site-footer">
-          <p>Built for Kbug. Hit them more than they hit you and you beat the game.</p>
+          <p>{siteChromeCopy.footer}</p>
         </footer>
       </div>
     </HashRouter>

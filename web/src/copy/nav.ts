@@ -80,6 +80,23 @@ export const stopStateCopy = {
   open: null,
 } as const;
 
+/**
+ * The header and footer that sit outside every page (`App.tsx`).
+ *
+ * The header's four links are shortcuts, not the road — the road is the map —
+ * which is why they name two mini-games rather than all six stops. The footer
+ * is the doctrine again, in the shortest form it has anywhere on the site.
+ */
+export const siteChromeCopy = {
+  title: "Kayla's Hollow Knight Dojo",
+  navLabel: 'Main',
+  navMap: 'Map',
+  navPogoCourse: 'Pogo Course',
+  navDodgeArena: 'Dodge Arena',
+  navSettings: 'Settings',
+  footer: 'Built for Kbug. Hit them more than they hit you and you beat the game.',
+} as const;
+
 /** The map on the front page (`components/DojoMap.tsx`). */
 export const dojoMapCopy = {
   label: 'Map of the dojo',

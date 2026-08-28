@@ -67,6 +67,32 @@ export const pogoCoursePlayCopy = {
   noBest: 'No clear yet.',
 } as const;
 
+/**
+ * The Bottom of the Well (`pages/PlayWell.tsx`) — the three beats and the gate
+ * between them.
+ *
+ * The gate's three lines each come in two versions because the beat before the
+ * bottom is the waves and the beat before the waves is the level. A pair of
+ * strings rather than a sentence built from a noun, so both readings can be
+ * edited as the sentences they are.
+ */
+export const finalePlayCopy = {
+  lede: 'Everything you2019ve learned, Kayla, all at once. Nothing down here is new.',
+
+  beatsLabel: 'The three beats',
+
+  gateRuleWaves: 'Clear the waves first.',
+  gateRuleLevel: 'Clear the level first.',
+  gateBackWaves: 'Play the waves',
+  gateBackLevel: 'Play the level',
+  gateSkipWaves: 'Skip to the bottom',
+  gateSkipLevel: 'Skip the level',
+
+  /** The whole road, finished. The letter at `#/the-end` is where it is said properly. */
+  roadDone: 'You walked the whole road, Kayla.',
+  roadDoneBack: 'Back to the map',
+} as const;
+
 /** The Colosseum (`pages/PlayDodge.tsx`). */
 export const dodgeArenaPlayCopy = {
   lede: (enemies: string): string =>
