@@ -8,14 +8,30 @@ import { JoyConDiagram, LeverlessDiagram } from '../components/ControllerDiagram
 import { NextButton } from '../components/NextButton';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useGamepadBindings } from '../storage/useGamepadBindings';
-import { setupHandoffCopy } from '../copy/setup';
+import { lessonCopy } from '../copy/lessons';
+import {
+  controllerNameCopy,
+  controllerQuestionCopy,
+  setupHandoffCopy,
+  setupLessonCopy,
+} from '../copy/setup';
 import '../styles/setup.css';
 import { buttonName, gamepadDefaultsFor } from '../engine/gamepad';
 
-const CONTROLLER_NAME: Record<ControllerChoice, string> = {
-  joycon: 'Joy-Con',
-  leverless: 'Leverless',
-};
+const CONTROLLER_NAME: Record<ControllerChoice, string> = controllerNameCopy;
+
+/** One board's case, as a list of markup-free sentences the tone class colours. */
+function ProConList({ points }: { points: readonly { tone: string; text: string }[] }) {
+  return (
+    <ul className="pro-con">
+      {points.map((point) => (
+        <li key={point.text} className={point.tone}>
+          {point.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 /**
  * The chapter's finish (playtest 2, note 5): one question, answered once.
@@ -43,7 +59,7 @@ function ControllerQuestion({
   // An action can be unbound, which is a legal state the capture allows. The
   // sentence has to survive it rather than printing "undefined" at her.
   const firstButton = (buttons: readonly number[]): string =>
-    buttons.length > 0 ? buttonName(buttons[0]!) : 'nothing yet';
+    buttons.length > 0 ? buttonName(buttons[0]!) : controllerQuestionCopy.unbound;
   const jump = firstButton(padBindings.jump);
   const attack = firstButton(padBindings.attack);
   const dash = firstButton(padBindings.dash);
@@ -62,32 +78,45 @@ function ControllerQuestion({
   if (answered) {
     return (
       <section className="controller-question" aria-labelledby="controller-q">
-        <h2 id="controller-q">Which controller will you use?</h2>
+        <h2 id="controller-q">{controllerQuestionCopy.heading}</h2>
         <p className="controller-answer">
           <span>
-            <strong>{CONTROLLER_NAME[controller]}</strong> it is. Stick with it.
+            <strong>{CONTROLLER_NAME[controller]}</strong>
+            {controllerQuestionCopy.answerTail}
           </span>
           <button
             ref={changeRef}
             type="button"
             className="text-button"
+            aria-label={controllerQuestionCopy.changeLabel}
             onClick={() => setChanging(true)}
           >
-            change
+            {controllerQuestionCopy.change}
           </button>
         </p>
-        {/* PRESET, THEN OFFER. The preset has already happened by the time
-            this renders; this is the offer, and it is a real one — the preset
-            is a guess about which index each button reports on, and only her
-            board can settle that. */}
         <p className="fine-print settings-note">
-          Your buttons are set up for it already: <strong>jump {jump}</strong>,{' '}
-          <strong>attack {attack}</strong>, <strong>dash {dash}</strong>.{' '}
+          {controllerQuestionCopy.offerLead}
+          <strong>
+            {controllerQuestionCopy.offerBinding(controllerQuestionCopy.offerActions.jump, jump)}
+          </strong>
+          ,{' '}
+          <strong>
+            {controllerQuestionCopy.offerBinding(
+              controllerQuestionCopy.offerActions.attack,
+              attack,
+            )}
+          </strong>
+          ,{' '}
+          <strong>
+            {controllerQuestionCopy.offerBinding(controllerQuestionCopy.offerActions.dash, dash)}
+          </strong>
+          .{' '}
           {controller === 'leverless'
-            ? 'Attack is off jump’s finger, so you can hold both.'
-            : 'The shape Hollow Knight ships in.'}{' '}
-          If your board presses back differently, teach it yours in{' '}
-          <Link to="/settings">Settings</Link> — four buttons, once.
+            ? controllerQuestionCopy.offerLeverless
+            : controllerQuestionCopy.offerJoyCon}
+          {controllerQuestionCopy.offerTeachLead}
+          <Link to="/settings">{controllerQuestionCopy.offerTeachLink}</Link>
+          {controllerQuestionCopy.offerTeachTail}
         </p>
       </section>
     );
@@ -95,7 +124,7 @@ function ControllerQuestion({
 
   return (
     <section className="controller-question" aria-labelledby="controller-q">
-      <h2 id="controller-q">Which controller will you use?</h2>
+      <h2 id="controller-q">{controllerQuestionCopy.heading}</h2>
       <div className="choice-row">
         <button
           ref={firstChoiceRef}
@@ -103,10 +132,10 @@ function ControllerQuestion({
           className="button choice-button"
           onClick={() => choose('joycon')}
         >
-          Joy-Con
+          {controllerNameCopy.joycon}
         </button>
         <button type="button" className="button choice-button" onClick={() => choose('leverless')}>
-          Leverless
+          {controllerNameCopy.leverless}
         </button>
       </div>
     </section>
@@ -140,65 +169,34 @@ export function LessonSetup() {
 
   return (
     <ChapterGate current="setup">
-      <p className="eyebrow">
-        Chapter {chapterIndex('setup')} · {chapter.place}
-      </p>
+      <p className="eyebrow">{lessonCopy.eyebrow(chapterIndex('setup'), chapter.place)}</p>
       <h1>{chapter.title}</h1>
       <p className="lede">
-        Kayla, this one decides everything after it:{' '}
-        <strong>pick one controller and stay with it.</strong> Everything the dojo teaches ends up
-        stored in your hands — and your hands can only save one layout.
+        {setupLessonCopy.ledeLead}
+        <strong>{setupLessonCopy.ledeStrong}</strong>
+        {setupLessonCopy.ledeTail}
       </p>
 
       <div className="controller-compare">
         <section className="controller-card" aria-labelledby="joycon-h">
-          <h2 id="joycon-h">Joy-Con</h2>
+          <h2 id="joycon-h">{controllerNameCopy.joycon}</h2>
           <JoyConDiagram />
-          <ul className="pro-con">
-            <li className="pro">Always in your hands — works handheld, docked, anywhere.</li>
-            <li className="pro">
-              Jump and attack under one thumb, dash under one finger: the game was built around
-              this.
-            </li>
-            <li className="con">Tiny buttons; cramps on long sessions.</li>
-            <li className="tip">
-              The stick is yours. If pogos keep coming out as side-slashes, the ↓ button is a more
-              reliable down.
-            </li>
-          </ul>
+          <ProConList points={setupLessonCopy.joyConPoints} />
         </section>
         <section className="controller-card" aria-labelledby="leverless-h">
-          <h2 id="leverless-h">Leverless</h2>
+          <h2 id="leverless-h">{controllerNameCopy.leverless}</h2>
           <LeverlessDiagram />
-          <ul className="pro-con">
-            <li className="pro">
-              Down is exactly down, every time — the cleanest pogo input there is.
-            </li>
-            <li className="pro">
-              One finger per button: jump, attack, dash and ↓ can all be held at once.
-            </li>
-            <li className="con">
-              Dock and cable only, plus a settings toggle — every extra step is a reason to grab the
-              Joy-Con “just this once”.
-            </li>
-            <li className="con">
-              Out of the box, jump (B) and attack (Y) sit under the same finger. Remap once.
-            </li>
-          </ul>
+          <ProConList points={setupLessonCopy.leverlessPoints} />
         </section>
       </div>
 
-      <h2>How to choose</h2>
+      <h2>{setupLessonCopy.howToChoose}</h2>
       <p>
         Twenty minutes on each, once. Notice which one disappears from your attention faster, and
         which one your hands reach for when a fight gets scary. That one wins.
       </p>
 
-      <p className="thesis">
-        Both can beat the whole game. Neither is faster. The only thing that matters is muscle
-        memory, and it only builds on one layout — so choose tonight, and don’t touch the other
-        until the credits roll.
-      </p>
+      <p className="thesis">{setupLessonCopy.thesis}</p>
 
       <p>
         Hollow Knight has more in it — focus, spells, healing. The dojo skips all of it on purpose.

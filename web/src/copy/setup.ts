@@ -24,6 +24,123 @@ export const setupCopy = {
 } as const;
 
 /**
+ * The two boards, named. Written out at four render sites before this — the two
+ * choice buttons, the two card headings, and the answer — so a rename used to
+ * be a four-place edit with three chances to miss one.
+ */
+export const controllerNameCopy = {
+  joycon: 'Joy-Con',
+  leverless: 'Leverless',
+} as const;
+
+/**
+ * The Setup lesson, `#/lessons/setup`.
+ *
+ * What is here is the page's FURNITURE and its two single-slot paragraphs — the
+ * lede and the thesis — plus the pro/con comparison, which is the one body list
+ * on the page where every item is a markup-free sentence and is therefore
+ * editable without half of it greying out. The four argument paragraphs stay in
+ * the page and are shown read-only, per playtest 7.
+ */
+export const setupLessonCopy = {
+  /** Three fragments: the middle one is bold, so the spaces travel in the strings. */
+  ledeLead: 'Kayla, this one decides everything after it: ',
+  ledeStrong: 'pick one controller and stay with it.',
+  ledeTail:
+    ' Everything the dojo teaches ends up stored in your hands — and your hands can only save one layout.',
+
+  howToChoose: 'How to choose',
+  thesis:
+    'Both can beat the whole game. Neither is faster. The only thing that matters is muscle memory, and it only builds on one layout — so choose tonight, and don’t touch the other until the credits roll.',
+
+  /**
+   * The buying argument, one entry per bullet.
+   *
+   * A comparison table wearing two lists: the tone is already data (`pro`,
+   * `con`, `tip` are class names), and this is the most likely thing on the
+   * page to be reworded. Every item is one markup-free sentence, which is what
+   * makes it safe to offer as text boxes when the page's other lists are not.
+   */
+  joyConPoints: [
+    { tone: 'pro', text: 'Always in your hands — works handheld, docked, anywhere.' },
+    {
+      tone: 'pro',
+      text: 'Jump and attack under one thumb, dash under one finger: the game was built around this.',
+    },
+    { tone: 'con', text: 'Tiny buttons; cramps on long sessions.' },
+    {
+      tone: 'tip',
+      text: 'The stick is yours. If pogos keep coming out as side-slashes, the ↓ button is a more reliable down.',
+    },
+  ],
+  leverlessPoints: [
+    { tone: 'pro', text: 'Down is exactly down, every time — the cleanest pogo input there is.' },
+    {
+      tone: 'pro',
+      text: 'One finger per button: jump, attack, dash and ↓ can all be held at once.',
+    },
+    {
+      tone: 'con',
+      text: 'Dock and cable only, plus a settings toggle — every extra step is a reason to grab the Joy-Con “just this once”.',
+    },
+    {
+      tone: 'con',
+      text: 'Out of the box, jump (B) and attack (Y) sit under the same finger. Remap once.',
+    },
+  ],
+} as const;
+
+/**
+ * The controller question — the card at the foot of the lesson, and the only
+ * interactive thing on the page.
+ *
+ * The heading used to be written once per branch of the same component, so
+ * changing it meant changing it twice or shipping a card whose title moved when
+ * she pressed a button.
+ */
+export const controllerQuestionCopy = {
+  heading: 'Which controller will you use?',
+  /** Follows the board's name in bold: "Leverless it is. Stick with it." */
+  answerTail: ' it is. Stick with it.',
+  /**
+   * The quiet way to change the answer. Its accessible name says WHAT changes,
+   * because "change" alone tells a screen-reader user nothing about which of
+   * the page's controls they have landed on.
+   */
+  change: 'change',
+  changeLabel: 'change which controller you use',
+
+  /**
+   * PRESET, THEN OFFER. The preset has already happened by the time this
+   * renders; this is the offer, and it is a real one — the preset is a guess
+   * about which INDEX each button reports on, and only her board can settle it.
+   *
+   * Fragments, because three button names are bold and a link closes the
+   * sentence. Every space travels inside a string: the page used to hold them
+   * in `{' '}` expressions, and JSX drops a line that is only whitespace.
+   */
+  offerLead: 'Your buttons are set up for it already: ',
+  offerBinding: (action: string, button: string): string => `${action} ${button}`,
+
+  /**
+   * The three action names IN THIS SENTENCE, and the reason they are not
+   * `actionLabelCopy`: that table titles a row on the bench and is capitalised
+   * for it. Here the names sit mid-sentence in running prose, where "jump"
+   * reads and "Jump" does not. Two voices for the same seven words is a real
+   * distinction, not a duplication to be tidied away.
+   */
+  offerActions: { jump: 'jump', attack: 'attack', dash: 'dash' },
+  offerLeverless: 'Attack is off jump’s finger, so you can hold both.',
+  offerJoyCon: 'The shape Hollow Knight ships in.',
+  offerTeachLead: ' If your board presses back differently, teach it yours in ',
+  offerTeachLink: 'Settings',
+  offerTeachTail: ' — four buttons, once.',
+
+  /** An action can legally have nothing bound to it; the sentence has to survive it. */
+  unbound: 'nothing yet',
+} as const;
+
+/**
  * What each checklist item asks her to do, in her own words rather than the
  * code's.
  *

@@ -14,7 +14,7 @@ import { FIXED_DT, PHYSICS } from '../engine/constants';
 import { createEnemy, enemyAttackHitbox, stepEnemy, type Target } from '../engine/enemies';
 import { FLOOR_Y } from '../engine/dodgeArenaSession';
 import type { World } from '../engine/types';
-import { DASH_NUMBERS, ESCAPE_WINDOW } from './lessonPogo.helpers';
+import { DASH_NUMBERS, ESCAPE_WINDOW, tenthsInWords } from './lessonPogo.helpers';
 
 /** A floor and nothing else — the escape is horizontal, so walls only confuse it. */
 function flatWorld(): World {
@@ -111,5 +111,27 @@ describe('the dash figures the page prints', () => {
     // Why the section does NOT teach cancelling: her nail is not ready again
     // until after the swing has finished on its own.
     expect(PHYSICS.nailCadence).toBeGreaterThan(PHYSICS.nailSwingTime);
+  });
+});
+
+describe('the thesis, which says the escape window in words', () => {
+  it('spells a whole number of tenths', () => {
+    expect(tenthsInWords(0.1)).toBe('a tenth');
+    expect(tenthsInWords(0.2)).toBe('two tenths');
+    expect(tenthsInWords(0.3)).toBe('three tenths');
+  });
+
+  it('falls back to the digits rather than rounding a number it cannot spell', () => {
+    // Reading worse is the point. A lesson that quietly rounded 0.15 to "two
+    // tenths" would be the exact failure this helper exists to prevent, wearing
+    // a nicer sentence.
+    expect(tenthsInWords(0.15)).toBe('0.15');
+  });
+
+  it('keeps the two windows a factor of two apart, because the page says "doubles"', () => {
+    // The thesis makes a CLAIM about the pair, not just a report of them. If a
+    // tuning pass moved one and not the other, the digits four lines above would
+    // update themselves and the loudest line on the page would go quietly wrong.
+    expect(ESCAPE_WINDOW.dashing).toBeCloseTo(ESCAPE_WINDOW.running * 2, 10);
   });
 });

@@ -27,6 +27,7 @@ import { ChapterNav } from '../components/ChapterNav';
 import { ChapterNext } from '../components/ChapterNext';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { useControlCapture } from '../components/useControlCapture';
+import { lessonCopy } from '../copy/lessons';
 import { actionLabelCopy } from '../copy/settings';
 import { setupCheckLabels, setupFloorCopy } from '../copy/setup';
 import { buttonName, rebindButton, type GamepadBindings } from '../engine/gamepad';
@@ -112,9 +113,7 @@ function ControlLine({
         className={active ? 'chip chip-active' : 'chip'}
         // Seven rows and nine controls, so every button has to say which one it
         // changes. The name starts with the visible word, per WCAG label-in-name.
-        aria-label={
-          active ? setupFloorCopy.cancelLabel(label) : setupFloorCopy.remapLabel(label)
-        }
+        aria-label={active ? setupFloorCopy.cancelLabel(label) : setupFloorCopy.remapLabel(label)}
         onClick={() => (active ? onCancel() : onStart(action))}
       >
         {active ? setupFloorCopy.cancel : setupFloorCopy.remap}
@@ -187,9 +186,7 @@ export function SetupFloor() {
 
   return (
     <>
-      <p className="eyebrow">
-        Chapter {chapterIndex('setup')} · {chapter.place}
-      </p>
+      <p className="eyebrow">{lessonCopy.eyebrow(chapterIndex('setup'), chapter.place)}</p>
       <h1>{setupFloorCopy.title}</h1>
       <p className="lede">{setupFloorCopy.lede}</p>
       <p>{setupFloorCopy.kit}</p>

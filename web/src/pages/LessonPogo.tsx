@@ -3,28 +3,21 @@ import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
 import { ChapterNext } from '../components/ChapterNext';
+import { lessonCopy, pogoLessonCopy } from '../copy/lessons';
 import { pogoRhythmDemo } from '../engine/demo';
-import { DASH_NUMBERS, ESCAPE_WINDOW } from './lessonPogo.helpers';
+import { DASH_NUMBERS, ESCAPE_WINDOW, tenthsInWords } from './lessonPogo.helpers';
 
 export function LessonPogo() {
   const chapter = chapterById('pogo');
   return (
     <ChapterGate current="pogo">
-      <p className="eyebrow">
-        Chapter {chapterIndex('pogo')} · {chapter.place}
-      </p>
+      <p className="eyebrow">{lessonCopy.eyebrow(chapterIndex('pogo'), chapter.place)}</p>
       <h1>{chapter.title}</h1>
-      <p className="lede">
-        Kayla, the pogo — bouncing off things with a downward slash — is the one skill that changes
-        how this game feels. Spikes become trampolines. Enemies become platforms.
-      </p>
+      <p className="lede">{pogoLessonCopy.lede}</p>
 
-      <LessonDemo
-        script={pogoRhythmDemo}
-        label="Slow-motion demo of the Knight bouncing on an orb, with the down-slash hitbox drawn in green"
-      />
+      <LessonDemo script={pogoRhythmDemo} label={pogoLessonCopy.demoLabel} />
 
-      <h2>Three things that make it kinder than it looks</h2>
+      <h2>{pogoLessonCopy.kinder}</h2>
       <ul className="plain-list">
         <li>
           The down-slash is <em>wide</em> — wider than you. Near enough is enough.
@@ -36,14 +29,14 @@ export function LessonPogo() {
         </li>
       </ul>
 
-      <h2>It’s a beat, not a mash</h2>
+      <h2>{pogoLessonCopy.beat}</h2>
       <p>
         Slash, bounce, breathe, slash — about two a second. If you’re hammering the button, land and
         start again slower: a swing that misses its moment leaves you falling with your nail on
         cooldown.
       </p>
 
-      <h2>Hit, then leave</h2>
+      <h2>{pogoLessonCopy.hitThenLeave}</h2>
       <p>
         The dash isn’t really for crossing rooms, Kayla. It’s for the moment right after you land a
         hit: slash, dash out, and watch the answer arrive where you were standing.
@@ -71,8 +64,10 @@ export function LessonPogo() {
         </li>
       </ul>
       <p className="thesis">
-        The dash doubles the time you have to change your mind — from a tenth of a second to two
-        tenths. That’s all it buys, and it’s enough.
+        {pogoLessonCopy.thesis(
+          tenthsInWords(ESCAPE_WINDOW.running),
+          tenthsInWords(ESCAPE_WINDOW.dashing),
+        )}
       </p>
       <p>
         One exception, and it’s the one waiting at the bottom of the well: <strong>never</strong>{' '}
@@ -81,7 +76,7 @@ export function LessonPogo() {
         cannot outrun it along the floor. Get in the air instead.
       </p>
 
-      <h2>Drills, in order</h2>
+      <h2>{pogoLessonCopy.drills}</h2>
       <p>
         These four are level 1 of the Pogo Course. Each is a lantern, so a miss costs seconds, not
         the run:

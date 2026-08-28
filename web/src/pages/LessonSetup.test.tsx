@@ -23,6 +23,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { SETUP_FLOOR_ROUTE } from '../chapters';
+import { controllerQuestionCopy } from '../copy/setup';
 import { LessonSetup } from './LessonSetup';
 
 beforeEach(() => {
@@ -81,7 +82,7 @@ describe('picking a controller lays it out', () => {
   it('lays the new board out when she changes her mind', () => {
     renderSetup();
     choose('Joy-Con');
-    fireEvent.click(screen.getByRole('button', { name: 'change' }));
+    fireEvent.click(screen.getByRole('button', { name: controllerQuestionCopy.changeLabel }));
     choose('Leverless');
     expect(layoutLine()).toContain('attack right button');
   });
@@ -92,7 +93,7 @@ describe('picking a controller lays it out', () => {
     // us she has moved to a DIFFERENT board is the only thing that reshuffles.
     renderSetup();
     choose('Leverless');
-    fireEvent.click(screen.getByRole('button', { name: 'change' }));
+    fireEvent.click(screen.getByRole('button', { name: controllerQuestionCopy.changeLabel }));
     // Stand in for the remap: any binding that is neither preset.
     window.localStorage.setItem(
       'kayla-hk-dojo:settings',

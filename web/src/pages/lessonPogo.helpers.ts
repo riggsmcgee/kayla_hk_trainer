@@ -54,3 +54,24 @@ export const ESCAPE_WINDOW = {
   running: 0.1,
   dashing: 0.2,
 } as const;
+
+/**
+ * "a tenth", "two tenths" — a whole number of tenths of a second, spelled.
+ *
+ * The thesis of this lesson says the escape window in WORDS, four lines below
+ * the same two numbers printed as digits. That sentence was true by coincidence:
+ * the digits are derived from `ESCAPE_WINDOW` and update themselves, and the
+ * words did not, so a physics change would have left the page's loudest line
+ * quietly wrong. This is what makes both halves read from the same source.
+ *
+ * Anything that is not a whole number of tenths falls back to the digits, which
+ * reads worse and is the point — a lesson that cannot spell its own number
+ * should say the number rather than round it.
+ */
+const TENTHS = ['no time at all', 'a tenth', 'two tenths', 'three tenths', 'four tenths'];
+export function tenthsInWords(seconds: number): string {
+  const tenths = Math.round(seconds * 10);
+  return Math.abs(tenths / 10 - seconds) < 1e-9 && tenths < TENTHS.length
+    ? TENTHS[tenths]!
+    : String(seconds);
+}
