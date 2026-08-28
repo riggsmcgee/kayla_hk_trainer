@@ -14,6 +14,7 @@ import { chapterById, chapterIndex } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { ChapterNext } from '../components/ChapterNext';
+import { FinePrint } from '../components/FinePrint';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { blurOnPointerClick } from '../components/focus';
 import { endingCopy } from '../copy/ending';
@@ -553,9 +554,7 @@ export function PlayWell() {
         </div>
       )}
 
-      <p className="fine-print">
-        Screen shake and flashing can be turned down in <Link to="/settings">Settings</Link>.
-      </p>
+      <FinePrint />
 
       <ChapterNext current={CHAPTER_ID} />
       <ChapterNav current={CHAPTER_ID} />

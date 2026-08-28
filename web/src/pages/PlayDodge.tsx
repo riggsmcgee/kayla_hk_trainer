@@ -7,14 +7,16 @@
  * the enemy she's on. Once all five are cleared, the road goes on.
  */
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import type { EnemyId, PracticeRun, ProgressV1 } from '@dojo/shared';
 import { chapterById, chapterIndex, countWordCap, nextChapter } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { ChapterNext } from '../components/ChapterNext';
+import { FinePrint } from '../components/FinePrint';
 import { PracticeCanvas } from '../components/PracticeCanvas';
 import { blurOnPointerClick } from '../components/focus';
+import { dodgeArenaPlayCopy, playCopy } from '../copy/play';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
 import { ROSTER, rosterEntry } from '../engine/roster';
 import { rosterStages } from '../engine/stages';
@@ -141,16 +143,11 @@ export function PlayDodge() {
 
   return (
     <ChapterGate current={CHAPTER_ID}>
-      <p className="eyebrow">
-        Mini-game · {chapterIndex(CHAPTER_ID)} · {chapter.place}
-      </p>
+      <p className="eyebrow">{playCopy.eyebrow(chapterIndex(CHAPTER_ID), chapter.place)}</p>
       <h1>{chapter.title}</h1>
-      <p className="lede">
-        {countWordCap(ROSTER.length)} enemies, in order. Survive a minute and land your hits, and
-        the next one steps in. Get touched and you start that enemy over.
-      </p>
+      <p className="lede">{dodgeArenaPlayCopy.lede(countWordCap(ROSTER.length))}</p>
 
-      <ol className="arena-strip" aria-label="The roster">
+      <ol className="arena-strip" aria-label={dodgeArenaPlayCopy.rosterLabel}>
         {ROSTER.map((e, i) => {
           const cleared = progress.arenaEnemiesCleared.includes(e.id);
           const isCurrent = freePlay === null && i === current;
@@ -166,8 +163,8 @@ export function PlayDodge() {
             <li key={e.id} className={cls} aria-current={isCurrent ? 'step' : undefined}>
               <span className="arena-stage-disc">{cleared ? <CheckMark /> : i + 1}</span>
               <span className="arena-stage-name">{e.name}</span>
-              <span className="arena-stage-hits">{e.hitsToPass} hits</span>
-              {cleared && <span className="sr-only">, cleared</span>}
+              <span className="arena-stage-hits">{dodgeArenaPlayCopy.stageHits(e.hitsToPass)}</span>
+              {cleared && <span className="sr-only">{dodgeArenaPlayCopy.srCleared}</span>}
             </li>
           );
         })}
@@ -176,19 +173,17 @@ export function PlayDodge() {
 
       <PracticeCanvas
         key={`${freePlay ?? 'roster'}:${observe ? 'observe' : 'play'}`}
-        label="Dodge Arena"
+        label={dodgeArenaPlayCopy.canvasLabel}
         createSession={createSession}
       />
 
       {allCleared && (
         <div className="arena-clear" role="status">
-          <p className="arena-clear-title">Colosseum cleared, Kayla!</p>
+          <p className="arena-clear-title">{dodgeArenaPlayCopy.arenaClear}</p>
         </div>
       )}
 
-      <p className="fine-print">
-        Screen shake and flashing can be turned down in <Link to="/settings">Settings</Link>.
-      </p>
+      <FinePrint />
 
       {/* DEV TOOL: remove in the final build */}
       <details className="dev-tools">

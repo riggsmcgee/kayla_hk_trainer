@@ -5,6 +5,7 @@
  * numbers and strings out — so the page stays thin and this stays testable.
  */
 import type { PracticeRun, ProgressV1 } from '@dojo/shared';
+import { pogoCoursePlayCopy } from '../copy/play';
 import { COURSE_LEVEL_COUNT } from '../engine/roster';
 import { courseBest } from '../storage/bests';
 import { courseCleared, levelLocked } from '../storage/progress';
@@ -41,17 +42,25 @@ export interface AfterClear {
  */
 export function afterClear(level: number, progress: ProgressV1): AfterClear {
   if (level < COURSE_LEVEL_COUNT) {
-    return { title: `Level ${level} clear.`, nextLevel: level + 1, label: 'Next level →' };
+    return {
+      title: pogoCoursePlayCopy.levelClear(level),
+      nextLevel: level + 1,
+      label: pogoCoursePlayCopy.nextLevelButton,
+    };
   }
   if (courseCleared(progress)) {
-    return { title: 'Course cleared, Kayla!', nextLevel: null, label: null };
+    return { title: pogoCoursePlayCopy.courseClear, nextLevel: null, label: null };
   }
   const back = nextLevelToPlay(progress);
-  return { title: `Level ${level} clear.`, nextLevel: back, label: `Level ${back} →` };
+  return {
+    title: pogoCoursePlayCopy.levelClear(level),
+    nextLevel: back,
+    label: pogoCoursePlayCopy.backToLevelButton(back),
+  };
 }
 
 /** "Best: 0:14.3" for the level's fastest clear, or "No clear yet." */
 export function levelBestLine(runs: readonly PracticeRun[], level: number): string {
   const best = courseBest(runs, level);
-  return best ? `Best: ${formatClock(best.durationMs)}` : 'No clear yet.';
+  return best ? pogoCoursePlayCopy.best(formatClock(best.durationMs)) : pogoCoursePlayCopy.noBest;
 }

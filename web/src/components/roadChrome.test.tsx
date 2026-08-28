@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 /**
- * The road's chrome, now that its words live in `copy/nav.ts`.
+ * The chrome every page wears, now that its words live in `copy/nav.ts` and
+ * `copy/play.ts` — the gate panel, the chapter strip, the forward button, the
+ * Bounce Bog's level chips, and the fine print under a canvas.
  *
  * These components had no tests at all before the extraction, which is exactly
  * why the extraction needed some: moving a string out of JSX and into a module
@@ -24,7 +26,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ProgressV1 } from '@dojo/shared';
 import { CHAPTERS, countWord } from '../chapters';
 import { gateCopy, levelPickerCopy, nextCopy } from '../copy/nav';
+import { playCopy } from '../copy/play';
 import { ChapterNext } from './ChapterNext';
+import { FinePrint } from './FinePrint';
 import { LevelPicker } from './LevelPicker';
 
 afterEach(cleanup);
@@ -91,5 +95,33 @@ describe('the gate panel', () => {
   it("gives a mini-game's title the article a lesson's does not need", () => {
     expect(gateCopy.gateName('Pogo Course', true)).toBe('the Pogo Course');
     expect(gateCopy.gateName('Your Setup', false)).toBe('Your Setup');
+  });
+});
+
+describe('the fine print under a canvas', () => {
+  it('reads as one sentence with the link inside it', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <FinePrint />
+      </MemoryRouter>,
+    );
+    const sentence = container.querySelector('.fine-print');
+    expect(sentence?.textContent).toBe(
+      playCopy.finePrintLead + playCopy.finePrintLink + playCopy.finePrintTail,
+    );
+    // Independent of the copy above: a space before the link, none after it,
+    // and the full stop hard against it.
+    expect(sentence?.textContent).toContain(` ${playCopy.finePrintLink}.`);
+    expect(sentence?.textContent).not.toMatch(/ {2}/);
+  });
+
+  it('sends her to Settings, which is where the comfort toggles are', () => {
+    render(
+      <MemoryRouter>
+        <FinePrint />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link', { name: playCopy.finePrintLink });
+    expect(link.getAttribute('href')).toBe('/settings');
   });
 });

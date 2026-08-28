@@ -6,13 +6,15 @@
  * clears are recorded to localStorage through the shared progress store.
  */
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { chapterById, chapterIndex, countWordCap, nextChapter } from '../chapters';
 import { ChapterGate } from '../components/ChapterGate';
 import { ChapterNav } from '../components/ChapterNav';
 import { ChapterNext } from '../components/ChapterNext';
+import { FinePrint } from '../components/FinePrint';
 import { LevelPicker } from '../components/LevelPicker';
 import { PracticeCanvas } from '../components/PracticeCanvas';
+import { playCopy, pogoCoursePlayCopy } from '../copy/play';
 import { createPogoCourseSession } from '../engine/pogoCourseSession';
 import { COURSE_LEVEL_COUNT } from '../engine/roster';
 import { useOverlayLabels } from '../storage/useOverlayLabels';
@@ -61,7 +63,9 @@ export function PlayPogo() {
     if (hasNextLevel) selectLevel(level + 1);
     else if (next) navigate(next.route);
   }, [hasNextLevel, level, next, navigate, selectLevel]);
-  const nextLabel = hasNextLevel ? `level ${level + 1}` : (next?.title ?? '');
+  const nextLabel = hasNextLevel
+    ? pogoCoursePlayCopy.nextLevelLabel(level + 1)
+    : (next?.title ?? '');
 
   const createSession = useCallback(
     () =>
@@ -89,21 +93,16 @@ export function PlayPogo() {
 
   return (
     <ChapterGate current={CHAPTER_ID}>
-      <p className="eyebrow">
-        Mini-game · {chapterIndex(CHAPTER_ID)} · {chapter.place}
-      </p>
+      <p className="eyebrow">{playCopy.eyebrow(chapterIndex(CHAPTER_ID), chapter.place)}</p>
       <h1>{chapter.title}</h1>
-      <p className="lede">
-        {countWordCap(COURSE_LEVEL_COUNT)} levels, lantern to lantern — a miss only costs a few
-        seconds. Clear one to open the next.
-      </p>
+      <p className="lede">{pogoCoursePlayCopy.lede(countWordCap(COURSE_LEVEL_COUNT))}</p>
 
       <LevelPicker progress={progress} selected={level} onSelect={selectLevel} onSkip={skipLevel} />
       <p className="level-best">{levelBestLine(runs, level)}</p>
 
       <PracticeCanvas
         key={level}
-        label={`Pogo Course, level ${level}`}
+        label={pogoCoursePlayCopy.canvasLabel(level)}
         createSession={createSession}
       />
 
@@ -118,9 +117,7 @@ export function PlayPogo() {
         </div>
       )}
 
-      <p className="fine-print">
-        Screen shake and flashing can be turned down in <Link to="/settings">Settings</Link>.
-      </p>
+      <FinePrint />
 
       <ChapterNext current={CHAPTER_ID} />
       <ChapterNav current={CHAPTER_ID} />
