@@ -6,10 +6,6 @@
  * specificity, so they only win by loading later in the cascade.
  */
 
-.setup-sandbox {
-  margin: 2.5rem 0 0;
-}
-
 .setup-checklist {
   list-style: none;
   margin: 1rem 0 0;
