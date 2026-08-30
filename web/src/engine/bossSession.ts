@@ -1290,9 +1290,21 @@ function drawShout(ctx: CanvasRenderingContext2D, text: string, billX: number, b
   ctx.font = '22px system-ui, sans-serif';
   ctx.fillStyle = COLORS.hudText;
   const step = (v: number) => Math.round(v / 4) * 4;
+  /*
+   * Clamped by the text's OWN half-width, not by a fixed 90 px.
+   *
+   * The margin used to be a constant sized for "HELP!". Playtest 10 rewrote
+   * the line as "I NEED SOME HELP!", which is more than twice as wide, and
+   * with Bill standing against the left wall the first word ran off the edge
+   * of the canvas. Measuring means the shout fits whatever he is given to say
+   * — and the fallback keeps the old behaviour on a stub context whose
+   * measureText answers with nothing, which is what the tests draw through.
+   */
+  const measured = ctx.measureText?.(text)?.width;
+  const margin = Math.max(90, Number.isFinite(measured) ? measured / 2 + 12 : 90);
   ctx.fillText(
     text,
-    step(Math.min(Math.max(billX, 90), CANVAS.width - 90)),
+    step(Math.min(Math.max(billX, margin), CANVAS.width - margin)),
     step(FLOOR_Y - 200) + bob,
   );
 }

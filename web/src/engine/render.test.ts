@@ -21,7 +21,8 @@ import { describe, expect, it } from 'vitest';
 import type { EnemyId } from '@dojo/shared';
 import { ENEMIES } from './constants';
 import { ATTACKS, createEnemy, type AttackKind, type Enemy } from './enemies';
-import { COLORS, drawEnemy, drawGodModeHud } from './render';
+import { COLORS, drawEnemy, drawGodModeHud, drawHazardOrbs, drawMovers } from './render';
+import type { Mover } from './course';
 
 const FLOOR_Y = 600;
 
@@ -213,5 +214,55 @@ describe('the god-mode marker', () => {
     const { ops, ctx } = recordingCtx();
     drawGodModeHud(ctx, 0, 0, false);
     expect(ops.join(' | ')).not.toContain('that would have got you');
+  });
+});
+
+/**
+ * Red drifters (playtest 10). A mover that burns has to LOOK like the static
+ * reds she already learned in level 2, or the colour stops being a rule and
+ * becomes decoration.
+ */
+describe('a drifting orb that burns', () => {
+  const blue: Mover = {
+    size: 28,
+    center: { x: 200, y: 400 },
+    path: { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0 },
+  };
+  const red: Mover = { ...blue, hazard: true };
+
+  function paint(movers: Mover[]): string {
+    const { ops, ctx } = recordingCtx();
+    drawMovers(ctx, movers, 0, 0);
+    return ops.join(' | ');
+  }
+
+  it('wears the hazard colour, not the orb colour', () => {
+    expect(paint([red])).toContain(COLORS.hazard);
+    expect(paint([blue])).not.toContain(COLORS.hazard);
+  });
+
+  it('wears the same dark ring the static red orbs wear', () => {
+    // Drawn by one shared painter, so the two kinds of red cannot drift apart
+    // into "the one that hurts" and "the one that looks like it might".
+    const { ops, ctx } = recordingCtx();
+    drawHazardOrbs(ctx, [{ x: 0, y: 0, width: 28, height: 28 }], 0);
+    const staticRing = ops.join(' | ');
+    expect(staticRing).toContain(COLORS.canvasBg);
+    expect(paint([red])).toContain(COLORS.canvasBg);
+  });
+
+  it('warns on its dotted path too, before the orb ever reaches her', () => {
+    expect(paint([red])).toContain(COLORS.moverPathHazard);
+    expect(paint([blue])).toContain(COLORS.moverPath);
+  });
+
+  it('keeps a red and a blue drifter apart in the same level', () => {
+    // The colour is set inside the loop; hoisted out, whichever came first
+    // would paint both.
+    const both = paint([blue, red]);
+    expect(both).toContain(COLORS.moverPath);
+    expect(both).toContain(COLORS.moverPathHazard);
+    expect(both).toContain(COLORS.orb);
+    expect(both).toContain(COLORS.hazard);
   });
 });
