@@ -21,6 +21,7 @@ import { useOverlayLabels } from '../storage/useOverlayLabels';
 import { levelSkipKey } from '../storage/progress';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useAssistMode } from '../storage/useAssistMode';
 import { useGodMode } from '../storage/useGodMode';
 import { afterClear, levelBestLine, nextLevelToPlay } from './playPogo.helpers';
 import '../styles/levels.css';
@@ -33,6 +34,7 @@ export function PlayPogo() {
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
   const [godMode] = useGodMode();
+  const { lives: assistLives } = useAssistMode();
   // Functions, not strings: the overlays ask at draw time, so the copy can
   // follow her pad without the session being rebuilt under a live run.
   const { jumpKey, attackKey } = useOverlayLabels();
@@ -73,6 +75,7 @@ export function PlayPogo() {
         level,
         comfort,
         godMode,
+        assistLives,
         jumpKey,
         attackKey,
         // Only offer Z a destination when there is one; without onNext the
@@ -85,7 +88,19 @@ export function PlayPogo() {
           setJustCleared(info.level);
         },
       }),
-    [level, comfort, godMode, jumpKey, attackKey, hasNextLevel, next, onNext, nextLabel, refresh],
+    [
+      level,
+      comfort,
+      godMode,
+      assistLives,
+      jumpKey,
+      attackKey,
+      hasNextLevel,
+      next,
+      onNext,
+      nextLabel,
+      refresh,
+    ],
   );
 
   const panel = justCleared === null ? null : afterClear(justCleared, progress);

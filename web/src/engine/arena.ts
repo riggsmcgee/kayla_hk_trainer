@@ -40,8 +40,15 @@ export interface ArenaState {
    */
   godMode: boolean;
   /**
-   * God mode only: seconds until another touch counts. Standing inside a
-   * walker would otherwise report a hit sixty times a second.
+   * Assist mode: extra hits she may absorb before a touch ends the run.
+   * Counted DOWN as she spends them; zero means the next touch is the end,
+   * which is also the un-assisted rule.
+   */
+  assistLivesLeft: number;
+  /**
+   * Seconds until another touch counts, for whichever forgiving mode is on.
+   * Standing inside a walker would otherwise report a hit — or spend every
+   * life she has — sixty times a second.
    */
   graceTimer: number;
   /**
@@ -72,9 +79,21 @@ export interface ArenaEvents {
    * what god mode is. Only the display reads this one.
    */
   wouldHaveHit: boolean;
+  /**
+   * Assist mode: a life was spent this step instead of the run ending. A
+   * THIRD flag rather than a lie told through the first, for exactly the
+   * reason `wouldHaveHit` is a second one — `playerHit` means "the run is
+   * over" to stepStage and stepBoss, and neither should have to learn what
+   * assist mode is.
+   */
+  absorbedByAssist: boolean;
 }
 
-export function createArenaState(observe: boolean, godMode = false): ArenaState {
+export function createArenaState(
+  observe: boolean,
+  godMode = false,
+  assistLives = 0,
+): ArenaState {
   return {
     started: false,
     over: false,
@@ -82,6 +101,7 @@ export function createArenaState(observe: boolean, godMode = false): ArenaState 
     hitsLanded: 0,
     observe,
     godMode,
+    assistLivesLeft: assistLives,
     graceTimer: 0,
     respawnTimers: [],
   };
@@ -96,14 +116,25 @@ export function createArenaState(observe: boolean, godMode = false): ArenaState 
  * dojo has had no use for until now.
  */
 function registerTouch(state: ArenaState, events: ArenaEvents): void {
-  if (!state.godMode) {
-    state.over = true;
-    events.playerHit = true;
+  if (state.godMode) {
+    if (state.graceTimer > 0) return;
+    state.graceTimer = PHYSICS.iFrames;
+    events.wouldHaveHit = true;
     return;
   }
-  if (state.graceTimer > 0) return;
-  state.graceTimer = PHYSICS.iFrames;
-  events.wouldHaveHit = true;
+  // Assist mode: a life buys her the same i-frame window a hit buys in the
+  // real game, and the run goes on. Checked before the ordinary rule, never
+  // instead of it — when the lives run out this falls through and a touch
+  // ends the run exactly as it always did.
+  if (state.assistLivesLeft > 0) {
+    if (state.graceTimer > 0) return;
+    state.graceTimer = PHYSICS.iFrames;
+    state.assistLivesLeft -= 1;
+    events.absorbedByAssist = true;
+    return;
+  }
+  state.over = true;
+  events.playerHit = true;
 }
 
 function overlaps(
@@ -173,11 +204,16 @@ export function stepArena(
     respawn: [],
     rallied: false,
     wouldHaveHit: false,
+    absorbedByAssist: false,
   };
   if (state.over) return events;
 
   if (state.started) state.elapsed += dt;
-  if (state.godMode) state.graceTimer = Math.max(0, state.graceTimer - dt);
+  // Both forgiving modes lean on this clock. Guarding it on god mode alone
+  // would leave an assist run's first life absorbing everything forever.
+  if (state.godMode || state.assistLivesLeft > 0 || state.graceTimer > 0) {
+    state.graceTimer = Math.max(0, state.graceTimer - dt);
+  }
 
   const nail = activeNailHitbox(player);
   const hurtbox = playerHurtbox(player);

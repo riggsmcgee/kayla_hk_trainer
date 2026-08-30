@@ -85,7 +85,13 @@ export interface CourseState {
    * walk a level and see every place it would have sent her back.
    */
   godMode: boolean;
-  /** God mode only: seconds until another hazard touch counts. */
+  /**
+   * Assist mode: hazard touches she may absorb before one sends her back to
+   * the lantern. There is no death in the course, so this is what a life
+   * means here — the spikes stop costing her the walk.
+   */
+  assistLivesLeft: number;
+  /** Seconds until another hazard touch counts, for either forgiving mode. */
   graceTimer: number;
 }
 
@@ -102,6 +108,12 @@ export interface CourseEvents {
    * respawn branch needs no god-mode check of its own.
    */
   wouldHaveRespawned: boolean;
+  /**
+   * Assist mode: a life was spent this step and she keeps her ground.
+   * `respawned` keeps its meaning, so the session's respawn branch needs no
+   * assist check of its own.
+   */
+  absorbedByAssist: boolean;
 }
 
 function overlaps(a: AABB, b: AABB): boolean {
@@ -139,7 +151,11 @@ export function moverBox(m: Mover, t: number): AABB {
   };
 }
 
-export function createCourseState(course: CourseDef, godMode = false): CourseState {
+export function createCourseState(
+  course: CourseDef,
+  godMode = false,
+  assistLives = 0,
+): CourseState {
   return {
     started: false,
     finished: false,
@@ -148,6 +164,7 @@ export function createCourseState(course: CourseDef, godMode = false): CourseSta
     checkpointIndex: -1,
     respawnPoint: { ...course.spawn },
     godMode,
+    assistLivesLeft: assistLives,
     graceTimer: 0,
   };
 }
@@ -162,15 +179,26 @@ export function createCourseState(course: CourseDef, godMode = false): CourseSta
  * rather than as information.
  */
 function registerHazard(state: CourseState, events: CourseEvents): void {
-  if (!state.godMode) {
+  if (state.godMode) {
+    if (state.graceTimer > 0) return;
+    state.graceTimer = PHYSICS.iFrames;
     state.misses += 1;
-    events.respawned = true;
+    events.wouldHaveRespawned = true;
     return;
   }
-  if (state.graceTimer > 0) return;
-  state.graceTimer = PHYSICS.iFrames;
+  // Assist mode: the touch is still a miss and still counted, because the
+  // miss counter IS the honest display — she is being told what it cost, only
+  // not made to walk back for it.
+  if (state.assistLivesLeft > 0) {
+    if (state.graceTimer > 0) return;
+    state.graceTimer = PHYSICS.iFrames;
+    state.assistLivesLeft -= 1;
+    state.misses += 1;
+    events.absorbedByAssist = true;
+    return;
+  }
   state.misses += 1;
-  events.wouldHaveRespawned = true;
+  events.respawned = true;
 }
 
 /**
@@ -190,9 +218,14 @@ export function stepCourse(
     checkpointReached: null,
     finishedNow: false,
     wouldHaveRespawned: false,
+    absorbedByAssist: false,
   };
   if (state.finished) return events;
-  if (state.godMode) state.graceTimer = Math.max(0, state.graceTimer - dt);
+  // Both forgiving modes lean on this clock; guarding it on god mode alone
+  // would leave one life absorbing an entire spike strip forever.
+  if (state.godMode || state.assistLivesLeft > 0 || state.graceTimer > 0) {
+    state.graceTimer = Math.max(0, state.graceTimer - dt);
+  }
 
   if (state.started) state.elapsed += dt;
 

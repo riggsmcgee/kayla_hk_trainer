@@ -66,7 +66,7 @@ describe('run history cap', () => {
     expect(runs.length).toBe(500);
     expect(runs.slice(0, 3).map((r) => r.id)).toEqual(['pogo-1', 'legacy-pogo', 'walker-1']);
     expect(runs[499]!.id).toBe('death-599');
-    expect(courseBest(runs, 1)).toEqual({ durationMs: 14_300 });
+    expect(courseBest(runs, 1)).toEqual({ durationMs: 14_300, assisted: false });
     expect(arenaBest(runs, 'walker')).toMatchObject({ cleared: true, hitsLanded: 7 });
   });
 });
@@ -101,7 +101,7 @@ describe('local store round-trip', () => {
     const runs = store.listRuns();
     expect(runs.length).toBe(500);
     expect(runs[0]!.id).toBe('real-clear');
-    expect(courseBest(runs, 1)).toEqual({ durationMs: 14_300 });
+    expect(courseBest(runs, 1)).toEqual({ durationMs: 14_300, assisted: false });
   });
 
   it('round-trips settings through the injected backend', () => {

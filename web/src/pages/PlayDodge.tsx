@@ -25,6 +25,7 @@ import { useOverlayLabels } from '../storage/useOverlayLabels';
 import { arenaCleared } from '../storage/progress';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useAssistMode } from '../storage/useAssistMode';
 import { useGodMode } from '../storage/useGodMode';
 import { formatClock } from './bestLine';
 import '../styles/arena.css';
@@ -62,6 +63,7 @@ export function PlayDodge() {
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
   const [godMode] = useGodMode();
+  const { lives: assistLives } = useAssistMode();
   // Functions, not strings: the overlays ask at draw time, so the copy can
   // follow her pad without the session being rebuilt under a live run.
   const { jumpKey, attackKey } = useOverlayLabels();
@@ -122,6 +124,7 @@ export function PlayDodge() {
         observe,
         godMode,
         kind: 'roster',
+        assistLives,
         jumpKey,
         attackKey,
       });
@@ -133,6 +136,7 @@ export function PlayDodge() {
       observe,
       godMode,
       kind: 'roster',
+      assistLives,
       jumpKey,
       attackKey,
       bestHits: bestHitsForStage,
@@ -149,6 +153,7 @@ export function PlayDodge() {
     freePlay,
     observe,
     godMode,
+    assistLives,
     comfort,
     startIndex,
     onStageCleared,

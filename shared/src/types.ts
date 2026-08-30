@@ -56,6 +56,19 @@ export interface PracticeRun {
    * same way `observeMode` is — a run nothing could end is not a best.
    */
   godMode?: boolean;
+  /**
+   * The run was played with assist mode on, so she had lives to spend
+   * whether or not she spent any.
+   *
+   * Recorded on AVAILABILITY rather than on use, deliberately: a run played
+   * with a safety net is a run played with a safety net, and tagging on
+   * "spent one" would make the flag flicker between two runs that were
+   * attempted under identical conditions. Unlike `godMode` this does NOT
+   * disqualify a run from the bests — it ranks below a clean one and says so
+   * (playtest 10). Optional, so every run recorded before it existed reads
+   * as unassisted.
+   */
+  assisted?: boolean;
   /** Nail hits landed during the run (0 in observe mode). */
   hitsLanded: number;
   /** Run length in milliseconds. */
@@ -176,6 +189,24 @@ export interface SettingsV1 {
    * as off.
    */
   godMode?: boolean;
+  /**
+   * Assist mode: how many extra hits she has given herself, 0-3. Zero is off,
+   * which is the default and what a settings blob written before this existed
+   * reads as.
+   *
+   * A shipping feature and not a dev tool, so it carries no "remove in the
+   * final build" note. It lives in settings rather than progress because
+   * `clearAllProgress()` deliberately keeps settings — resetting the map
+   * should not silently turn her safety net off, nor re-ask the question
+   * below.
+   */
+  assistLives?: number;
+  /**
+   * Whether she has already been asked "are you sure?" about assist mode.
+   * The warning is worth making once; making it every time turns a considered
+   * choice into something she clicks past.
+   */
+  assistConfirmed?: boolean;
   /**
    * DEV TOOL: remove in the final build. Which of the five roll behaviours
    * (engine/enemies.ts ROLL_VARIANTS) the Two Bills’ dog uses. Playtest 4

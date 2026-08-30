@@ -18,11 +18,13 @@
  * moving while it does — and deleted the credits that used to follow it. The
  * letter is now the whole thing.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { theEndCopy } from '../copy/theEnd';
 import { paintRiggs } from '../engine/riggs';
+import { billsWinWasAssisted } from '../storage/bests';
 import { useOverlayLabels } from '../storage/useOverlayLabels';
+import { useProgress } from '../storage/useChapterProgress';
 import '../styles/the-end.css';
 
 /**
@@ -54,7 +56,14 @@ const GAP_SECONDS = 1.2;
  */
 const STILL_T = 0.5;
 
-/** How many messages there are, so nothing has to count them twice. */
+/**
+ * How many messages there are, so nothing has to count them twice.
+ *
+ * Safe as a module constant only because the assisted letter is the same
+ * length as the clean one. If that ever stops being true this has to move
+ * inside the component, or an assisted reader never reaches "finished" and the
+ * way back to the map never appears.
+ */
 const LAST_MESSAGE = theEndCopy.messages.length - 1;
 
 /** What the page shows: which message, and how much of it has arrived. */
@@ -281,7 +290,17 @@ export function TheEnd() {
   // Read once: a page that switched typing modes half way through a sentence
   // would be a stranger bug than either mode is a behaviour.
   const [typed] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const { view, speaking, forward } = useReadOff(theEndCopy.messages, typed);
+  /**
+   * Which letter she gets. Read from her runs at render, so the full version
+   * is restored the moment she has a clean win — the two lines about never
+   * being touched become true retroactively, and the letter should say them.
+   */
+  const { runs } = useProgress();
+  const messages = useMemo(
+    () => (billsWinWasAssisted(runs) ? theEndCopy.messagesAssisted : theEndCopy.messages),
+    [runs],
+  );
+  const { view, speaking, forward } = useReadOff(messages, typed);
   const canvasRef = useRiggsCanvas(speaking);
 
   /** Nothing follows the letter, so the last sentence finishing is the end. */
@@ -311,7 +330,7 @@ export function TheEnd() {
     return () => window.removeEventListener('keydown', onKey);
   }, [forward, finished]);
 
-  const wholeMessage = theEndCopy.messages[view.index] ?? '';
+  const wholeMessage = messages[view.index] ?? '';
 
   return (
     <div className="the-end">
@@ -350,7 +369,7 @@ export function TheEnd() {
               </span>
             </div>
             <p className="fine-print the-end-progress">
-              {view.index + 1} of {theEndCopy.messages.length}
+              {view.index + 1} of {messages.length}
             </p>
           </>
         )}

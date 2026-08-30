@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
 import { RESPAWN_DELAY, createArenaState, enemyHurtsBox, stepArena } from './arena';
+import type { ArenaState } from './arena';
 import {
   PLAYER_SPAWN_X,
   arenaWorld,
@@ -25,6 +26,7 @@ import { OVERLAY_LOCKOUT_SECONDS } from './session';
 import { ATTACKS, ENEMY_SIZES, createEnemy, enemyBox, rallyBall, stepEnemy } from './enemies';
 import type { Enemy } from './enemies';
 import { createPlayer } from './player';
+import type { Player } from './player';
 import { rosterStages, waveStages } from './stages';
 import { ARENA_MAX_ALIVE } from './roster';
 import type { InputFrame } from './types';
@@ -1643,5 +1645,68 @@ describe('a rally can keep the dog in the air indefinitely', () => {
     }
     expect(b.roll).toBe(false);
     expect(b.position.y).toBe(FLOOR_Y);
+  });
+});
+
+/**
+ * Assist mode in the arena. A life turns the touch that would have ended the
+ * run into an i-frame window and nothing else — the run goes on, the stage is
+ * not failed, and when the lives are gone the one-touch rule comes straight
+ * back exactly as it was.
+ */
+describe('assist mode', () => {
+  function assistParts(lives: number) {
+    const state = createArenaState(false, false, lives);
+    state.started = true;
+    const player = createPlayer(300, FLOOR_Y);
+    const enemy = createEnemy('walker', 800, FLOOR_Y);
+    player.position.x = enemy.position.x; // standing inside the walker
+    return { state, player, enemy };
+  }
+
+  /** Step clear of the enemy for long enough that the i-frames expire. */
+  function waitOutGrace(state: ArenaState, player: Player, enemy: Enemy): void {
+    const away = createPlayer(60, FLOOR_Y);
+    stepArena(state, away, [enemy], PHYSICS.iFrames + FIXED_DT, []);
+    player.position.x = enemy.position.x;
+  }
+
+  it('absorbs the touch instead of ending the run', () => {
+    const { state, player, enemy } = assistParts(3);
+    const events = stepArena(state, player, [enemy], FIXED_DT, []);
+    expect(events.absorbedByAssist).toBe(true);
+    // The flag stepStage and stepBoss read. Neither should ever learn what
+    // assist mode is, which is why this is a third flag and not a lie told
+    // through the first.
+    expect(events.playerHit).toBe(false);
+    expect(state.over).toBe(false);
+    expect(state.assistLivesLeft).toBe(2);
+  });
+
+  it('spends one life per grace window, not one per frame', () => {
+    const { state, player, enemy } = assistParts(3);
+    for (let i = 0; i < 30; i++) stepArena(state, player, [enemy], FIXED_DT, []);
+    expect(state.assistLivesLeft).toBe(2);
+  });
+
+  it('ends the run on the touch after the last life — the one-touch rule, back', () => {
+    const { state, player, enemy } = assistParts(1);
+    stepArena(state, player, [enemy], FIXED_DT, []);
+    expect(state.assistLivesLeft).toBe(0);
+    waitOutGrace(state, player, enemy);
+
+    const events = stepArena(state, player, [enemy], FIXED_DT, []);
+    expect(events.absorbedByAssist).toBe(false);
+    expect(events.playerHit).toBe(true);
+    expect(state.over).toBe(true);
+  });
+
+  it('is off by default, so an ordinary run is untouched by any of this', () => {
+    const state = createArenaState(false);
+    state.started = true;
+    const player = createPlayer(800, FLOOR_Y);
+    const enemy = createEnemy('walker', 800, FLOOR_Y);
+    expect(state.assistLivesLeft).toBe(0);
+    expect(stepArena(state, player, [enemy], FIXED_DT, []).playerHit).toBe(true);
   });
 });

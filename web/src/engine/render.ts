@@ -59,6 +59,53 @@ export const COLORS = {
 } as const;
 
 /**
+ * Assist mode's whole visible half, shared by all three modes so they say it
+ * the same way: a row of pips, one per life, lit while she still has it and
+ * hollow once it is spent.
+ *
+ * It is drawn whenever assist is on and NOT only when a life has gone,
+ * deliberately. The point is that she can always see she is playing with a
+ * net — a safety feature you have to lose something to notice is one she
+ * could forget she left on for a month.
+ *
+ * The spent pip keeps its outline rather than vanishing, so the row never
+ * changes width and the count stays readable at a glance.
+ */
+export function drawAssistPips(
+  ctx: CanvasRenderingContext2D,
+  total: number,
+  left: number,
+  y: number,
+): void {
+  if (total <= 0) return;
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '15px system-ui, sans-serif';
+  ctx.fillStyle = COLORS.hudDim;
+  ctx.fillText('assist', 16, y);
+
+  const r = 5;
+  const startX = 68;
+  for (let i = 0; i < total; i++) {
+    const cx = startX + i * (r * 2 + 8);
+    ctx.beginPath();
+    ctx.arc(cx, y - r, r, 0, Math.PI * 2);
+    if (i < left) {
+      // Still hers. The armed-checkpoint colour, which already means
+      // "this one is yours" everywhere else on a canvas.
+      ctx.fillStyle = COLORS.checkpointArmed;
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = COLORS.hudDim;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+/**
  * DEV TOOL: remove in the final build.
  *
  * God mode's whole visible half, shared by all three modes so they say it the

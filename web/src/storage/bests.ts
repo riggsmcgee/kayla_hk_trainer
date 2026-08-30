@@ -23,6 +23,8 @@ export function runCleared(r: PracticeRun): boolean {
 export interface CourseBest {
   /** Fastest clear, in milliseconds. */
   durationMs: number;
+  /** The run was played with assist mode on. */
+  assisted: boolean;
 }
 
 export interface StageBest {
@@ -30,6 +32,8 @@ export interface StageBest {
   durationMs: number;
   /** True when this is a passed stage; false when it's only her longest survival so far. */
   cleared: boolean;
+  /** The run was played with assist mode on, and the line says so. */
+  assisted: boolean;
 }
 
 /** Fastest cleared run for a Pogo Course level (1–3; 4 is the finale's). */
@@ -40,9 +44,20 @@ export function courseBest(runs: readonly PracticeRun[], level: number): CourseB
     if (r.godMode) continue; // DEV TOOL: a run nothing could end is not a best
     if ((r.level ?? 1) !== level) continue;
     if (!runCleared(r)) continue;
-    if (!best || r.durationMs < best.durationMs) best = { durationMs: r.durationMs };
+    const candidate: CourseBest = { durationMs: r.durationMs, assisted: r.assisted === true };
+    if (!best || beatsCourse(candidate, best)) best = candidate;
   }
   return best;
+}
+
+/**
+ * A clean clear outranks an assisted one however slow it was; among equals,
+ * fastest wins. Note the polarity is the opposite of `beats` below — a course
+ * is scored in seconds saved, a stage in seconds survived.
+ */
+function beatsCourse(a: CourseBest, b: CourseBest): boolean {
+  if (a.assisted !== b.assisted) return !a.assisted;
+  return a.durationMs < b.durationMs;
 }
 
 /**
@@ -54,11 +69,16 @@ function stageBest(runs: readonly PracticeRun[]): StageBest | null {
   let best: StageBest | null = null;
   for (const r of runs) {
     if (r.observeMode) continue;
+    // NOTE: assist runs are deliberately NOT skipped here. God mode is a
+    // cheat that makes a run meaningless; assist is a choice she is allowed to
+    // make, so its runs count — they just rank below clean ones and carry the
+    // tag that says so (playtest 10).
     if (r.godMode) continue; // DEV TOOL: a run nothing could end is not a best
     const candidate: StageBest = {
       hitsLanded: r.hitsLanded,
       durationMs: r.durationMs,
       cleared: runCleared(r),
+      assisted: r.assisted === true,
     };
     if (!best || beats(candidate, best)) best = candidate;
   }
@@ -67,6 +87,10 @@ function stageBest(runs: readonly PracticeRun[]): StageBest | null {
 
 function beats(a: StageBest, b: StageBest): boolean {
   if (a.cleared !== b.cleared) return a.cleared;
+  // Below `cleared` and above every number: a clean run outranks an assisted
+  // one at any hit count and any survival time, so the asterisk clears itself
+  // the moment she does it without the net.
+  if (a.assisted !== b.assisted) return !a.assisted;
   if (a.cleared) {
     if (a.hitsLanded !== b.hitsLanded) return a.hitsLanded > b.hitsLanded;
     return a.durationMs > b.durationMs;
@@ -113,6 +137,45 @@ export function arenaBest(runs: readonly PracticeRun[], enemyId: EnemyId): Stage
 /** Best finale run for this wave (1–3). */
 export function waveBest(runs: readonly PracticeRun[], wave: number): StageBest | null {
   return stageBest(runs.filter((r) => r.mode === 'dodge' && r.wave === wave));
+}
+
+/**
+ * Has she ever survived the Bills with nothing helping her?
+ *
+ * The ending letter asks this at RENDER time rather than storing an answer,
+ * which is what lets a clean run later restore the full letter she was once
+ * shown a trimmed version of — the two lines about never being touched become
+ * true retroactively, so the letter should say them.
+ *
+ * `!godMode` is load-bearing rather than belt-and-braces: `cleared` on a boss
+ * run is `boss.passed`, and that is set at 1:30 whether or not anything could
+ * have stopped her.
+ */
+export function clearedBillsClean(runs: readonly PracticeRun[]): boolean {
+  return runs.some(
+    (r) => r.mode === 'dodge' && r.boss === true && r.cleared === true && !r.godMode && !r.assisted,
+  );
+}
+
+/**
+ * Should the ending letter drop the two lines that say she was never touched?
+ *
+ * Only on EVIDENCE, and the asymmetry is deliberate. The trim exists to stop
+ * the letter telling her something untrue; where there is no assisted win on
+ * record there is nothing untrue to avoid, so his words stand as written. That
+ * also keeps the full letter for the cases where the runs are simply missing —
+ * an old save, an evicted history, a developer arriving at the page directly —
+ * rather than quietly handing her a trimmed letter she never earned the trim
+ * for.
+ *
+ * A clean win always wins: do it once without the net and the full letter is
+ * yours for good, however many assisted clears sit beside it.
+ */
+export function billsWinWasAssisted(runs: readonly PracticeRun[]): boolean {
+  if (clearedBillsClean(runs)) return false;
+  return runs.some(
+    (r) => r.mode === 'dodge' && r.boss === true && r.cleared === true && r.assisted === true,
+  );
 }
 
 /**

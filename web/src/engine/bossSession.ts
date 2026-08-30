@@ -63,6 +63,7 @@ import {
   COLORS,
   clearCanvas,
   drawEnemy,
+  drawAssistPips,
   drawGodModeHud,
   drawKnight,
   drawNailSlash,
@@ -108,6 +109,12 @@ export interface BossSessionConfig extends OverlayControls {
    * fight nothing could end never becomes her best time.
    */
   godMode?: boolean;
+  /**
+   * Assist mode: touches she may absorb before one ends the fight. Refilled
+   * by `restart()`, which is the whole fight — the smallest thing she can
+   * retry down here.
+   */
+  assistLives?: number;
   /**
    * DEV TOOL: remove in the final build. Which of ROLL_VARIANTS the dog
    * rolls with. Defaults to the first.
@@ -207,6 +214,7 @@ function easeOut(t: number): number {
 export function createBossSession(config: BossSessionConfig): GameSession {
   const { comfort, jumpKey = () => 'Z', attackKey = () => 'X', onNext, nextLabel } = config;
   const godMode = config.godMode ?? false;
+  const assistLives = config.assistLives ?? 0;
   const devEnding = config.playTheEnding ?? false;
   const world = bossWorld();
   /** Which entrance plays, and how long it runs at normal speed. */
@@ -219,7 +227,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
   let boss = createBossState();
   let ending = createEndingState();
-  let arena = createArenaState(false, godMode);
+  let arena = createArenaState(false, godMode, assistLives);
   let player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
   let bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
   /** Null until 0:30. */
@@ -257,6 +265,17 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   let hitFlash = 0;
   /** God mode: hits she did not take this run, and the toast that says so. */
   let phantomHits = 0;
+  /**
+   * Lives assist has eaten this fight. A SEPARATE counter from
+   * `phantomHits`, and that separation is load-bearing: `bossInput` reads
+   * `phantomHits` to decide `untouched`, and `stepBoss` only awards the win
+   * to an untouched fight. Folding assist absorptions into it would mean an
+   * assisted run reaches 1:30, is told it merely "passed", never wins, never
+   * plays the ending, and never exits — a fight with no way out. Playtest 10
+   * ratified the opposite: assist runs are beatable and DO get the letter,
+   * with its two untrue lines omitted.
+   */
+  let assistSpent = 0;
   let godToast = 0;
   let landSquash = 0;
   let wasGrounded = true;
@@ -284,7 +303,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     overGate.arm();
     boss = createBossState();
     ending = createEndingState();
-    arena = createArenaState(false, godMode);
+    arena = createArenaState(false, godMode, assistLives);
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
     bill = createEnemy('bill', BILL_OFFSTAGE_X, FLOOR_Y);
     dog = null;
@@ -297,6 +316,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     projectiles = [];
     hitFlash = 0;
     phantomHits = 0;
+    assistSpent = 0;
     godToast = 0;
     startedAtIso = '';
     prevFeet.x = player.position.x;
@@ -379,6 +399,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       // The dev ending rides the god-mode flag, which is exactly what that
       // flag means: a fight nothing could end never becomes her best time.
       godMode: godMode || devEnding || undefined,
+      assisted: assistLives > 0 || undefined,
       cleared: boss.passed,
       hitsLanded: 0,
       durationMs: Math.round(boss.elapsed * 1000),
@@ -771,6 +792,15 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         godToast = 1.1;
         juice.addTrauma(FEEDBACK.playerHit.trauma);
       }
+      if (events.absorbedByAssist) {
+        // A life going is a real event, so it gets the real hit feedback —
+        // trauma AND the hit-stop. Unlike a phantom hit it cost her
+        // something, and it should land like it did.
+        assistSpent += 1;
+        juice.addTrauma(FEEDBACK.playerHit.trauma);
+        juice.hitStop(FEEDBACK.playerHit.hitStop);
+        hitFlash = 0.5;
+      }
       // Only the pogo can fire here: the Bills never take a hit and never
       // die, so nailHit and enemyDeath have nothing to react to.
       if (player.totalPogos > pogosBefore) {
@@ -875,7 +905,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       ctx.fillText(
         boss.phase === 'won'
           ? ending.beat === 'cheer'
-            ? endingCopy.hudNeverTouched
+            ? assistSpent > 0
+              ? endingCopy.hudNeverTouchedAssisted
+              : endingCopy.hudNeverTouched
             : fightCopy.hudSubtitle
           : // Only reachable in god mode now: 1:30 ends the fight otherwise.
             boss.passed
@@ -927,6 +959,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
           onNext ? (nextLabel ?? endingCopy.whatsNext) : null,
           jumpKey,
           attackKey,
+          assistSpent > 0,
         );
       } else if (boss.phase === 'over') {
         ctx.fillStyle = 'rgba(7, 9, 18, 0.78)';
@@ -959,6 +992,7 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       }
 
       // Last, so it survives the card and fail washes above.
+      drawAssistPips(ctx, assistLives, arena.assistLivesLeft, CANVAS.height - 40);
       if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };
@@ -1178,6 +1212,8 @@ function drawEnding(
   nextLabel: string | null,
   jumpKey: () => string,
   attackKey: () => string,
+  /** She got here with assist mode having eaten at least one hit. */
+  spentALife: boolean,
 ): void {
   // NOTHING dims until the cast is down. For the first nine seconds she is
   // supposed to believe the fight is still on, and a wash is the site telling
@@ -1220,7 +1256,7 @@ function drawEnding(
   ctx.fillText(endingCopy.winHeadline, CANVAS.width / 2, 128);
   ctx.font = '21px system-ui, sans-serif';
   ctx.fillStyle = COLORS.hudDim;
-  ctx.fillText(endingCopy.winLine, CANVAS.width / 2, 178);
+  ctx.fillText(spentALife ? endingCopy.winLineAssisted : endingCopy.winLine, CANVAS.width / 2, 178);
 
   // The prompt is last and latest: she is not asked to press anything until
   // she has had the tableau to herself for the better part of six seconds.

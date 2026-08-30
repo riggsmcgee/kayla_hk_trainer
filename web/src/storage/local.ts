@@ -73,6 +73,8 @@ export const DEFAULT_SETTINGS: SettingsV1 = {
   reduceShake: false,
   reduceFlashing: false,
   godMode: false,
+  assistLives: 0,
+  assistConfirmed: false,
 };
 
 /**

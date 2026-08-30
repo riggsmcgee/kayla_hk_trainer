@@ -143,3 +143,38 @@
   color: var(--text-dim);
   font-size: 0.9rem;
 }
+
+/*
+ * Assist mode's four choices. Modelled on .observe-toggle rather than on the
+ * dev drawer's .roll-variants, whose dashed border is deliberate scaffolding
+ * for a picker that comes out in the final build.
+ */
+.difficulty-choices {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.difficulty-choices legend {
+  padding: 0;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.difficulty-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.difficulty-choice input {
+  accent-color: var(--accent);
+}

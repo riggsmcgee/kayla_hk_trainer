@@ -41,9 +41,19 @@ export const endingCopy = {
    * still says "the thing at the bottom", exactly as it did all fight.
    */
   hudNeverTouched: 'and they never touched you',
+  /**
+   * The same two lines for a win she took with lives to spare.
+   *
+   * Both of the originals claim she was untouched, and with assist mode on
+   * that may not be so. Same omission rule as the letter (playtest 10): the
+   * untrue half comes out, the rest is unchanged, and nothing is rewritten to
+   * be diplomatic about it — she still beat them.
+   */
+  hudNeverTouchedAssisted: 'and you outlasted them',
 
   winHeadline: 'YOU DID IT',
   winLine: "1:30 against the Two Bills, untouched. You're the Hollow Knight Queen.",
+  winLineAssisted: "1:30 against the Two Bills. You're the Hollow Knight Queen.",
 
   /**
    * The prompt, ~19.5 s in. The user's "Press 1 for next" meant THE CONTINUE

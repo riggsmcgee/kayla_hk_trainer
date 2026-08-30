@@ -24,6 +24,7 @@ import {
   COLORS,
   clearCanvas,
   drawEnemy,
+  drawAssistPips,
   drawGodModeHud,
   drawKnight,
   drawNailSlash,
@@ -85,6 +86,12 @@ export interface ArenaSessionConfig extends OverlayControls {
    * so it can never become a personal best.
    */
   godMode?: boolean;
+  /**
+   * Assist mode: extra touches she may absorb per stage attempt before one
+   * fails it. Refilled on every stage load, which is the smallest thing she
+   * can retry (playtest 10).
+   */
+  assistLives?: number;
   /** Fires once per stage passed (never in observe mode), after the run is recorded. */
   onStageCleared?: (index: number) => void;
   /** Fires once, when the last stage is passed, right after its onStageCleared. */
@@ -294,6 +301,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
   if (stages.length === 0) throw new Error('createDodgeArenaSession: no stages');
   const observe = config.observe ?? false;
   const godMode = config.godMode ?? false;
+  const assistLives = config.assistLives ?? 0;
   /*
    * Defaulted, never inferred. This used to read the shape of the stage list
    * — "more than one enemy on a stage means these are waves" — which was true
@@ -314,7 +322,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
   let stage: StageState = createStageState();
   let player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
   let enemies: Enemy[] = [];
-  let arena: ArenaState = createArenaState(observe, godMode);
+  let arena: ArenaState = createArenaState(observe, godMode, assistLives);
   let projectiles: Projectile[] = [];
   let prevFeet: Vec2 = { ...player.position };
   let prevEnemyFeet: Vec2[] = [];
@@ -345,7 +353,9 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
     stage = createStageState();
     player = createPlayer(PLAYER_SPAWN_X, FLOOR_Y);
     enemies = def.enemies.map((id, i) => spawnEnemy(id, i, PLAYER_SPAWN_X));
-    arena = createArenaState(observe, godMode);
+    // A fresh set of lives: the stage is the retry unit, so it is the refill
+    // unit too.
+    arena = createArenaState(observe, godMode, assistLives);
     projectiles = [];
     prevFeet = { ...player.position };
     prevEnemyFeet = enemies.map((e) => ({ ...e.position }));
@@ -385,6 +395,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
       cleared,
       observeMode: observe || undefined,
       godMode: godMode || undefined,
+      assisted: assistLives > 0 || undefined,
       hitsLanded: stage.hits,
       durationMs: Math.round(stage.elapsed * 1000),
       startedAt: startedAtIso || new Date().toISOString(),
@@ -755,6 +766,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
 
       // Last, so it survives the clear and fail washes above — a badge you
       // cannot see on the very screenshot you are taking is no safeguard.
+      drawAssistPips(ctx, assistLives, arena.assistLivesLeft, CANVAS.height - 40);
       if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };

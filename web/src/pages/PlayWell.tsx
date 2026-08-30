@@ -37,6 +37,7 @@ import {
 import { bestHits } from '../storage/bests';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useAssistMode } from '../storage/useAssistMode';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
 import { useEntranceVariant } from '../storage/useEntranceVariant';
@@ -84,6 +85,8 @@ interface BeatProps {
   comfort: ComfortSettings;
   /** DEV TOOL: remove in the final build. Passed straight through to each session. */
   godMode: boolean;
+  /** Assist mode's lives, passed straight through to each beat's session. */
+  assistLives: number;
   /**
    * What the overlays call the forward control, asked for at draw time so the
    * copy can follow her bindings and her board without a rebuild.
@@ -100,6 +103,7 @@ function LevelBeat({
   runs,
   comfort,
   godMode,
+  assistLives,
   jumpKey,
   attackKey,
   refresh,
@@ -113,6 +117,7 @@ function LevelBeat({
         level: FINALE_LEVEL,
         comfort,
         godMode,
+        assistLives,
         jumpKey,
         attackKey,
         // Z goes on to the waves, X runs the level again (playtest 3, note 11).
@@ -124,7 +129,7 @@ function LevelBeat({
           setJustCleared(true);
         },
       }),
-    [comfort, godMode, jumpKey, attackKey, onWaves, refresh],
+    [comfort, godMode, assistLives, jumpKey, attackKey, onWaves, refresh],
   );
 
   const panel = justCleared ? afterLevel(progress) : null;
@@ -156,6 +161,7 @@ function WavesBeat({
   runs,
   comfort,
   godMode,
+  assistLives,
   jumpKey,
   attackKey,
   refresh,
@@ -223,6 +229,7 @@ function WavesBeat({
         startIndex: startWave,
         comfort,
         godMode,
+        assistLives,
         kind: 'waves',
         jumpKey,
         attackKey,
@@ -238,6 +245,7 @@ function WavesBeat({
       startWave,
       comfort,
       godMode,
+      assistLives,
       jumpKey,
       attackKey,
       onBottom,
@@ -316,7 +324,16 @@ function WavesBeat({
  * down here can be hurt, so the strip, the panel and the HUD all speak in
  * time survived rather than hits landed.
  */
-function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refresh }: BeatProps) {
+function BossBeat({
+  progress,
+  runs,
+  comfort,
+  godMode,
+  assistLives,
+  jumpKey,
+  attackKey,
+  refresh,
+}: BeatProps) {
   // DEV TOOL: remove in the final build. Which of the five roll behaviours
   // the dog uses — read here rather than threaded through BeatProps, because
   // the boss is the only beat with a dog in it.
@@ -376,6 +393,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
       createBossSession({
         comfort,
         godMode,
+        assistLives,
         rollVariant,
         entranceVariant,
         dogLook: look,
@@ -392,6 +410,7 @@ function BossBeat({ progress, runs, comfort, godMode, jumpKey, attackKey, refres
     [
       comfort,
       godMode,
+      assistLives,
       rollVariant,
       entranceVariant,
       look,
@@ -434,6 +453,7 @@ export function PlayWell() {
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
   const [godMode] = useGodMode();
+  const { lives: assistLives } = useAssistMode();
   const { jumpKey, attackKey } = useOverlayLabels();
   const [beat, setBeat] = useState<Beat>(() => nextBeat(progress));
   // The locked beat she last pressed; the gate shows while it stays locked.
@@ -491,6 +511,7 @@ export function PlayWell() {
     runs,
     comfort,
     godMode,
+    assistLives,
     jumpKey,
     attackKey,
     refresh,

@@ -40,6 +40,32 @@ export const theEndCopy = {
   ],
 
   /**
+   * The same letter for a win she took with assist mode on.
+   *
+   * Two of the four sentences above claim she was never touched, and with
+   * lives on she may have been. Playtest 10 settled the treatment, and it is
+   * OMISSION rather than a rewrite — in his words: _"keep the original line,
+   * and then if she turns on the assistant mode where she can take multiple
+   * hits, then just don't include that."_ So the untrue CLAUSES come out and
+   * every other word is his, in his order. Messages 3 and 4 are untouched:
+   * they were true either way.
+   *
+   * The array is the same LENGTH as the one above, deliberately. The page
+   * derives "finished" from the last index, and a shorter letter would have
+   * left an assisted reader on a page with no way forward.
+   *
+   * Which one she sees is decided at render from her recorded runs, so a clean
+   * win later restores the full letter rather than freezing the version she
+   * happened to earn first.
+   */
+  messagesAssisted: [
+    'Kayla — you did it. 1:30 against both Bills.',
+    'I want to be straight with you about what that means. That fight is harder than a lot of the real bosses in Hollow Knight. I built it that way.',
+    'Everything you just did — the bouncing, the waiting, the reading before the hitting — is the same thing the real game is asking you for. You’ve got it now.',
+    'I’m really proud of you. Go enjoy Hollow Knight. It’s one of my favourite games in the world and I hope this made it more fun. — Riggs',
+  ],
+
+  /**
    * The prompt under the messages, and it has TWO jobs now that the text
    * arrives on its own: forward finishes the sentence being typed, and only
    * once it is finished does forward move on.

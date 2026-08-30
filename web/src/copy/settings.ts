@@ -99,6 +99,31 @@ export const settingsCopy = {
     ', not by the letter printed on them — every controller disagrees about the letters, and none of them disagree about the positions. The keyboard keeps working the whole time; the controller is an extra pair of hands, not a replacement.',
 
   comfortHeading: 'Comfort',
+
+  /**
+   * Assist mode — the one thing on this page the site has an opinion about.
+   *
+   * The warning is shown ONCE, the first time she raises it above Off, and in
+   * his words from playtest 10: the site is meant to challenge her, and making
+   * it easier will not help her in Hollow Knight, because Hollow Knight has no
+   * such switch. It is a warning and not a wall: he was explicit that she
+   * should get to experience all of it if that is what she wants.
+   */
+  difficultyHeading: 'Difficulty',
+  assistLabel: 'Assist mode',
+  assistOff: 'Off',
+  /** The radio for N lives. Singular at one, because "1 lives" reads as a bug. */
+  assistLives: (n: number): string => `${n} ${n === 1 ? 'life' : 'lives'}`,
+  /** Under the row, always — so it is never a surprise that it is on. */
+  assistNote:
+    'Extra hits, in every challenge. They come back at the start of each one, and a run played with them sits below a clean one in your bests.',
+  /** The one-time panel. Shown when she first moves it off Off. */
+  assistConfirmTitle: 'Are you sure?',
+  assistConfirmBody:
+    'This site is meant to challenge you — that is the whole point of it. Assist mode will get you through everything here, but it will not help you in Hollow Knight, because Hollow Knight has no setting like this. If you want to see all of it, take it. It is yours.',
+  assistYes: 'Turn it on',
+  assistNo: 'Leave it off',
+
   endingHeading: 'The ending',
 
   progressHeading: 'Progress',

@@ -27,6 +27,7 @@ import {
   drawHazardOrbs,
   drawKnight,
   drawMovers,
+  drawAssistPips,
   drawGodModeHud,
   drawNailSlash,
   drawOrbs,
@@ -55,6 +56,13 @@ export interface PogoCourseOptions extends OverlayControls {
    * back; every touch is still counted in `misses` and called out on screen.
    */
   godMode?: boolean;
+  /**
+   * Assist mode: hazard touches she may absorb per run before one sends her
+   * back to the lantern. Refilled by `resetRun`, and by the page remounting
+   * the canvas when she picks a different level — the level is the retry unit
+   * here (playtest 10).
+   */
+  assistLives?: number;
   /** Fires once per finish, after the run is recorded. */
   onClear?: (info: PogoClearInfo) => void;
 }
@@ -89,6 +97,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
     onNext,
     nextLabel,
     godMode = false,
+    assistLives = 0,
     jumpKey = () => 'Z',
     attackKey = () => 'X',
   } = options;
@@ -101,7 +110,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
   const edgeCarry = createEdgeCarry();
 
   let player = createPlayer(course.spawn.x, course.spawn.y);
-  let courseState: CourseState = createCourseState(course, godMode);
+  let courseState: CourseState = createCourseState(course, godMode, assistLives);
   let prevFeet: Vec2 = { ...player.position };
   let pogosAtRunStart = 0;
   let startedAtIso = '';
@@ -120,7 +129,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
 
   function resetRun(): void {
     player = createPlayer(course.spawn.x, course.spawn.y);
-    courseState = createCourseState(course, godMode);
+    courseState = createCourseState(course, godMode, assistLives);
     prevFeet = { ...player.position };
     pogosAtRunStart = player.totalPogos;
     moverTime = 0;
@@ -216,6 +225,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
           mode: 'pogo',
           level,
           godMode: godMode || undefined,
+          assisted: assistLives > 0 || undefined,
           cleared: true,
           hitsLanded: player.totalPogos - pogosAtRunStart,
           durationMs,
@@ -310,6 +320,7 @@ export function createPogoCourseSession(arg: PogoCourseOptions | ComfortSettings
 
       // Last, so it survives the respawn and clear washes above — a badge you
       // cannot see on the very screenshot you are taking is no safeguard.
+      drawAssistPips(ctx, assistLives, courseState.assistLivesLeft, CANVAS.height - 40);
       if (godMode) drawGodModeHud(ctx, phantomHits, godToast, comfort.reduceFlashing);
     },
   };

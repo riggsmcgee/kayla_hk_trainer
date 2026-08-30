@@ -21,6 +21,7 @@ import {
   moverBox,
   stepCourse,
   type CourseDef,
+  type CourseState,
   type Mover,
 } from './course';
 import { activeNailHitbox, createPlayer, playerHurtbox, respawnPlayer, stepPlayer } from './player';
@@ -676,5 +677,85 @@ describe('god mode', () => {
     const events = stepCourse(course, state, inTheSpikes(), DT);
     expect(events.respawned).toBe(true);
     expect(events.wouldHaveRespawned).toBe(false);
+  });
+});
+
+/**
+ * Assist mode in the course. There is no death here to spend a life on, so a
+ * life means one thing: the spikes stop costing her the walk back to the
+ * lantern. The miss is still counted and still shown, because the miss counter
+ * IS the honest display — she is told what it cost, not made to pay it.
+ */
+describe('assist mode', () => {
+  const inTheSpikes = (): AABB => boxAt(250, 100);
+
+  /** Step long enough for the i-frame window to expire between touches. */
+  function waitOutGrace(course: CourseDef, state: CourseState): void {
+    stepCourse(course, state, boxAt(0, 0), PHYSICS.iFrames + DT);
+  }
+
+  it('absorbs the touch and leaves her where she is', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, false, 3);
+    state.started = true;
+
+    const events = stepCourse(course, state, inTheSpikes(), DT);
+    expect(events.absorbedByAssist).toBe(true);
+    // The flag the session's respawn branch reads. It must not fire, or she
+    // walks back anyway and the life bought her nothing.
+    expect(events.respawned).toBe(false);
+    expect(state.assistLivesLeft).toBe(2);
+  });
+
+  it('still counts the miss, because the miss IS the display', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, false, 3);
+    state.started = true;
+    stepCourse(course, state, inTheSpikes(), DT);
+    expect(state.misses).toBe(1);
+  });
+
+  it('spends one life per grace window, not one per frame', () => {
+    // Without a ticking grace timer, standing in a spike strip would eat all
+    // three lives in a twentieth of a second — the bug the god-mode window was
+    // written for, which assist has to inherit rather than rediscover.
+    const course = tinyCourse();
+    const state = createCourseState(course, false, 3);
+    state.started = true;
+    for (let i = 0; i < 30; i++) stepCourse(course, state, inTheSpikes(), DT);
+    expect(state.assistLivesLeft).toBe(2);
+    expect(state.misses).toBe(1);
+  });
+
+  it('lets the grace window expire, so a second touch costs a second life', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, false, 3);
+    state.started = true;
+    stepCourse(course, state, inTheSpikes(), DT);
+    waitOutGrace(course, state);
+    stepCourse(course, state, inTheSpikes(), DT);
+    expect(state.assistLivesLeft).toBe(1);
+    expect(state.misses).toBe(2);
+  });
+
+  it('sends her back once the lives are gone — the ordinary rule, unchanged', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course, false, 1);
+    state.started = true;
+    stepCourse(course, state, inTheSpikes(), DT);
+    waitOutGrace(course, state);
+
+    const events = stepCourse(course, state, inTheSpikes(), DT);
+    expect(events.absorbedByAssist).toBe(false);
+    expect(events.respawned).toBe(true);
+    expect(state.assistLivesLeft).toBe(0);
+  });
+
+  it('is off by default, so nothing changes for a run that did not ask for it', () => {
+    const course = tinyCourse();
+    const state = createCourseState(course);
+    state.started = true;
+    expect(state.assistLivesLeft).toBe(0);
+    expect(stepCourse(course, state, inTheSpikes(), DT).respawned).toBe(true);
   });
 });

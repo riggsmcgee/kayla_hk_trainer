@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ControllerChoice } from '@dojo/shared';
 import { Link } from 'react-router';
+import { AssistControl } from '../components/AssistControl';
 import { ComfortToggles } from '../components/ComfortToggles';
 import { useControlCapture } from '../components/useControlCapture';
 import { theEndCopy } from '../copy/theEnd';
@@ -28,6 +29,7 @@ import { useGamepadBindings } from '../storage/useGamepadBindings';
 import { useBindings } from '../storage/useBindings';
 import { notifyProgressChanged, progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
+import { useAssistMode } from '../storage/useAssistMode';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
 import { useEntranceVariant } from '../storage/useEntranceVariant';
@@ -72,6 +74,7 @@ export function Settings() {
   const [bindings, setBindings] = useBindings();
   const [comfort, setComfort] = useComfortSettings();
   const [godMode, setGodMode] = useGodMode();
+  const assist = useAssistMode();
   const [rollVariant, setRollVariant] = useRollVariant();
   const [entranceVariant, setEntranceVariant] = useEntranceVariant();
   const [dogLook, setDogLook] = useDogLook();
@@ -286,6 +289,11 @@ export function Settings() {
       <section className="settings-section" aria-labelledby="settings-comfort">
         <h2 id="settings-comfort">{settingsCopy.comfortHeading}</h2>
         <ComfortToggles value={comfort} onChange={setComfort} />
+      </section>
+
+      <section className="settings-section" aria-labelledby="settings-difficulty">
+        <h2 id="settings-difficulty">{settingsCopy.difficultyHeading}</h2>
+        <AssistControl lives={assist.lives} confirmed={assist.confirmed} onChange={assist.setLives} />
       </section>
 
       {/* Only once she has actually beaten them. A message that can be read
