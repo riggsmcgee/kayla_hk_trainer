@@ -521,3 +521,42 @@ Two more worth recording, both cheap and both mine:
   does not tear the effect down synchronously, so two polls in one frame bound twice. **The test
   that closes a coverage gap is worth writing even when you are sure the code is fine** — the point
   was never the coverage number.
+
+## Session 20 — playtest 10 interview (2026-08-29)
+
+| #   | Skill      | Where it was reached for                                                | What it was asked to do                                     | Landed | Verdict                                                                                                                                       |
+| --- | ---------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 62  | `grill-me` | Eleven notes from a full end-to-end walkthrough, plus uncommitted edits | Turn a batch of notes into a contract before any code moved | ✅     | Three rounds, eleven → six → three questions. Two of the three best forks were ones he had not asked about; both were consequences of his own answers. |
+
+Observations (Session 20):
+
+- **Read the whole tree before writing a single question.** Half an hour of grepping bought
+  questions that could quote line numbers, and the difference showed immediately: he had written
+  "max angle on the duelist lunge" and the offending code was in the duelist *leap's dive*, three
+  functions away. Naming the real attack let him correct himself in round one rather than after an
+  implementation aimed at the wrong constant.
+
+- **The typecheck IS a frontier question.** Running `npm run typecheck` and `eslint` before round
+  one turned "clean up the mess I left behind" from a vague instruction into a six-row table. Nothing
+  in that table needed to be asked about — but the one thing that DID need asking (does "keep my
+  text" cover my typos?) only became visible because the mechanical breakage had already been sorted
+  out from the editorial question underneath it.
+
+- **The best questions in a grilling are the ones the user did not ask.** Three of the sharpest
+  forks were consequences nobody had noticed: the ending letter's "they never laid a finger on you"
+  becomes a lie the moment assist mode ships; the existing `godMode` precedent would have excluded
+  assist runs from the very high score he had just asked for, neutering it; and a genuinely
+  mandatory dash-gap is the first thing on the road that can hard-block her, in a site whose stated
+  doctrine is "nothing ever traps her". None were in his notes. All three changed the build.
+
+- **Offer the recommendation you actually believe, then let evidence overturn it.** On the duelist,
+  the recommendation was to cap horizontal reach, because his own note said "halfway across the
+  screen" — a reach. He chose the angle instead, and his reason reframed the whole item: a flat
+  horizontal charge has no analogue in Hollow Knight, and a dive does. That is a fidelity argument,
+  and it was better than the tuning argument it replaced.
+
+- **A user editing the codebase between sessions is a new failure mode.** Seven files of his prose
+  arrived uncommitted, breaking the build in seven places and the suite in two, with an explicit
+  instruction not to change a word of it. The rule that resolved it — his prose is frozen, his
+  spelling is not — is the kind of thing that has to be ratified out loud, because both readings are
+  defensible and only one of them keeps `slahes` off a page his niece reads.
