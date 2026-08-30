@@ -560,3 +560,41 @@ Observations (Session 20):
   instruction not to change a word of it. The rule that resolved it — his prose is frozen, his
   spelling is not — is the kind of thing that has to be ratified out loud, because both readings are
   defensible and only one of them keeps `slahes` off a page his niece reads.
+
+## Session 20b — the unattended sprint against playtest 10's contract
+
+| #   | Skill       | Where it was reached for                           | What it was asked to do                                  | Landed | Verdict                                                                                                                                                     |
+| --- | ----------- | -------------------------------------------------- | -------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 63  | `proactive` | "as long as it takes. Build everything now."       | Ship all seven ratified items in one 240-minute window   | ⚠️     | Four of seven shipped. The machinery held; the sub-agent orchestration did not. Three of five agents hung or died, and one three-hour survey ate the window. |
+
+Observations (Session 20b):
+
+- **A background agent that hangs costs more than one that fails.** Three of five sub-agents did not
+  return usefully: one stalled ten minutes in having written nothing, one died on a mid-response API
+  error, and one ran over three hours. The two that worked were worth their cost several times over
+  — but the arithmetic that matters is wall clock, and the long survey alone is why three items went
+  unbuilt. **Next time: cap survey agents, or run the survey inline and spend the parallelism on
+  something that fails fast.**
+
+- **Read-only scouts before implementers was the right call, and it is what saved the sprint.** Every
+  scout that returned found at least one trap that a straight reading of the contract would have
+  shipped: observe mode was built entirely on the hits requirement being removed; the arena's `kind`
+  was inferred from a stage holding more than one enemy, which the new paired dummies silently flip;
+  two walkers fuse into one silhouette because only the fliers have a phase term to stagger; the
+  boss's `untouched` flag rides the god-mode counter, so reusing it for assist would make an assisted
+  1:30 unwinnable. None of these are visible from the feature description.
+
+- **A survey that measures beats a survey that reasons.** The pogo-gap agent drove the real
+  `stepPlayer` rather than doing algebra, and the number it came back with was one careful reasoning
+  would still have got wrong: the binding width is 635.5 px (a bare air dash, no pogo), not the
+  579.4 px of a pogo arc. A gap sized from the obvious number would have shipped a "prove you can
+  pogo-dash" drill that never required the pogo.
+
+- **When the window runs out, the specs are the deliverable.** Three items unbuilt, but each one is
+  written down to the line number with its traps named — which is worth far more than a fourth item
+  half-built. The next session reads one PLAN entry instead of reconstructing a sprint.
+
+- **A guardrail worth breaking is worth breaking loudly.** The skill says stop on a dirty tree; the
+  dirty tree was the user's own prose and the literal subject of the sprint. Committing it verbatim
+  first made it safer than the rule's own outcome would have, and saying so in the first line of the
+  handoff is what makes that a decision rather than a liberty.
