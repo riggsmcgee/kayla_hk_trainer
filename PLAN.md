@@ -260,6 +260,37 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
   - **While she is over Bill's head he never lances.** The lance answers a ground approach; starting one under her carries him out from beneath her and makes the shake-off unreachable, silently cancelling the ratified "first bounce is free".
   - **Clearing the lance is a HELD jump, not a tap.** Releasing at `jumpHoldMax` fires HK's jump cutoff and the hop tops out near 133 px — under Bill's 160 px head. Fair (the tell is 0.6 s) but stricter than "be airborne" sounds, and the first place to look if she reports the lance as unfair.
 
+- **M6.8 — Playtest 10 response (Session 20, PART BUILT):** his eleven notes from a full end-to-end
+  walkthrough plus a three-round interview (`docs/feedback/2026-08-29-playtest-10.md`), built on
+  sprint branch `proactive/2026-08-29-1924`.
+
+  **Built:** the repair of his own uncommitted rewrite (his prose frozen, only eight spelling slips
+  and the apostrophes touched); the overlays naming the ACTION rather than the input, since "the
+  bottom button" points at nothing on a leverless board; the duelist's leap dive clamped to a
+  minimum 35° below horizontal, chosen over a reach cap on his fidelity argument — Hollow Knight has
+  no flat head-height charge and does have dives; Bill's name off the map sign and every gate;
+  hits demoted from a gate to a high score everywhere; `STAGE_SURVIVE_SECONDS` split into a 30 s
+  Colosseum and 60 s waves (the waves' reinforcements land at 0:30 and cannot move); and the two
+  dummy stages opening with a pair, which needed a per-slot standoff because `stepWalker` has no
+  phase term to stagger and two walkers fused into one silhouette.
+
+  **Still to build, fully specced in `docs/plans/2026-08-29-playtest-10-remaining.md`:** assist
+  mode (3 lives, ranked below clean play rather than excluded), the dog's entrance re-paced into
+  sequential beats ending on a fresh press, and the pogo dash gaps. That document carries the
+  measured physics numbers, the validated level geometry, and — the part worth reading first — the
+  traps each item hides. Build them in that order: assist mode and the dash gaps both edit
+  `registerHazard`.
+
+  Three things it settled that are worth not re-deriving:
+
+  - **The binding number for a dash gap is 635.5 px, not 579.4.** A gap merely wider than a pogo
+    arc is still crossable with a bare air dash and no pogo at all. The window is (635.5, 840.3).
+  - **Observe mode was built entirely on an infinite hits requirement.** Removing the hits gate
+    without giving it its own switch would have let a thirty-second observe run clear the stage.
+  - **`arenaBest(...).hitsLanded` is not "her best score".** `beats()` ranks a clear above every
+    number, so her best clear can be three hits while her best score is nine — which is why the
+    high score needed its own helper rather than a reuse.
+
 - **M7 — Gamepad source + verify-and-remap flow (Session 10, SEAM BUILT — the acceptance test needs a human):** `engine/gamepad.ts` is the Gamepad API behind the same `InputFrame` seam as the keyboard, merged in `PracticeCanvas` so no session learns what a gamepad is and the keyboard is never taken away; Settings gains a **Controller** section listing connected pads with per-action "press a button" capture; bindings persist in `SettingsV1.gamepadBindings`. Defaults are **positions, not letters** (W3C standard mapping) because pads disagree about which letter sits where and PLAN.md scopes this to Switch muscle-memory transfer — a wrong letter map would make the feature actively harmful to the pillar it serves. **Still open, and it is a human's job** (playtest 1 ratified M7 as not an autonomous-session task): what Kayla's leverless actually reports, whether the default positions match her Switch layout, and whether keyboard mode alone was all she needed. See `docs/feedback/2026-08-26-playtest-5.md`, note 7.
 - **M8 — Backend practice + ship:** sync adapter live against the Express server; GitHub repo + Pages deploy; audits (`vercel-react-best-practices`, `web-design-guidelines`, browser E2E); then the backend shutdown checklist (confirm site fully functional with server gone, stop server, keep code). (Repo creation/push is outward-facing — waits for the user.)
 
