@@ -274,12 +274,22 @@ Three lessons at `/lessons/*`, each mapping to a pillar. **Teaching order (Sessi
   dummy stages opening with a pair, which needed a per-slot standoff because `stepWalker` has no
   phase term to stagger and two walkers fused into one silhouette.
 
-  **Still to build, fully specced in `docs/plans/2026-08-29-playtest-10-remaining.md`:** assist
-  mode (3 lives, ranked below clean play rather than excluded), the dog's entrance re-paced into
-  sequential beats ending on a fresh press, and the pogo dash gaps. That document carries the
-  measured physics numbers, the validated level geometry, and — the part worth reading first — the
-  traps each item hides. Build them in that order: assist mode and the dash gaps both edit
-  `registerHazard`.
+  **Then built, after he noticed the other three were missing:** assist mode (Off/1/2/3, refilled
+  per retryable unit, pips in the HUD, ranked BELOW clean play in the bests rather than excluded
+  from them, and an ending letter that omits its two "never touched" clauses on an assisted win);
+  the dog's arrival re-paced into four sequential beats whose last one waits for a fresh press; and
+  the three dash gaps. `docs/plans/2026-08-29-playtest-10-remaining.md` is now the record of how
+  they were sized rather than a to-do list.
+
+  Three more things worth not re-deriving, all found in the building:
+
+  - **The boss's `untouched` flag rides `phantomHits`.** Counting assist absorptions there turns
+    an assisted 1:30 into a fight that never wins, never plays the ending and never exits.
+  - **The grace timer's decay was guarded on `if (state.godMode)`.** Assist needs the same clock or
+    one life absorbs an entire spike strip.
+  - **A dash the bot does not NEED overshoots the landing**, because a dash locks vertical velocity
+    for a quarter second. The aiming bot's dash is gated on "a plain fall would not reach", which
+    leaves every pit the course already had untouched.
 
   Three things it settled that are worth not re-deriving:
 
