@@ -30,6 +30,8 @@ export const COLORS = {
   hazardGlow: 'rgba(232, 106, 106, 0.24)',
   /** Faint dotted path hint under a drifting orb. */
   moverPath: 'rgba(169, 199, 232, 0.28)',
+  /** The same, for one that burns: the path warns before the orb arrives. */
+  moverPathHazard: 'rgba(232, 106, 106, 0.28)',
   checkpoint: '#5a6484',
   checkpointArmed: '#cfe4fa',
   goal: '#cfe4fa',
@@ -219,17 +221,28 @@ export function drawOrbs(ctx: CanvasRenderingContext2D, orbs: AABB[], timeS: num
 }
 
 /**
+ * The thin dark ring that marks a red orb, static or drifting.
+ *
+ * Its own function because two painters draw reds now, and a ring that lived
+ * in only one of them would make a drifting hazard read as a blue orb wearing
+ * the wrong colour rather than as the thing that hurts.
+ */
+function drawHazardRing(ctx: CanvasRenderingContext2D, o: AABB): void {
+  ctx.strokeStyle = COLORS.canvasBg;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(o.x + o.width / 2, o.y + o.height / 2, o.width / 2 - 3, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+/**
  * Hazard orbs: the same sphere in an unmistakable red, with a thin dark
  * ring so the color reads even through the glow. Bounce, never touch.
  */
 export function drawHazardOrbs(ctx: CanvasRenderingContext2D, orbs: AABB[], timeS: number): void {
   for (const o of orbs) {
     drawOrb(ctx, o, timeS, COLORS.hazard, COLORS.hazardGlow);
-    ctx.strokeStyle = COLORS.canvasBg;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(o.x + o.width / 2, o.y + o.height / 2, o.width / 2 - 3, 0, Math.PI * 2);
-    ctx.stroke();
+    drawHazardRing(ctx, o);
   }
 }
 
@@ -246,10 +259,12 @@ export function drawMovers(
   pulseS: number = t,
 ): void {
   ctx.save();
-  ctx.strokeStyle = COLORS.moverPath;
   ctx.lineWidth = 2;
   ctx.setLineDash([3, 7]);
   for (const m of movers) {
+    // Set INSIDE the loop: a red drifter and a blue one can share a level, and
+    // a colour hoisted out would paint whichever came first over both.
+    ctx.strokeStyle = m.hazard ? COLORS.moverPathHazard : COLORS.moverPath;
     const { x, y } = m.center;
     const a = m.path.amplitude;
     ctx.beginPath();
@@ -265,7 +280,15 @@ export function drawMovers(
     ctx.stroke();
   }
   ctx.restore();
-  for (const m of movers) drawOrb(ctx, moverBox(m, t), pulseS, COLORS.orb, COLORS.orbGlow);
+  for (const m of movers) {
+    const box = moverBox(m, t);
+    if (m.hazard) {
+      drawOrb(ctx, box, pulseS, COLORS.hazard, COLORS.hazardGlow);
+      drawHazardRing(ctx, box);
+    } else {
+      drawOrb(ctx, box, pulseS, COLORS.orb, COLORS.orbGlow);
+    }
+  }
 }
 
 /** Checkpoint lantern: a pole with a diamond head that lights when armed. */

@@ -498,6 +498,48 @@ function runAimingBot(course: CourseDef, idleSteps = 0): BotResult {
       ];
       const attackPressed = !player.grounded && targetsAtSwing.some((b) => overlaps(predicted, b));
 
+      /*
+       * The dash, added for playtest 10's dash gaps.
+       *
+       * Gated on NEED, not on opportunity, and the first draft got that wrong:
+       * dashing whenever there was no orb left to aim at fired on level 1's
+       * last pit too and sailed her clean over the landing — the dash locks
+       * vertical velocity to zero for a quarter second, so a dash she does not
+       * need is a dash that overshoots.
+       *
+       * So: work out how far a plain fall from here would carry her, and dash
+       * only when that is not far enough. On every pit the course already had,
+       * it is, and the bot behaves exactly as it always did.
+       *
+       * The other clauses are the lesson: airborne, the air dash refunded by a
+       * bounce, and the pogo PIN finished. Dashing on the frame of the bounce
+       * would throw the rise away — `stepPlayer` cancels the pin when a dash
+       * starts — so "bounce, THEN dash" is both the reachable maximum and the
+       * thing the page teaches.
+       */
+      const fallReach = (): number => {
+        let y = feet.y;
+        let vy = player.velocity.y;
+        let seconds = 0;
+        // The fall is capped at maxFallSpeed, so integrate it rather than
+        // solving: 200 steps is a third of a second past any real arc.
+        for (let n = 0; n < 200 && y < COURSE_FLOOR_Y; n++) {
+          vy = Math.min(PHYSICS.maxFallSpeed, vy + PHYSICS.gravity * FIXED_DT);
+          y += vy * FIXED_DT;
+          seconds += FIXED_DT;
+        }
+        return PHYSICS.runSpeed * seconds;
+      };
+      const dashPressed =
+        !player.grounded &&
+        target === null &&
+        player.airDashAvailable &&
+        player.dashCooldownTimer <= 0 &&
+        player.pogoPinElapsed < 0 &&
+        player.velocity.y > 0 &&
+        Number.isFinite(floorAhead) &&
+        floorAhead + 9 - feet.x > fallReach();
+
       input = {
         left,
         right,
@@ -506,7 +548,7 @@ function runAimingBot(course: CourseDef, idleSteps = 0): BotResult {
         jumpPressed,
         jumpHeld,
         attackPressed,
-        dashPressed: false,
+        dashPressed,
       };
     }
 
@@ -757,5 +799,172 @@ describe('assist mode', () => {
     state.started = true;
     expect(state.assistLivesLeft).toBe(0);
     expect(stepCourse(course, state, inTheSpikes(), DT).respawned).toBe(true);
+  });
+});
+
+/**
+ * The dash gaps (playtest 10).
+ *
+ * "In level two, there should be one jump that requires a Pogo and then a dash
+ * to clear the gap, so that we know that she knows how to do that."
+ *
+ * "Requires" is the load-bearing word, so these are sized by SIMULATION on the
+ * shipped `stepPlayer` rather than by feel, and pinned here so a physics tune
+ * can never quietly make them clearable the wrong way — or, worse, unclearable
+ * at all, which would hard-block her.
+ *
+ * The three reaches that matter, measured against the real physics:
+ *
+ *   jump alone ................ 375 px
+ *   jump + pogo ............... 579 px
+ *   jump + air dash, NO pogo .. 636 px   <- the one that binds
+ *   jump + pogo + air dash .... 840 px
+ *
+ * A gap merely wider than a pogo arc is NOT enough: a bare air dash with no
+ * pogo at all clears anything under 636. Every gap below sits above that and
+ * under 840, so it needs BOTH tools and neither alone.
+ *
+ * One honest caveat, and it is the same one every other orb-spanning claim in
+ * this file carries: spikes are pogoable on purpose (PLAN §5), so a skilled
+ * spike-pogo chain crosses any width. The searches below never swing at
+ * spikes, exactly as `runAimingBot` does not, and the claim is "impossible
+ * without a dash or a spike-pogo chain".
+ */
+describe('the dash gaps need a pogo AND a dash', () => {
+  /** The reach of a bare air dash with no pogo — the number that binds. */
+  const DASH_ONLY_REACH = 636;
+  /** The reach of a pogo and a dash together. */
+  const POGO_AND_DASH_REACH = 840;
+
+  interface Gap {
+    level: number;
+    course: CourseDef;
+    from: number;
+    to: number;
+  }
+
+  /** The last pit of each level that has one — the dash gap is always last. */
+  function dashGap(level: number): Gap {
+    const course = POGO_COURSES[level - 1]!;
+    // Pit floors sit below the walkway, so the widest low solid is the gap.
+    const pits = course.solids
+      .filter((s) => s.y > COURSE_FLOOR_Y)
+      .map((s) => ({ from: s.x, to: s.x + s.width }));
+    const last = pits[pits.length - 1]!;
+    return { level, course, from: last.from, to: last.to };
+  }
+
+  const GAPS = [dashGap(2), dashGap(3), dashGap(4)];
+
+  /**
+   * Run her at the gap and report whether she reached the far walkway.
+   *
+   * `jumpOffset` is how many ticks after leaving the ledge she jumps (coyote
+   * time is real and worth up to ~19 px). `swingAt` and `dashAt` are ticks
+   * after the jump, or null for "never". Pogoables deliberately EXCLUDE the
+   * spikes.
+   */
+  function attempt(
+    gap: Gap,
+    startPhase: number,
+    jumpOffset: number,
+    swingAt: number | null,
+    dashAt: number | null,
+  ): boolean {
+    const pogoables = (t: number): AABB[] => [
+      ...gap.course.orbs,
+      ...gap.course.hazardOrbs,
+      ...gap.course.movers.map((m) => moverBox(m, t)),
+    ];
+    const world: World = { solids: gap.course.solids };
+    const player = createPlayer(gap.from - 40, COURSE_FLOOR_Y);
+    let t = startPhase;
+    let left = -1;
+    for (let tick = 0; tick < 300; tick++) {
+      const feet = player.position;
+      if (left < 0 && feet.x - 9 >= gap.from) left = tick;
+      const since = left < 0 ? -1 : tick - left;
+      const jumpNow = since >= 0 && since === jumpOffset;
+      const airborne = !player.grounded;
+      const sinceJump = since - jumpOffset;
+      const input: InputFrame = {
+        left: false,
+        right: true,
+        up: false,
+        down: airborne,
+        jumpPressed: jumpNow,
+        jumpHeld: jumpNow || (since >= 0 && sinceJump < 12),
+        attackPressed: swingAt !== null && sinceJump === swingAt,
+        dashPressed: dashAt !== null && sinceJump === dashAt,
+      };
+      world.pogoables = pogoables(t);
+      stepPlayer(player, input, world, FIXED_DT);
+      t += FIXED_DT;
+      // Landed on the far walkway: her feet are back at floor height, past the
+      // far lip. Anything below that is the pit, which is a miss.
+      if (player.grounded && player.position.x + 9 > gap.to) return true;
+      if (player.position.y > COURSE_FLOOR_Y + 8) return false;
+    }
+    return false;
+  }
+
+  /** Search every line she could take, and report whether ANY of them crosses. */
+  function anyCrossing(gap: Gap, opts: { pogo: boolean; dash: boolean }): boolean {
+    const phases = gap.course.movers.length > 0 ? [0, 0.4, 0.8, 1.2, 1.6, 2.0] : [0];
+    for (const phase of phases) {
+      for (let jOff = 0; jOff <= 4; jOff++) {
+        const swings = opts.pogo ? Array.from({ length: 90 }, (_, i) => i) : [null];
+        for (const swingAt of swings) {
+          const dashes = opts.dash ? Array.from({ length: 90 }, (_, i) => i) : [null];
+          for (const dashAt of dashes) {
+            if (attempt(gap, phase, jOff, swingAt, dashAt)) return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  it('sits every gap inside the window that needs both tools', () => {
+    for (const gap of GAPS) {
+      const width = gap.to - gap.from;
+      expect(width, `level ${gap.level}`).toBeGreaterThan(DASH_ONLY_REACH);
+      expect(width, `level ${gap.level}`).toBeLessThan(POGO_AND_DASH_REACH);
+    }
+  });
+
+  it('cannot be crossed by pogoing alone, however she times the swing', () => {
+    for (const gap of GAPS) {
+      expect(anyCrossing(gap, { pogo: true, dash: false }), `level ${gap.level}`).toBe(false);
+    }
+  });
+
+  it('cannot be crossed by dashing alone, which is the trap the width had to clear', () => {
+    // The one a naive sizing gets wrong: "wider than a pogo arc" still leaves a
+    // gap a bare air dash clears with no pogo at all, and the drill would prove
+    // nothing about the skill it exists to prove.
+    for (const gap of GAPS) {
+      expect(anyCrossing(gap, { pogo: false, dash: true }), `level ${gap.level}`).toBe(false);
+    }
+  });
+
+  it('gives every gap a lantern immediately before it, so a miss costs seconds', () => {
+    // This is the first thing on the road she cannot walk through, and that was
+    // flagged and accepted. What makes it fair is that failing it is cheap.
+    for (const gap of GAPS) {
+      const before = gap.course.checkpoints
+        .map((c) => c.respawn.x)
+        .filter((x) => x < gap.from)
+        .sort((a, b) => b - a)[0];
+      expect(before, `level ${gap.level}`).toBeGreaterThan(gap.from - 200);
+    }
+  });
+
+  it(`puts a RED drifter in the Gauntlet's gap, and only there`, () => {
+    const hazardMovers = (c: CourseDef) => c.movers.filter((m) => m.hazard === true);
+    expect(hazardMovers(POGO_COURSE_1)).toHaveLength(0);
+    expect(hazardMovers(POGO_COURSES[1]!)).toHaveLength(0);
+    expect(hazardMovers(POGO_COURSES[2]!)).toHaveLength(0);
+    expect(hazardMovers(POGO_COURSES[3]!)).toHaveLength(1);
   });
 });

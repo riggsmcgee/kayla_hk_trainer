@@ -12,8 +12,9 @@
  * Playtest 2 added two more things to bounce on:
  * - HAZARD ORBS (red): the nail bounces off them exactly like a blue orb,
  *   but the body touching one counts like spikes. They teach bouncing early.
- * - MOVERS (drifting blue orbs): harmless, pogoable, and on a fixed path that
- *   is a pure function of course time — no RNG, so a run is reproducible.
+ * - MOVERS (drifting orbs): pogoable and on a fixed path that is a pure
+ *   function of course time — no RNG, so a run is reproducible. Blue ones are
+ *   harmless; a mover marked `hazard` burns the body like a red orb does.
  */
 
 import { PHYSICS } from './constants';
@@ -41,6 +42,19 @@ export interface Mover {
   size: number;
   center: Vec2;
   path: MoverPath;
+  /**
+   * Red: the nail bounces off it exactly like a blue drifter, but the body
+   * touching it counts like spikes.
+   *
+   * A flag on the existing entity rather than a fourth list, ratified in
+   * playtest 10. Two reasons beyond taste: every consumer already iterates
+   * `movers`, and `course.test.ts` asserts that level 3 holds no
+   * `hazardOrbs` — a red DRIFTER expressed as a fourth list would have had to
+   * fight that assertion instead of passing it.
+   *
+   * Optional, so every drifter written before this stays a harmless blue one.
+   */
+  hazard?: boolean;
 }
 
 export interface CourseDef {
@@ -204,8 +218,11 @@ function registerHazard(state: CourseState, events: CourseEvents): void {
 /**
  * Advance course progression by one step against the player's hurtbox.
  * Pure with respect to the player: movement/respawn is the session's job;
- * this only reports what happened. Movers never hurt, so they play no part
- * here — the session feeds them to the player sim as pogoables.
+ * this only reports what happened.
+ *
+ * Movers used to play no part here, being harmless by definition. A mover
+ * marked `hazard` is checked like a red orb — see the note on `moverT` below
+ * for the one-frame trap that comes with a target that moves.
  */
 export function stepCourse(
   course: CourseDef,
@@ -227,6 +244,16 @@ export function stepCourse(
     state.graceTimer = Math.max(0, state.graceTimer - dt);
   }
 
+  /**
+   * The mover positions to test against, captured BEFORE the clock advances.
+   *
+   * The session reads `moverTime = courseState.elapsed` and builds the
+   * pogoables from it BEFORE calling this, so a hazard box computed after the
+   * increment below would sit one frame ahead of both the box her nail could
+   * hit and the box she watched go by. A drifting hazard that burns you where
+   * it is about to be is unreadable.
+   */
+  const moverT = state.elapsed;
   if (state.started) state.elapsed += dt;
 
   for (let i = state.checkpointIndex + 1; i < course.checkpoints.length; i++) {
@@ -252,6 +279,13 @@ export function stepCourse(
   }
   for (const hazard of course.hazardOrbs) {
     if (overlaps(playerBox, hazard)) {
+      registerHazard(state, events);
+      return events;
+    }
+  }
+  for (const m of course.movers) {
+    if (!m.hazard) continue;
+    if (overlaps(playerBox, moverBox(m, moverT))) {
       registerHazard(state, events);
       return events;
     }
@@ -354,6 +388,11 @@ function mover(cx: number, path: MoverPath, cy: number = ORB_REST_Y): Mover {
   return { size: ORB_SIZE, center: { x: cx, y: cy }, path };
 }
 
+/** The same, in red: pogo it, never touch it. */
+function hazardMover(cx: number, path: MoverPath, cy: number = ORB_REST_Y): Mover {
+  return { ...mover(cx, path, cy), hazard: true };
+}
+
 /** The goal doorway: a 60 × 160 arch standing on the walkway. */
 function goalAt(x: number): AABB {
   return { x, y: COURSE_FLOOR_Y - 160, width: 60, height: 160 };
@@ -414,13 +453,15 @@ export const POGO_COURSE_1: CourseDef = buildCourse({
 export const POGO_COURSE_2: CourseDef = buildCourse({
   name: 'Ember Pools',
   intro: 'Red orbs burn to touch. Swing early, while they are still below you.',
-  width: 4100,
+  width: 4960,
   spawn: { x: 120, y: COURSE_FLOOR_Y },
   pits: [
     { from: 560, to: 960 },
     { from: 1240, to: 1800 },
     { from: 2040, to: 2760 },
     { from: 3040, to: 3620 },
+    // E — THE DASH GAP. 700 px: see DASH_GAP_PX in course.test.ts.
+    { from: 3780, to: 4480 },
   ],
   orbs: [
     // Pit A
@@ -429,6 +470,8 @@ export const POGO_COURSE_2: CourseDef = buildCourse({
     { cx: 1490, top: 486 },
     // Pit D
     { cx: 3290, top: 450 },
+    // Pit E — the one orb in the dash gap, 300 px past the near ledge.
+    { cx: 4080, top: 486 },
   ],
   hazardOrbs: [
     // Pit A
@@ -445,8 +488,11 @@ export const POGO_COURSE_2: CourseDef = buildCourse({
     { cx: 3130, top: 510 },
     { cx: 3450, top: 525 },
   ],
-  checkpoints: [checkpointAt(1080), checkpointAt(1920), checkpointAt(2900)],
-  goal: goalAt(3880),
+  // The last lantern stands 80 px before the dash gap, deliberately close: the
+  // gap is the first thing on the road she cannot walk through, so failing it
+  // has to cost a two-second walk rather than the run.
+  checkpoints: [checkpointAt(1080), checkpointAt(1920), checkpointAt(2900), checkpointAt(3700)],
+  goal: goalAt(4740),
 });
 
 /**
@@ -462,7 +508,7 @@ export const POGO_COURSE_2: CourseDef = buildCourse({
 export const POGO_COURSE_3: CourseDef = buildCourse({
   name: 'The Drift',
   intro: 'These orbs drift. Watch the dotted path — meet them where they are going.',
-  width: 4440,
+  width: 5470,
   spawn: { x: 120, y: COURSE_FLOOR_Y },
   pits: [
     { from: 560, to: 1020 },
@@ -470,6 +516,8 @@ export const POGO_COURSE_3: CourseDef = buildCourse({
     { from: 2000, to: 2560 },
     { from: 2780, to: 3220 },
     { from: 3480, to: 4100 },
+    // F — the dash gap again, wider, and this time the target moves.
+    { from: 4260, to: 4990 },
   ],
   orbs: [
     // Pit A — the familiar first bounce
@@ -494,9 +542,21 @@ export const POGO_COURSE_3: CourseDef = buildCourse({
     mover(3600, { kind: 'horizontal', amplitude: 60, period: 2.5, phase: 0 }),
     mover(3790, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0.25 }),
     mover(3960, { kind: 'circle', amplitude: 60, period: 3, phase: 0 }),
+    // Pit F — VERTICAL on purpose. Its x never moves, so the gap is crossable
+    // at every phase of its drift; a sideways drifter would be reachable on
+    // half its cycle and not the other, which is a coin toss rather than a
+    // skill. The ±60 px of height costs nothing, because the bounce that
+    // clears this gap happens at terminal velocity where reach is flat.
+    mover(4590, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0 }),
   ],
-  checkpoints: [checkpointAt(1100), checkpointAt(1900), checkpointAt(2680), checkpointAt(3380)],
-  goal: goalAt(4220),
+  checkpoints: [
+    checkpointAt(1100),
+    checkpointAt(1900),
+    checkpointAt(2680),
+    checkpointAt(3380),
+    checkpointAt(4180),
+  ],
+  goal: goalAt(5250),
 });
 
 /**
@@ -511,13 +571,15 @@ export const POGO_COURSE_3: CourseDef = buildCourse({
 export const POGO_COURSE_4: CourseDef = buildCourse({
   name: 'The Deep',
   intro: 'All of it at once — red, drifting, and further apart. You know this.',
-  width: 4300,
+  width: 5240,
   spawn: { x: 120, y: COURSE_FLOOR_Y },
   pits: [
     { from: 560, to: 1100 },
     { from: 1320, to: 1980 },
     { from: 2200, to: 2900 },
     { from: 3120, to: 3900 },
+    // E — the dash gap, over a target that both moves AND burns.
+    { from: 4060, to: 4760 },
   ],
   orbs: [
     // Pit A
@@ -545,9 +607,15 @@ export const POGO_COURSE_4: CourseDef = buildCourse({
     mover(2440, { kind: 'circle', amplitude: 60, period: 3, phase: 0 }),
     // Pit D
     mover(3550, { kind: 'horizontal', amplitude: 60, period: 3, phase: 0 }),
+    // Pit E — red AND drifting, which is the whole level in one orb: the
+    // early swing from level 2, the tracking from level 3, and the dash from
+    // both of the gaps before it. Red costs no reach — the optimal bounce is
+    // on a fast descent, by which point she is already past it horizontally —
+    // so it tightens the timing without narrowing the gap.
+    hazardMover(4370, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0 }, 470),
   ],
-  checkpoints: [checkpointAt(1220), checkpointAt(2100), checkpointAt(3020)],
-  goal: goalAt(4080),
+  checkpoints: [checkpointAt(1220), checkpointAt(2100), checkpointAt(3020), checkpointAt(3980)],
+  goal: goalAt(5020),
 });
 
 /** The Bounce Bog's levels in order; index 0 is Level 1. Level 4 is the finale's. */
