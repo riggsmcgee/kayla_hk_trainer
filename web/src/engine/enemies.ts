@@ -165,6 +165,23 @@ export const ATTACKS = {
     perchOffset: 210,
     perchHeight: 200,
     diveSpeed: 900,
+    /**
+     * The shallowest the dive may come in, in degrees below horizontal.
+     *
+     * Without it the aim is whatever vector points at her, and a Knight
+     * airborne at roughly perch height makes that vector almost flat: he
+     * leaves the perch at half a degree, crosses the entire 1168 px arena at
+     * `diveSpeed`, and sweeps the whole upper half of the screen with nothing
+     * vertical in it to read.
+     *
+     * 35° is a FIDELITY number, not a difficulty one (playtest 10). Hollow
+     * Knight has no attack that charges flat across a room at head height, and
+     * it does have dive attacks — so a flat charge teaches a read that
+     * transfers nowhere. From the 200 px perch this covers about 286 px, which
+     * is comfortably more than the 260 px `gapRange` that provokes the leap in
+     * the first place, so he still closes the gap he exists to close.
+     */
+    diveMinAngleDeg: 35,
     /** The furthest the perch may be from where he started. */
     leapMaxDx: 460,
     /** The dive's hitbox: a box led slightly ahead of him along the aim. */
@@ -996,7 +1013,14 @@ function stepLeap(e: Enemy, world: World, dt: number, t: Target | undefined): vo
       const tx = t ? t.position.x : e.position.x + e.lockedDir * A.perchOffset;
       const ty = t ? t.position.y : e.leapGroundY;
       const vx = tx - e.position.x;
-      const vy = Math.max(ty - e.position.y, 0.15); // never dive upward
+      const wanted = Math.max(ty - e.position.y, 0.15); // never dive upward
+      // Steepen anything shallower than the floor angle, and leave anything
+      // steeper alone: tan(angle) = vy / |vx|, so the shallowest legal drop
+      // over this much ground is |vx| · tan(min). Aiming at a Knight level
+      // with the perch would otherwise give a vy of 0.15 against a vx in the
+      // hundreds — a flat charge, which is the thing being removed.
+      const flattest = Math.abs(vx) * Math.tan((A.diveMinAngleDeg * Math.PI) / 180);
+      const vy = Math.max(wanted, flattest);
       const len = Math.hypot(vx, vy) || 1;
       e.leapAim = { x: vx / len, y: vy / len };
       e.facing = e.leapAim.x >= 0 ? 1 : -1;

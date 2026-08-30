@@ -7,7 +7,7 @@
  * enough for a trainer, and exactly what the browser gives us.
  */
 
-import type { Action, Bindings } from '../engine/input';
+import type { Bindings } from '../engine/input';
 import { buttonName, type GamepadBindings } from '../engine/gamepad';
 import type { InputSource } from '../engine/inputSource';
 
@@ -141,51 +141,18 @@ export function controlsCaption(
   );
 }
 
-/**
- * The name of the first key bound to `action`, for the in-canvas overlays
- * ("Press Z for level 2"). Falls back when the action has no key bound.
- */
-export function actionKeyName(bindings: Bindings, action: Action, fallback: string): string {
-  const code = bindings[action][0];
-  return code === undefined || code.length === 0 ? fallback : friendlyKeyName(code);
-}
-
-/** The forward key on every overlay. Z unless she rebound jump. */
-export function jumpKeyName(bindings: Bindings): string {
-  return actionKeyName(bindings, 'jump', 'Z');
-}
-
-/** The again key on every overlay. X unless she rebound attack. */
-export function attackKeyName(bindings: Bindings): string {
-  return actionKeyName(bindings, 'attack', 'X');
-}
-
-/**
- * What the in-canvas overlays call the FORWARD control, in the terms of the
- * board she last touched: "Z", or "the bottom button".
+/*
+ * The overlays used to name the INPUT here — `jumpLabel` and `attackLabel`
+ * resolved "Z" or "the bottom button" from her bindings, and every in-canvas
+ * prompt printed the result.
  *
- * The ratified rule is "jump = forward, attack = again" — not "Z = forward,
- * X = again", which is how PLAN.md and playtest 3 both stated it and which
- * teaches the next reader to hard-code two keys that she may already have
- * rebound and that a pad does not have at all.
+ * Playtest 10 deleted them. On a leverless board "the bottom button" points at
+ * nothing: the buttons are not laid out as a diamond, so the position
+ * vocabulary this module is built on — which is right for a gamepad, and
+ * ratified — has no referent. The overlays now name the ACTION instead
+ * (`copy/controls.ts`), identically on both boards.
+ *
+ * The caption above keeps naming real keys and buttons, and that is not an
+ * inconsistency: it is a reference card, and the specifics are the whole
+ * reason it exists.
  */
-export function jumpLabel(
-  bindings: Bindings,
-  padBindings: GamepadBindings,
-  source: InputSource,
-): string {
-  return source === 'gamepad'
-    ? joinButtonNames([padBindings.jump[0] ?? -1])
-    : jumpKeyName(bindings);
-}
-
-/** What the overlays call the AGAIN control, same rule. */
-export function attackLabel(
-  bindings: Bindings,
-  padBindings: GamepadBindings,
-  source: InputSource,
-): string {
-  return source === 'gamepad'
-    ? joinButtonNames([padBindings.attack[0] ?? -1])
-    : attackKeyName(bindings);
-}

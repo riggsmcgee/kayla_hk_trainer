@@ -68,9 +68,20 @@ export function countWordCap(n: number): string {
 
 const COURSE_DONE = `Clear all ${countWord(COURSE_LEVEL_COUNT)} levels of the Pogo Course`;
 const ARENA_DONE = `Clear all ${countWord(ROSTER.length)} enemies in the Dodge Arena`;
-// The Bills are named because they are what it takes: finaleCleared
-// requires finaleBossCleared, and the sign used to stop at the waves.
-const FINALE_DONE = `Clear the level, all ${countWord(FINALE_WAVE_COUNT)} waves, and the Two Bills`;
+/*
+ * The third clause is what it takes and NOT who it is: `finaleCleared` requires
+ * `finaleBossCleared`, so the sign cannot stop at the waves — but this line
+ * prints on the map's next-stop sign and on every gate panel, which are
+ * surfaces she reads long before she goes down the well.
+ *
+ * Playtest 10: _"It should be a total surprise whenever she gets to him. It's
+ * just like this thing, this boss that's coming, but there is no implication at
+ * all that it's Bill."_ So the sentence promises something waiting without
+ * naming it. The one other surface that names the Bills is the finale's
+ * "Best:" line, and that one is safe on its own: `bossBest` is null until she
+ * has a run against them, so it cannot render before she has met them.
+ */
+const FINALE_DONE = `Clear the level, all ${countWord(FINALE_WAVE_COUNT)} waves, and whatever’s waiting at the bottom`;
 
 export const CHAPTERS: readonly Chapter[] = [
   {

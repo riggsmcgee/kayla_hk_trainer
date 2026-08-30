@@ -204,6 +204,61 @@ describe('duelist', () => {
       expect(duelist.position.x).toBeLessThan(600);
     });
 
+    /** The dive's angle below horizontal, in degrees, from a committed aim. */
+    function diveAngleDeg(aim: { x: number; y: number }): number {
+      return (Math.atan2(aim.y, Math.abs(aim.x)) * 180) / Math.PI;
+    }
+
+    /** Provoke a leap against `t` and report the aim committed at the hang. */
+    function aimAgainst(t: Target): { x: number; y: number } {
+      const w = world();
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      for (let i = 0; i < 60 * 8; i++) {
+        stepEnemy(duelist, w, FIXED_DT, t);
+        if (duelist.leapStage === 'dive') return { ...duelist.leapAim };
+      }
+      throw new Error('the duelist never committed a dive');
+    }
+
+    it('never comes in flatter than the floor angle, even at a Knight level with the perch', () => {
+      // The bug this pins: aiming at someone at perch height gave a vy of
+      // 0.15 against a vx in the hundreds — half a degree below horizontal, a
+      // flat charge across the whole arena that could not be read as a dive.
+      // She hangs at exactly perch height and far enough out to provoke the
+      // leap rather than the anti-air.
+      const level = targetAt(100, FLOOR_Y - A.perchHeight, false);
+      expect(diveAngleDeg(aimAgainst(level))).toBeGreaterThanOrEqual(A.diveMinAngleDeg - 1e-6);
+    });
+
+    it('leaves a steeper dive alone — the floor is a minimum, not a setting', () => {
+      // She is on the ground, so the honest aim is already about 44° and the
+      // clamp must not flatten it toward 35.
+      const onTheFloor = targetAt(100, FLOOR_Y);
+      const angle = diveAngleDeg(aimAgainst(onTheFloor));
+      expect(angle).toBeGreaterThan(A.diveMinAngleDeg);
+    });
+
+    it('cannot sweep the arena: the dive covers a fraction of the screen, not all of it', () => {
+      // The angle floor is what bounds the reach — from a 200 px perch, 35°
+      // is about 286 px of ground. Measured rather than asserted from the
+      // arithmetic, so a change to perchHeight shows up here too.
+      const w = world();
+      const t = targetAt(100, FLOOR_Y - A.perchHeight, false);
+      const duelist = createEnemy('duelist', 600, FLOOR_Y);
+      let startedAt: number | null = null;
+      for (let i = 0; i < 60 * 8; i++) {
+        stepEnemy(duelist, w, FIXED_DT, t);
+        if (duelist.leapStage === 'dive' && startedAt === null) startedAt = duelist.position.x;
+        if (startedAt !== null && duelist.phase === 'recovery') break;
+      }
+      expect(startedAt).not.toBeNull();
+      const travelled = Math.abs(duelist.position.x - startedAt!);
+      // Comfortably past the stand-off he exists to close, nowhere near the
+      // 1168 px arena he used to cross.
+      expect(travelled).toBeGreaterThan(A.gapRange * 0.5);
+      expect(travelled).toBeLessThan(CANVAS.width / 3);
+    });
+
     it('lands back on the floor it left, and recovers there', () => {
       const d = leapUntil((e) => e.phase === 'recovery' && e.attackKind === 'leap');
       expect(d.position.y).toBe(FLOOR_Y);

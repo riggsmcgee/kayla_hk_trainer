@@ -159,19 +159,27 @@ describe('a clear must not rebuild the game that produced it', () => {
     expect(firstConfig(spies.boss).cleared).toBe(true);
   });
 
-  it('renames the overlay prompts for her pad without rebuilding the fight', () => {
-    // The whole reason OverlayControls.jumpKey is a function and not a
-    // string. Baked in at construction, the only way to make the copy say
-    // "the bottom button" would be to rebuild the session — which restarts
-    // her run, so picking the pad up mid-fight would cost her the fight.
+  it('names the action, so picking up her pad changes neither the prompt nor the fight', () => {
+    // Until playtest 10 this prompt renamed itself for her board — "X" on the
+    // keyboard, "the left button" on a pad. On the leverless board he set her
+    // up with, the position vocabulary points at nothing: the face buttons
+    // are not in a diamond. So the prompt names what she DOES, and says it
+    // the same either way.
+    //
+    // The no-rebuild half of the old promise still matters and is still
+    // pinned here. `attackKey` is a function rather than a string, and
+    // OverlayLabels is one frozen module-scope object, so no change of board
+    // and no re-render can hand the session a new identity — which would
+    // restart her run, and picking the pad up mid-fight must not cost her the
+    // fight.
     seedProgress({ finaleLevelCleared: true, finaleWavesCleared: [1, 2, 3] });
     renderWell();
     const attackKey = firstConfig(spies.boss).attackKey as () => string;
-    expect(attackKey()).toBe('X');
+    expect(attackKey()).toBe('Attack');
 
     act(() => noteInputSource(IDLE_FRAME, { ...IDLE_FRAME, attackPressed: true }));
 
-    expect(attackKey()).toBe('the left button');
+    expect(attackKey()).toBe('Attack');
     expect(spies.boss).toHaveBeenCalledTimes(1);
   });
 
