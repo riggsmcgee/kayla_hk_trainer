@@ -75,6 +75,34 @@ function beats(a: StageBest, b: StageBest): boolean {
   return a.hitsLanded > b.hitsLanded;
 }
 
+/**
+ * The most hits she has ever landed on the runs `pick` selects, or null if she
+ * has never scored on them. The number the arena HUD shows her chasing.
+ *
+ * Deliberately NOT `arenaBest(...).hitsLanded`, which is a different question
+ * with a different answer: `beats()` ranks a cleared run above an uncleared
+ * one before it looks at any number, so her best CLEAR might be three hits
+ * while her best SCORE is nine. Since playtest 10 made hits a score rather
+ * than a gate, the score is the honest thing to put on screen — and reusing
+ * the ranking here would have quietly shown her the smaller number.
+ *
+ * Observe runs land no real hits and god-mode runs are not hers, so both are
+ * skipped, the same way every other best in this module skips them.
+ */
+export function bestHits(
+  runs: readonly PracticeRun[],
+  pick: (run: PracticeRun) => boolean,
+): number | null {
+  let best: number | null = null;
+  for (const r of runs) {
+    if (r.observeMode) continue;
+    if (r.godMode) continue; // DEV TOOL: a run nothing could end is not a best
+    if (!pick(r)) continue;
+    if (best === null || r.hitsLanded > best) best = r.hitsLanded;
+  }
+  return best;
+}
+
 /** Best single-enemy Dodge Arena run against this enemy (finale waves excluded). */
 export function arenaBest(runs: readonly PracticeRun[], enemyId: EnemyId): StageBest | null {
   return stageBest(

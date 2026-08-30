@@ -10,20 +10,34 @@ export interface RosterEntry {
   id: EnemyId;
   /** The in-world name Kayla sees. */
   name: string;
-  /** Clean nail hits required (alongside surviving the stage) to pass. */
-  hitsToPass: number;
+  /**
+   * How many of it the stage opens with. Absent means one.
+   *
+   * Only the two dummies come in pairs (playtest 10). They are the enemies
+   * whose whole job is to be practised ON, and one of them alone in a
+   * thirty-second encounter is a long time watching a single body walk at
+   * you. The three attackers stay solo: doubling a duelist is not a livelier
+   * version of the same lesson, it is a different and much harder one.
+   */
+  count?: number;
 }
 
 /**
  * Teaching order: two dummies to learn the nail on, then the three attackers.
- * "Hit them more than they hit you" — 5 on the dummies, 3 on the attackers.
+ *
+ * This list used to carry `hitsToPass` — the clean hits each stage demanded
+ * before it would let her past. Playtest 10 took the requirement out: hits are
+ * a score she is chasing now, not a gate, so a stage is passed by surviving
+ * it. In his words: _"if she manages to make it through the entire Gauntlet
+ * without getting hit or hitting another enemy a single time, that's fine with
+ * me."_
  */
 export const ROSTER: readonly RosterEntry[] = [
-  { id: 'walker', name: 'Walker', hitsToPass: 5 },
-  { id: 'flier', name: 'Flier', hitsToPass: 5 },
-  { id: 'duelist', name: 'Duelist', hitsToPass: 3 },
-  { id: 'spitter', name: 'Spitter', hitsToPass: 3 },
-  { id: 'warden', name: 'Warden', hitsToPass: 3 },
+  { id: 'walker', name: 'Walker', count: 2 },
+  { id: 'flier', name: 'Flier', count: 2 },
+  { id: 'duelist', name: 'Duelist' },
+  { id: 'spitter', name: 'Spitter' },
+  { id: 'warden', name: 'Warden' },
 ];
 
 export function rosterEntry(id: EnemyId): RosterEntry {
@@ -32,8 +46,26 @@ export function rosterEntry(id: EnemyId): RosterEntry {
   return found;
 }
 
-/** Every stage — arena enemy or finale wave — is survived for this long. One number. */
-export const STAGE_SURVIVE_SECONDS = 60;
+/**
+ * How long a Colosseum encounter runs.
+ *
+ * Thirty seconds, since playtest 10: _"The encounters are just too long and
+ * boring for what they are, so I think we can just cut each one down to 30
+ * seconds as more of just a 'get to know the character' sort of thing."_
+ */
+export const ARENA_SURVIVE_SECONDS = 30;
+
+/**
+ * How long a finale wave runs, and why it is NOT the number above.
+ *
+ * These were one constant until playtest 10, and splitting them is not a
+ * preference — every wave schedules its reinforcements at `at: 30`. A
+ * thirty-second wave is a wave whose second half never walks in and whose
+ * "Reinforcements." banner never fires. `stages.test.ts` pins the invariant
+ * that every arrival lands inside its own stage's clock, so the two can never
+ * be quietly re-merged.
+ */
+export const WAVE_SURVIVE_SECONDS = 60;
 
 /** Bounce Bog levels (1..COURSE_LEVEL_COUNT). Level 1 is the original course. */
 export const COURSE_LEVEL_COUNT = 3;
@@ -60,10 +92,10 @@ export interface FinaleWave {
 /**
  * The finale's waves (playtest 4, note 3).
  *
- * Two waves, each opening with a pair and doubling to four at thirty
- * seconds. The hits required do NOT grow with the reinforcements — they are
- * summed from the OPENING cast alone, so four bodies is four targets and
- * landing hits gets easier. The thing that grew is the danger.
+ * Two waves, each opening with a pair and doubling to four at thirty seconds.
+ * The reinforcements were always the difficulty rather than the workload —
+ * they used to arrive without raising the hits the wave demanded, and now that
+ * hits demand nothing at all, four bodies is simply four ways to be touched.
  */
 export const FINALE_WAVES: readonly FinaleWave[] = [
   {

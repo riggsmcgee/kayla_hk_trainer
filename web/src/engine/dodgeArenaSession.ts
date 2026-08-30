@@ -1,9 +1,10 @@
 /**
  * Dodge Arena session — the arena as a staged game (playtest 2, note 1 +
  * the interview). A list of stages (engine/stages.ts) is played in order:
- * each is passed by surviving its time AND landing its hits, then the next
- * one steps in. A touch restarts the SAME stage — death is a checkpoint,
- * never the whole roster. After the last stage, the page is told.
+ * each is passed by surviving its time, then the next one steps in. A touch
+ * restarts the SAME stage — death is a checkpoint, never the whole roster.
+ * After the last stage, the page is told. Hits are counted throughout and
+ * shown against her best, but they gate nothing (playtest 10).
  *
  * The same session plays Kbug's Colosseum (one enemy per stage) and the
  * finale's waves (two enemies per stage). Both are the same flat floor. Every
@@ -96,6 +97,17 @@ export interface ArenaSessionConfig extends OverlayControls {
   onStageStarted?: (index: number) => void;
   /** Fires once per touch (never in observe mode), after the run is recorded. */
   onStageFailed?: (index: number) => void;
+  /**
+   * Her best hits against stage `index` so far, or null if she has never
+   * scored there — the number the HUD shows her chasing.
+   *
+   * A FUNCTION, and asked rather than passed, for the same reason `jumpKey`
+   * is: the session is built once and must not be rebuilt when a run is
+   * recorded, because rebuilding restarts the run that produced the score.
+   * The session asks at stage load rather than at draw time, so this is two
+   * storage reads per attempt and not sixty a second.
+   */
+  bestHits?: (index: number) => number | null;
 }
 
 /**
@@ -214,6 +226,32 @@ export function joinX(awayFromX: number, order = 0): number {
  */
 export const SLOT_PHASE_STAGGER = 1.7;
 
+/**
+ * How far apart consecutive slots want to stand, for the ground chasers that
+ * have no bob to stagger.
+ *
+ * Not simply "wider than a walker". Each one paces inside its own
+ * `ATTACKS.walker.turnSlack` dead zone of ±12 px, so the CLOSEST the pair ever
+ * comes is the offset minus about 24 — and at 64 that measured 43 px, which is
+ * narrower than the 44 px body and so still one silhouette at the tightest
+ * point of the dance. 100 leaves roughly 30 px of daylight even then.
+ */
+export const SLOT_OFFSET_PX = 100;
+
+/**
+ * Where slot `index` wants to stand relative to the Knight: 0, +100, −100,
+ * +200… — alternating sides so they flank her rather than queueing up on one
+ * shoulder, and slot 0 always exactly on her, so every single-enemy stage and
+ * every lesson demo behaves precisely as it did before.
+ * @internal exported for the tests
+ */
+export function slotOffsetX(index: number): number {
+  if (index <= 0) return 0; // and not -0, which is a real value in a test
+  const pair = Math.ceil(index / 2);
+  const side = index % 2 === 1 ? 1 : -1;
+  return pair * side * SLOT_OFFSET_PX;
+}
+
 function spawnEnemy(id: EnemyId, index: number, awayFromX: number): Enemy {
   return placeEnemy(createEnemy(id, spawnX(index, awayFromX), spawnHeight(id)), index);
 }
@@ -225,6 +263,7 @@ function joinEnemy(id: EnemyId, index: number, awayFromX: number, order = 0): En
 
 function placeEnemy(enemy: Enemy, index: number): Enemy {
   enemy.bobPhase = index * SLOT_PHASE_STAGGER;
+  enemy.slotOffsetX = slotOffsetX(index);
   return enemy;
 }
 
@@ -255,8 +294,17 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
   if (stages.length === 0) throw new Error('createDodgeArenaSession: no stages');
   const observe = config.observe ?? false;
   const godMode = config.godMode ?? false;
-  const kind: ArenaKind =
-    config.kind ?? (stages.some((s) => s.enemies.length > 1) ? 'waves' : 'roster');
+  /*
+   * Defaulted, never inferred. This used to read the shape of the stage list
+   * — "more than one enemy on a stage means these are waves" — which was true
+   * right up until playtest 10 opened the Colosseum's dummy stages with two
+   * walkers. An inference like that does not fail loudly: it silently
+   * relabels a roster run as wave 1, which changes what `record()` writes,
+   * what the fail screen calls the enemy, and which banner the all-clear
+   * shows. Every caller in the app passes `kind` explicitly; the default is
+   * for tests, and 'roster' is the safe one.
+   */
+  const kind: ArenaKind = config.kind ?? 'roster';
   const world = arenaWorld();
   const juice = createJuice(comfort);
   const edgeCarry = createEdgeCarry();
@@ -276,6 +324,8 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
   /** God mode: hits she did not take on this stage, and the toast that says so. */
   let phantomHits = 0;
   let godToast = 0;
+  /** Her best hits on the stage being played, cached at load and after each run. */
+  let bestHits: number | null = null;
   let landSquash = 0;
   const clearGate = createOverlayGate();
   const failGate = createOverlayGate();
@@ -302,6 +352,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
     hitFlash = 0;
     phantomHits = 0;
     godToast = 0;
+    bestHits = config.bestHits?.(index) ?? null;
     landSquash = 0;
     joined = 0;
     joinBanner = 0;
@@ -311,9 +362,19 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
     config.onStageStarted?.(index);
   }
 
-  /** The goal the stage rule checks — unreachable in observe mode, by construction. */
+  /**
+   * The goal the stage rule checks — unreachable in observe mode, by
+   * construction.
+   *
+   * Observe mode used to be built on an infinite hits requirement, which was
+   * elegant while hits were the gate and became nothing at all the moment
+   * playtest 10 removed them: without this, a thirty-second observe run would
+   * quietly CLEAR the stage. The clock is the only gate left, so the clock is
+   * what has to be out of reach. Note the HUD deliberately reads the real
+   * `def` rather than this one, so it still prints "0:30" and not "Infinity".
+   */
   function goal(): StageDef {
-    return observe ? { ...def, hitsRequired: Number.POSITIVE_INFINITY } : def;
+    return observe ? { ...def, surviveSeconds: Number.POSITIVE_INFINITY } : def;
   }
 
   function record(cleared: boolean): void {
@@ -523,10 +584,14 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         juice.addTrauma(FEEDBACK.playerHit.trauma);
         juice.hitStop(FEEDBACK.playerHit.hitStop);
         record(false);
+        // Re-read AFTER recording, so a run that just set the high score sees
+        // its own number on the screen that follows it.
+        bestHits = config.bestHits?.(stageIndex) ?? null;
         if (!observe) config.onStageFailed?.(stageIndex);
       } else if (outcome === 'cleared') {
         juice.addTrauma(FEEDBACK.courseClear.trauma);
         record(true);
+        bestHits = config.bestHits?.(stageIndex) ?? null;
         const cleared = stageIndex;
         // Observe mode can't get here (the goal is unreachable); the guard
         // keeps it out of the progression even if that ever changes.
@@ -578,7 +643,9 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
       ctx.fillText(`${formatClock(stage.elapsed)} / ${formatClock(def.surviveSeconds)}`, 16, 14);
       ctx.fillStyle = COLORS.hudDim;
       ctx.fillText(
-        observe ? 'observe — feather nail, no clears' : `hits ${stage.hits} / ${def.hitsRequired}`,
+        observe
+          ? 'observe — feather nail, no clears'
+          : `hits ${stage.hits} · best ${bestHits ?? '—'}`,
         16,
         36,
       );
@@ -593,7 +660,7 @@ export function createDodgeArenaSession(config: ArenaSessionConfig): ArenaSessio
         ctx.fillText(
           observe
             ? 'Observe mode: your nail is a feather. Just watch, dodge, and survive.'
-            : `Survive ${describeTime(def.surviveSeconds)} and land ${def.hitsRequired} hits. Get touched, and you start this one over.`,
+            : `Survive ${describeTime(def.surviveSeconds)}. Get touched, and you start this one over.`,
           CANVAS.width / 2,
           96,
         );

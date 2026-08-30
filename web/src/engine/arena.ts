@@ -9,8 +9,8 @@
  * showing where a hit WOULD land) so the only thing left to practice is
  * watching and not getting hit.
  *
- * Whether the run PASSES (survive the time AND land the hits) is the stage
- * rule in stages.ts; this file only says what touched what.
+ * Whether the run PASSES (survive the time) is the stage rule in stages.ts;
+ * this file only says what touched what.
  */
 
 import { activeNailHitbox, applyPogoBounce, playerHurtbox } from './player';

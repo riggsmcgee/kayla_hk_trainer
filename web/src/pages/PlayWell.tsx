@@ -34,6 +34,7 @@ import {
   waveLocked,
   waveSkipKey,
 } from '../storage/progress';
+import { bestHits } from '../storage/bests';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useGodMode } from '../storage/useGodMode';
@@ -203,6 +204,18 @@ function WavesBeat({
     [refresh],
   );
 
+  /**
+   * Her best hits on wave `index`, read from the store rather than from the
+   * `runs` prop — same reason as the Colosseum's: `createSession` must not
+   * depend on `runs`, or recording a run would rebuild the session that
+   * recorded it and restart her wave.
+   */
+  const bestHitsForWave = useCallback(
+    (index: number): number | null =>
+      bestHits(progressStore.listRuns(), (r) => r.mode === 'dodge' && r.wave === index + 1),
+    [],
+  );
+
   const createSession = useCallback(
     () =>
       createDodgeArenaSession({
@@ -217,10 +230,21 @@ function WavesBeat({
         nextLabel: 'the bottom',
         onStageStarted: setCurrent,
         onStageCleared,
+        bestHits: bestHitsForWave,
         // A touch records a run, and the "longest survival" best comes from those.
         onStageFailed: refresh,
       }),
-    [startWave, comfort, godMode, jumpKey, attackKey, onBottom, onStageCleared, refresh],
+    [
+      startWave,
+      comfort,
+      godMode,
+      jumpKey,
+      attackKey,
+      onBottom,
+      onStageCleared,
+      bestHitsForWave,
+      refresh,
+    ],
   );
 
   return (

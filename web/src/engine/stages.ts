@@ -1,12 +1,17 @@
 /**
  * Stages — the Dodge Arena as a game (playtest 2, note 1 + the interview).
  *
- * A stage is one (or, in the finale's waves, two) enemies faced at once. It
- * is passed by surviving its time AND landing its hits — both, so there is
- * no clearing it by hiding in a corner ("hit them more than they hit you").
- * If the hits lag, the clock simply keeps running until they're in. The
- * first touch fails the stage; the session restarts the SAME stage, never
+ * A stage is one or more enemies faced at once. It is passed by SURVIVING its
+ * time. The first touch fails it; the session restarts the SAME stage, never
  * the whole roster (death = checkpoint).
+ *
+ * It used to also demand a number of clean hits, and hiding in a corner was
+ * the thing that rule existed to forbid. Playtest 10 removed it: the hits are
+ * still counted and still shown, but as a score she is chasing rather than a
+ * toll she is paying. What that costs is real — a stage CAN now be cleared
+ * without swinging once — and it was weighed and accepted, because the site is
+ * about dodging and pogoing and the hits were never the part she needed
+ * forcing.
  *
  * Pure logic: no session, no rendering. The stage lists are built from
  * engine/roster.ts so the map, the gates and the arena always agree.
@@ -14,10 +19,10 @@
 import type { EnemyId } from '@dojo/shared';
 import {
   ARENA_MAX_ALIVE,
+  ARENA_SURVIVE_SECONDS,
   FINALE_WAVES,
   ROSTER,
-  STAGE_SURVIVE_SECONDS,
-  rosterEntry,
+  WAVE_SURVIVE_SECONDS,
   type WaveJoin,
 } from './roster';
 
@@ -31,10 +36,8 @@ export interface StageDef {
   reinforcements?: readonly WaveJoin[];
   /** The most bodies this stage will ever hold. Undefined means "the opening cast". */
   maxAlive?: number;
-  /** Seconds that must be survived. */
+  /** Seconds that must be survived. The whole pass condition. */
   surviveSeconds: number;
-  /** Clean nail hits that must land (across every enemy in the stage). */
-  hitsRequired: number;
   /** What the HUD calls it: an enemy's name, or a wave's title. */
   label: string;
 }
@@ -63,9 +66,9 @@ export function dueCount(def: StageDef, elapsed: number): number {
 /** One stage per roster entry, in teaching order. */
 export function rosterStages(): StageDef[] {
   return ROSTER.map((e) => ({
-    enemies: [e.id],
-    surviveSeconds: STAGE_SURVIVE_SECONDS,
-    hitsRequired: e.hitsToPass,
+    // The dummies open with two of themselves; everyone else with one.
+    enemies: Array.from({ length: e.count ?? 1 }, () => e.id),
+    surviveSeconds: ARENA_SURVIVE_SECONDS,
     label: e.name,
   }));
 }
@@ -73,18 +76,16 @@ export function rosterStages(): StageDef[] {
 /**
  * One stage per finale wave.
  *
- * The hits required are summed over the OPENING cast only — ratified in
- * playtest 4: the reinforcements are the difficulty, and asking for twenty
- * hits instead of ten would have been asking for the opposite of what the
- * extra bodies give you.
+ * A full minute, deliberately not the Colosseum's thirty seconds: the
+ * reinforcements arrive at the half-way mark, so a wave shorter than a minute
+ * would be a wave that never doubles.
  */
 export function waveStages(): StageDef[] {
   return FINALE_WAVES.map((wave) => ({
     enemies: [...wave.enemies],
     reinforcements: wave.reinforcements,
     maxAlive: ARENA_MAX_ALIVE,
-    surviveSeconds: STAGE_SURVIVE_SECONDS,
-    hitsRequired: wave.enemies.reduce((sum, id) => sum + rosterEntry(id).hitsToPass, 0),
+    surviveSeconds: WAVE_SURVIVE_SECONDS,
     label: wave.name,
   }));
 }
@@ -133,8 +134,10 @@ export function stepStage(
     return 'failed';
   }
   state.elapsed += dt;
+  // Still counted, and still shown — it is her score. It just no longer has a
+  // say in whether the stage is passed.
   if (events.nailLanded) state.hits += Math.max(1, events.hits ?? 1);
-  if (state.elapsed >= def.surviveSeconds && state.hits >= def.hitsRequired) {
+  if (state.elapsed >= def.surviveSeconds) {
     state.status = 'cleared';
     return 'cleared';
   }

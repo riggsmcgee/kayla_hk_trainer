@@ -574,6 +574,19 @@ export interface Enemy extends EnemyState {
   home: Vec2;
   /** Phase clock driving deterministic drift/flapping. */
   bobPhase: number;
+  /**
+   * Ground chasers: how far to one side of the Knight this body wants to
+   * stand, in px. Zero for a lone enemy, so one-enemy stages are unchanged.
+   *
+   * The arena's rule is that enemies never see each other — `stepEnemy` takes
+   * only the player — and every machine is deterministic. Two walkers hunting
+   * the same Knight therefore walked at the same speed to the same point and
+   * fused into a single 44 px silhouette. The fliers already solve this with a
+   * per-slot `bobPhase` stagger, but a walker has no phase term to stagger.
+   * Giving each slot its own place to stand separates them for the same
+   * reason and with the same no-RNG, no-awareness discipline.
+   */
+  slotOffsetX: number;
   /** Which attack the current telegraph/active/recovery belongs to. */
   attackKind: AttackKind | null;
   /** Seconds left in the current phase (telegraph/active/recovery). */
@@ -675,6 +688,7 @@ export function createEnemy(id: EnemyId, x: number, y: number): Enemy {
     lastHitSwingId: 0,
     home: { x, y },
     bobPhase: 0,
+    slotOffsetX: 0,
     attackKind: null,
     phaseTimer: 0,
     cooldownTimer: OPENING_BEAT[id] ?? 0,
@@ -797,7 +811,10 @@ function footingAhead(e: Enemy, world: World, dir: 1 | -1): boolean {
 function stepWalker(e: Enemy, world: World, dt: number, t: Target | undefined): void {
   const speed = t ? ATTACKS.walker.chaseSpeed : (ENEMIES.walker.speed ?? 80);
   if (t) {
-    const dx = t.position.x - e.position.x;
+    // It walks at its own place beside her rather than at her exactly, which
+    // is what keeps a pair of them from becoming one body. `slotOffsetX` is 0
+    // unless the arena put more than one on the floor.
+    const dx = t.position.x + e.slotOffsetX - e.position.x;
     if (Math.abs(dx) > ATTACKS.walker.turnSlack) {
       const toward: 1 | -1 = dx >= 0 ? 1 : -1;
       if (toward !== e.facing && footingAhead(e, world, toward)) e.facing = toward;

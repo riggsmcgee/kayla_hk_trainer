@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PracticeRun } from '@dojo/shared';
-import { arenaBest, bossBest, courseBest, waveBest } from './bests';
+import { arenaBest, bestHits, bossBest, courseBest, waveBest } from './bests';
 
 let n = 0;
 function run(over: Partial<PracticeRun>): PracticeRun {
@@ -162,5 +162,54 @@ describe('god-mode runs never become a best', () => {
     ];
     expect(arenaBest(runs, 'warden')?.durationMs).toBe(12_000);
     expect(arenaBest(runs, 'warden')?.cleared).toBe(false);
+  });
+});
+
+/**
+ * The arena's high score, which playtest 10 put where the hits requirement
+ * used to be. A separate question from `arenaBest`, deliberately — see below.
+ */
+describe('bestHits', () => {
+  const walker = (over: Partial<PracticeRun>) => run({ mode: 'dodge', enemyId: 'walker', ...over });
+  const isWalker = (r: PracticeRun) =>
+    r.mode === 'dodge' && r.enemyId === 'walker' && r.wave === undefined;
+
+  it('is the most hits she ever landed, cleared or not', () => {
+    const runs = [walker({ hitsLanded: 3, cleared: true }), walker({ hitsLanded: 9 })];
+    expect(bestHits(runs, isWalker)).toBe(9);
+  });
+
+  it('does NOT agree with arenaBest, and that is the whole reason it exists', () => {
+    // arenaBest ranks a CLEAR above everything before it looks at a number,
+    // so her best clear can be three hits while her best score is nine.
+    // Showing her the three would be showing her the smaller true number.
+    const runs = [walker({ hitsLanded: 3, cleared: true }), walker({ hitsLanded: 9 })];
+    expect(arenaBest(runs, 'walker')?.hitsLanded).toBe(3);
+    expect(bestHits(runs, isWalker)).toBe(9);
+  });
+
+  it('is null when she has never scored there, so the HUD can say so', () => {
+    expect(bestHits([], isWalker)).toBeNull();
+    expect(bestHits([walker({ hitsLanded: 4 })], (r) => r.enemyId === 'flier')).toBeNull();
+  });
+
+  it('counts a genuine zero rather than reporting no score at all', () => {
+    // Since a stage clears on time alone, a nought-hit run is a real result.
+    expect(bestHits([walker({ hitsLanded: 0, cleared: true })], isWalker)).toBe(0);
+  });
+
+  it('skips observe and god-mode runs, like every other best here', () => {
+    const runs = [
+      walker({ hitsLanded: 2 }),
+      walker({ hitsLanded: 50, observeMode: true }),
+      walker({ hitsLanded: 99, godMode: true }),
+    ];
+    expect(bestHits(runs, isWalker)).toBe(2);
+  });
+
+  it('keeps a wave run out of an enemy score, and vice versa', () => {
+    const runs = [walker({ hitsLanded: 2 }), run({ mode: 'dodge', wave: 1, hitsLanded: 40 })];
+    expect(bestHits(runs, isWalker)).toBe(2);
+    expect(bestHits(runs, (r) => r.mode === 'dodge' && r.wave === 1)).toBe(40);
   });
 });

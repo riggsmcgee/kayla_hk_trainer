@@ -1,21 +1,21 @@
 /**
  * Stage tests (playtest 2, note 1 + the interview's engagement decision).
  *
- * Seam: the pure stage rule. A stage is passed by surviving its full time
- * AND landing its required hits — both, so a Kayla who hides in a corner
- * never clears — and is failed by the first touch. The roster stages and
- * the finale's wave stages are built from engine/roster.ts so the numbers
+ * Seam: the pure stage rule. A stage is passed by SURVIVING its full time and
+ * is failed by the first touch. Hits are counted and kept as her score, and
+ * since playtest 10 they have no say in whether she passes. The roster stages
+ * and the finale's wave stages are built from engine/roster.ts so the numbers
  * can never disagree with the map and the gates.
  */
 import { describe, expect, it } from 'vitest';
 import { FIXED_DT } from './constants';
 import {
   ARENA_MAX_ALIVE,
+  ARENA_SURVIVE_SECONDS,
   FINALE_WAVES,
   FINALE_WAVE_COUNT,
   ROSTER,
-  STAGE_SURVIVE_SECONDS,
-  rosterEntry,
+  WAVE_SURVIVE_SECONDS,
 } from './roster';
 import {
   createStageState,
@@ -34,7 +34,6 @@ const TOUCHED = { playerHit: true, nailLanded: false };
 const SHORT: StageDef = {
   enemies: ['walker'],
   surviveSeconds: 1,
-  hitsRequired: 2,
   label: 'Walker',
 };
 
@@ -45,14 +44,25 @@ function running() {
 }
 
 describe('stage definitions', () => {
-  it('builds one roster stage per enemy, in teaching order, 60 s each', () => {
+  it('builds one roster stage per enemy, in teaching order, 30 s each', () => {
     const stages = rosterStages();
-    expect(stages.map((s) => s.enemies)).toEqual(ROSTER.map((e) => [e.id]));
     for (const [i, s] of stages.entries()) {
-      expect(s.surviveSeconds).toBe(STAGE_SURVIVE_SECONDS);
-      expect(s.hitsRequired).toBe(ROSTER[i]!.hitsToPass);
+      expect(s.surviveSeconds).toBe(ARENA_SURVIVE_SECONDS);
       expect(s.label).toBe(ROSTER[i]!.name);
     }
+  });
+
+  it('opens the two dummy stages with a PAIR, and leaves the attackers solo', () => {
+    // Playtest 10. The dummies are the enemies whose whole job is to be
+    // practised on, and one of them alone for thirty seconds is a long time
+    // watching a single body walk at you. Doubling an attacker would be a
+    // different lesson, not a livelier version of the same one.
+    const stages = rosterStages();
+    expect(stages[0]!.enemies).toEqual(['walker', 'walker']);
+    expect(stages[1]!.enemies).toEqual(['flier', 'flier']);
+    expect(stages[2]!.enemies).toEqual(['duelist']);
+    expect(stages[3]!.enemies).toEqual(['spitter']);
+    expect(stages[4]!.enemies).toEqual(['warden']);
   });
 
   it('builds one wave stage per finale wave, labelled by the wave’s own name', () => {
@@ -60,23 +70,21 @@ describe('stage definitions', () => {
     expect(stages.map((s) => s.enemies)).toEqual(FINALE_WAVES.map((w) => [...w.enemies]));
     for (const [i, s] of stages.entries()) {
       const wave = FINALE_WAVES[i]!;
-      expect(s.surviveSeconds).toBe(STAGE_SURVIVE_SECONDS);
+      expect(s.surviveSeconds).toBe(WAVE_SURVIVE_SECONDS);
       expect(s.reinforcements).toEqual(wave.reinforcements);
       expect(s.maxAlive).toBe(ARENA_MAX_ALIVE);
     }
     expect(stages.map((s) => s.label)).toEqual(['The pests', 'The real ones']);
   });
 
-  it('sums hits over the OPENING cast only — the reinforcements are free targets', () => {
-    const stages = waveStages();
-    // Ratified in playtest 4: four bodies is four things to hit, so asking
-    // for 20 and 12 would make the wave EASIER in the way that matters and
-    // longer in the way that doesn't.
-    expect(stages.map((s) => s.hitsRequired)).toEqual([10, 6]);
-    for (const [i, s] of stages.entries()) {
-      const opening = FINALE_WAVES[i]!.enemies;
-      expect(s.hitsRequired).toBe(opening.reduce((n, id) => n + rosterEntry(id).hitsToPass, 0));
-    }
+  it('keeps the Colosseum and the waves on SEPARATE clocks', () => {
+    // These were one constant until playtest 10, and re-merging them would
+    // silently break the waves: their reinforcements arrive at 0:30, so a
+    // thirty-second wave never doubles and never fires its banner.
+    expect(ARENA_SURVIVE_SECONDS).toBe(30);
+    expect(WAVE_SURVIVE_SECONDS).toBe(60);
+    for (const s of rosterStages()) expect(s.surviveSeconds).toBe(ARENA_SURVIVE_SECONDS);
+    for (const s of waveStages()) expect(s.surviveSeconds).toBe(WAVE_SURVIVE_SECONDS);
   });
 
   it('keeps the wave data inside the arena’s invariants', () => {
@@ -87,7 +95,7 @@ describe('stage definitions', () => {
       expect(wave.enemies.length + wave.reinforcements.length).toBeLessThanOrEqual(ARENA_MAX_ALIVE);
       const times = wave.reinforcements.map((r) => r.at);
       expect([...times].sort((a, b) => a - b)).toEqual(times);
-      for (const t of times) expect(t).toBeLessThan(STAGE_SURVIVE_SECONDS);
+      for (const t of times) expect(t).toBeLessThan(WAVE_SURVIVE_SECONDS);
       for (const id of [...wave.enemies, ...wave.reinforcements.map((r) => r.id)]) seen.add(id);
     }
     // Ratified: every enemy on the roster still appears somewhere in the finale.
@@ -111,11 +119,6 @@ describe('wave 2, "The real ones" (playtest 5, note 5)', () => {
     // the duelist and the warden would have vanished with every test green.
     expect(wave.enemies.length + wave.reinforcements.length).toBe(ARENA_MAX_ALIVE);
   });
-
-  it('still asks for six hits — they are summed over the opening cast alone', () => {
-    const stage = waveStages()[1]!;
-    expect(stage.hitsRequired).toBe(6);
-  });
 });
 
 describe('dueCount — the reinforcement schedule', () => {
@@ -127,7 +130,6 @@ describe('dueCount — the reinforcement schedule', () => {
       { at: 45, id: 'warden' },
     ],
     surviveSeconds: 60,
-    hitsRequired: 1,
     label: 'scripted',
   };
 
@@ -214,39 +216,34 @@ describe('stage rule', () => {
     expect(state.elapsed).toBeCloseTo(0.25, 10);
   });
 
-  it('does not clear on time alone — the clock keeps running until the hits are in', () => {
+  it('clears on time alone, with the nail never swung once', () => {
+    // The rule playtest 10 replaced said the opposite: the clock kept running
+    // until the hits were in. His reasoning for the change — "if she manages
+    // to make it through the entire Gauntlet without getting hit or hitting
+    // another enemy a single time, that's fine with me."
     const state = running();
-    stepStage(state, SHORT, HIT, FIXED_DT);
-    expect(stepStage(state, SHORT, QUIET, 5)).toBeNull();
-    expect(state.status).toBe('running');
-    expect(state.elapsed).toBeGreaterThan(SHORT.surviveSeconds);
-    expect(stepStage(state, SHORT, HIT, FIXED_DT)).toBe('cleared');
+    expect(stepStage(state, SHORT, QUIET, SHORT.surviveSeconds)).toBe('cleared');
     expect(state.status).toBe('cleared');
-    expect(state.hits).toBe(2);
+    expect(state.hits).toBe(0);
   });
 
-  it('does not clear on hits alone — the time must be survived too', () => {
+  it('clears on the first step past the clock, exactly at the boundary', () => {
     const state = running();
-    stepStage(state, SHORT, HIT, FIXED_DT);
-    expect(stepStage(state, SHORT, HIT, FIXED_DT)).toBeNull();
-    expect(state.hits).toBe(2);
-    expect(state.status).toBe('running');
-    expect(stepStage(state, SHORT, QUIET, 1)).toBe('cleared');
-  });
-
-  it('clears on the first step both are satisfied, exactly at the boundary', () => {
-    const state = running();
-    stepStage(state, SHORT, HIT, FIXED_DT);
-    stepStage(state, SHORT, HIT, FIXED_DT);
-    stepStage(state, SHORT, QUIET, SHORT.surviveSeconds - 2 * FIXED_DT - 1e-9);
+    stepStage(state, SHORT, QUIET, SHORT.surviveSeconds - 1e-9);
     expect(state.status).toBe('running');
     expect(stepStage(state, SHORT, QUIET, 1e-9)).toBe('cleared');
   });
 
-  it('a touch on the very step the clock would clear still fails', () => {
+  it('keeps counting hits as a score, which is all they are now', () => {
     const state = running();
     stepStage(state, SHORT, HIT, FIXED_DT);
     stepStage(state, SHORT, HIT, FIXED_DT);
+    expect(state.hits).toBe(2);
+    expect(state.status).toBe('running');
+  });
+
+  it('a touch on the very step the clock would clear still fails', () => {
+    const state = running();
     expect(stepStage(state, SHORT, TOUCHED, 5)).toBe('failed');
     expect(state.status).toBe('failed');
   });
@@ -254,13 +251,12 @@ describe('stage rule', () => {
   it('a cleared stage is frozen: no more hits, no more time, no fail', () => {
     const state = running();
     stepStage(state, SHORT, HIT, FIXED_DT);
-    stepStage(state, SHORT, HIT, FIXED_DT);
     stepStage(state, SHORT, QUIET, 1);
     const elapsed = state.elapsed;
     expect(stepStage(state, SHORT, TOUCHED, 1)).toBeNull();
     expect(stepStage(state, SHORT, HIT, 1)).toBeNull();
     expect(state.status).toBe('cleared');
-    expect(state.hits).toBe(2);
+    expect(state.hits).toBe(1);
     expect(state.elapsed).toBe(elapsed);
   });
 
@@ -270,18 +266,18 @@ describe('stage rule', () => {
     expect(state.hits).toBe(2);
   });
 
-  it('the real roster stage takes a full minute and 5 hits on the walker', () => {
+  it('the real walker stage takes thirty seconds and nothing else', () => {
     const def = rosterStages()[0]!;
     const state = running();
-    for (let i = 0; i < def.hitsRequired; i++) stepStage(state, def, HIT, FIXED_DT);
     let cleared = false;
     let steps = 0;
-    while (!cleared && steps < 60 * 70) {
+    while (!cleared && steps < 60 * 40) {
       cleared = stepStage(state, def, QUIET, FIXED_DT) === 'cleared';
       steps += 1;
     }
     expect(cleared).toBe(true);
-    expect(state.elapsed).toBeGreaterThanOrEqual(STAGE_SURVIVE_SECONDS);
-    expect(state.elapsed).toBeLessThan(STAGE_SURVIVE_SECONDS + 2 * FIXED_DT);
+    expect(state.hits).toBe(0);
+    expect(state.elapsed).toBeGreaterThanOrEqual(ARENA_SURVIVE_SECONDS);
+    expect(state.elapsed).toBeLessThan(ARENA_SURVIVE_SECONDS + 2 * FIXED_DT);
   });
 });

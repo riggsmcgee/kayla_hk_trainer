@@ -82,8 +82,9 @@ export interface PracticeRun {
   boss?: boolean;
   /**
    * Did the run achieve its goal? Pogo: reached the goal flag. Dodge: the
-   * stage was passed — survived the full stage time AND landed the required
-   * hits. Pogo runs recorded before this field existed are read as cleared.
+   * stage was passed, which since playtest 10 means the full stage time was
+   * survived — hits are a score and no longer a condition. Pogo runs recorded
+   * before this field existed are read as cleared.
    */
   cleared?: boolean;
 }
@@ -129,7 +130,7 @@ export interface ProgressV1 {
   setupGated?: boolean;
   /** Pogo course levels reached-the-goal at least once (1–3 in the Bounce Bog). */
   courseLevelsCleared: number[];
-  /** Dodge Arena enemies whose stage has been passed (survive + required hits). */
+  /** Dodge Arena enemies whose stage has been passed (survived, start to finish). */
   arenaEnemiesCleared: EnemyId[];
   /** The finale's pogo level (level 4) reached-the-goal at least once. */
   finaleLevelCleared: boolean;

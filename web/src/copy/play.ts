@@ -101,11 +101,20 @@ export const finalePlayCopy = {
 /** The Colosseum (`pages/PlayDodge.tsx`). */
 export const dodgeArenaPlayCopy = {
   lede: (enemies: string): string =>
-    `${enemies} enemies, in order. Survive a minute and land your hits, and the next one steps in. Get touched and you start that enemy over.`,
+    `${enemies} enemies, in order. Survive thirty seconds and the next one steps in. Get touched and you start that enemy over.`,
 
   /** The stage strip: one entry per enemy, in road order. */
   rosterLabel: 'The roster',
-  stageHits: (hits: number): string => `${hits} hits`,
+  /**
+   * Her best hits on an enemy, in the strip.
+   *
+   * This used to print the hits the stage DEMANDED, which was the same number
+   * for everyone until she landed it and then stopped meaning anything.
+   * Playtest 10 made hits a score, so the strip shows the score — and an
+   * enemy she has never scored on says so rather than showing a zero she did
+   * not earn.
+   */
+  stageBestHits: (hits: number | null): string => (hits === null ? 'no hits yet' : `best ${hits}`),
   srCleared: ', cleared',
 
   canvasLabel: 'Dodge Arena',

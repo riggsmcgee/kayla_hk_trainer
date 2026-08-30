@@ -110,5 +110,5 @@ export const readingEnemiesCopy = {
 
   /** The hand-off to the Colosseum, which is what the whole lesson is for. */
   thesis:
-    'Can you survive the arena? Survive a minute against each enemy type and land your hits. Watch, dodge, then take it apart.',
+    'Can you survive the arena? Survive thirty seconds against each enemy type and land your hits. Watch, dodge, then take it apart.',
 } as const;

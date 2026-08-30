@@ -16,6 +16,8 @@ import {
   createDodgeArenaSession,
   JOIN_SPREAD,
   joinX,
+  SLOT_OFFSET_PX,
+  slotOffsetX,
   spawnX,
 } from './dodgeArenaSession';
 import { FEEDBACK } from './juice';
@@ -688,6 +690,10 @@ describe('arena session (staged game)', () => {
       stages: waveStages(),
       startIndex: 1,
       comfort: COMFORT,
+      // Explicit since playtest 10: 'kind' is no longer inferred from the
+      // shape of the stage list, because a Colosseum dummy stage now holds
+      // two bodies and the old inference would have called it a wave.
+      kind: 'waves',
     });
     s.step(press({ attackPressed: true }), FIXED_DT);
     let steps = 0;
@@ -1240,15 +1246,27 @@ describe('the finale’s reinforcements (playtest 4, note 3)', () => {
     expect(fresh.enemyCount()).toBe(2);
   });
 
-  it('leaves the Colosseum at one body for a full stage', () => {
-    const s = createDodgeArenaSession({
-      stages: rosterStages(),
-      comfort: COMFORT,
-      godMode: true,
-    });
-    s.step(press({ attackPressed: true }), FIXED_DT);
-    for (let i = 0; i < Math.round(70 / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
-    expect(s.enemyCount()).toBe(1);
+  it('never grows the Colosseum mid-stage — it has no reinforcements at all', () => {
+    // The stage opens with its cast and keeps exactly that cast. Checked on
+    // an attacker stage (solo) and on a dummy stage (a pair since playtest
+    // 10), so the assertion is about arrivals rather than about the number.
+    for (const [index, expected] of [
+      [2, 1], // duelist, alone
+      [0, 2], // walkers, a pair and no more
+    ] as const) {
+      const s = createDodgeArenaSession({
+        stages: rosterStages(),
+        startIndex: index,
+        comfort: COMFORT,
+        godMode: true,
+        kind: 'roster',
+      });
+      s.step(press({ attackPressed: true }), FIXED_DT);
+      // Short of the thirty-second clock, so the stage cannot clear and
+      // auto-advance out from under the assertion.
+      for (let i = 0; i < Math.round(25 / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+      expect(s.enemyCount()).toBe(expected);
+    }
   });
 
   it('is deterministic — two identically driven sessions agree', () => {
@@ -1402,6 +1420,45 @@ describe('identical twins do not become one body (playtest 4)', () => {
         apartThisWindow = false;
       }
     }
+  });
+
+  it('keeps the Colosseum’s two walkers from fusing into one body', () => {
+    // The fliers above are separated by a per-slot BOB phase. A walker has no
+    // bob to stagger: `stepWalker` chases at one speed toward one point, sees
+    // no other enemy, and is fully deterministic — so before playtest 10 gave
+    // each slot its own place to stand beside her, two of them walked into
+    // the same 44 px of screen and stayed there for the rest of the stage.
+    const s = createDodgeArenaSession({
+      stages: rosterStages(),
+      startIndex: 0,
+      comfort: { reduceShake: false, reduceFlashing: false },
+      godMode: true,
+      kind: 'roster',
+    });
+    s.step({ ...IDLE, attackPressed: true }, FIXED_DT);
+    const walkers = s.debugEnemies().filter((e) => e.id === 'walker');
+    expect(walkers).toHaveLength(2);
+
+    // Long enough for both to have closed on her and settled: the failure this
+    // guards against is a steady state, not a transient.
+    for (let i = 0; i < Math.round(12 / FIXED_DT); i++) s.step(IDLE, FIXED_DT);
+
+    // A walker is 44 px wide, so anything under that is one silhouette.
+    for (let i = 0; i < Math.round(10 / FIXED_DT); i++) {
+      s.step(IDLE, FIXED_DT);
+      const gap = Math.abs(walkers[0]!.position.x - walkers[1]!.position.x);
+      expect(gap).toBeGreaterThan(60);
+    }
+  });
+
+  it('leaves a lone enemy exactly where it always stood', () => {
+    // The separation is per-slot and slot 0 is offset by zero, so every
+    // single-enemy stage and every lesson demo is unchanged. Cheap to assert
+    // and the reason the offsets alternate around her rather than stacking.
+    expect(slotOffsetX(0)).toBe(0);
+    expect(slotOffsetX(1)).toBe(SLOT_OFFSET_PX);
+    expect(slotOffsetX(2)).toBe(-SLOT_OFFSET_PX);
+    expect(slotOffsetX(3)).toBe(2 * SLOT_OFFSET_PX);
   });
 });
 

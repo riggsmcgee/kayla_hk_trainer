@@ -1,7 +1,7 @@
 /**
  * Kbug's Colosseum — the Dodge Arena as a staged game (playtest 2, note 1).
- * Five enemies in teaching order; each is passed by surviving a minute AND
- * landing its hits, then the next steps in. A touch restarts that enemy,
+ * Five enemies in teaching order; each is passed by surviving thirty seconds,
+ * then the next steps in. Hits are a score she is chasing, not a toll. A touch restarts that enemy,
  * never the roster. The page resumes at the first enemy not yet cleared,
  * records clears through the shared progress store, and shows her best for
  * the enemy she's on. Once all five are cleared, the road goes on.
@@ -20,7 +20,7 @@ import { dodgeArenaPlayCopy, playCopy } from '../copy/play';
 import { createDodgeArenaSession } from '../engine/dodgeArenaSession';
 import { ROSTER, rosterEntry } from '../engine/roster';
 import { rosterStages } from '../engine/stages';
-import { arenaBest } from '../storage/bests';
+import { arenaBest, bestHits } from '../storage/bests';
 import { useOverlayLabels } from '../storage/useOverlayLabels';
 import { arenaCleared } from '../storage/progress';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
@@ -91,6 +91,26 @@ export function PlayDodge() {
     [refresh],
   );
 
+  /**
+   * Her best hits on the enemy at `index`, read from the STORE rather than
+   * from the `runs` this component rendered with.
+   *
+   * That is not a shortcut, it is the requirement: `createSession`'s dependency
+   * list deliberately leaves `runs` out, because adding it would rebuild the
+   * canvas every time a run is recorded — which restarts the run that recorded
+   * it. A closure over the rendered array would therefore go stale the moment
+   * she finishes her first attempt. `progressStore` is the same singleton
+   * `recordRun` writes through, so asking it is always current.
+   */
+  const bestHitsForStage = useCallback((index: number): number | null => {
+    const id = ROSTER[index]?.id;
+    if (!id) return null;
+    return bestHits(
+      progressStore.listRuns(),
+      (r) => r.mode === 'dodge' && r.enemyId === id && r.wave === undefined,
+    );
+  }, []);
+
   const createSession = useCallback(() => {
     const stages = rosterStages();
     if (freePlay !== null) {
@@ -115,6 +135,7 @@ export function PlayDodge() {
       kind: 'roster',
       jumpKey,
       attackKey,
+      bestHits: bestHitsForStage,
       // Z off the all-cleared screen leaves the page for the next chapter
       // (playtest 3, note 11); X replays the roster from the top.
       onNext: next ? () => navigate(next.route) : undefined,
@@ -134,6 +155,7 @@ export function PlayDodge() {
     refresh,
     jumpKey,
     attackKey,
+    bestHitsForStage,
     next,
     navigate,
   ]);
@@ -163,7 +185,9 @@ export function PlayDodge() {
             <li key={e.id} className={cls} aria-current={isCurrent ? 'step' : undefined}>
               <span className="arena-stage-disc">{cleared ? <CheckMark /> : i + 1}</span>
               <span className="arena-stage-name">{e.name}</span>
-              <span className="arena-stage-hits">{dodgeArenaPlayCopy.stageHits(e.hitsToPass)}</span>
+              <span className="arena-stage-hits">
+                {dodgeArenaPlayCopy.stageBestHits(bestHitsForStage(i))}
+              </span>
               {cleared && <span className="sr-only">{dodgeArenaPlayCopy.srCleared}</span>}
             </li>
           );
