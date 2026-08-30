@@ -13,7 +13,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createBossSession } from './bossSession';
-import { BILL_ENTRANCE, entranceSeconds } from './entrance';
+import { BILL_ENTRANCE, dogTimedSeconds, entranceSeconds } from './entrance';
 import { CANVAS, FIXED_DT } from './constants';
 import { BOSS } from './boss';
 import { ENDING, ENDING_PROMPT_SECONDS } from './ending';
@@ -256,33 +256,67 @@ describe("Bill the dog's entrance (playtest 6, note 5)", () => {
     return session;
   }
 
+  /** At the card itself, past the shout, the woof and the walk-in. */
+  function atTheNameCard(): Session {
+    const session = atTheCard();
+    hold(session, dogTimedSeconds(BILL_ENTRANCE) + 0.5);
+    return session;
+  }
+
+  it('holds the shout before anything else, with no card and no dog', () => {
+    // The sequence playtest 10 asked for: "Let's have everything pause when
+    // Bill calls. You hear a wolf from off screen, and then the dog comes on
+    // screen. Only after that point does the screen pop up with the card."
+    const early = drawn(atTheCard());
+    expect(early).toContain('I NEED SOME HELP!');
+    expect(early).not.toContain('BILL THE DOG');
+  });
+
   it('raises his card when he is due', () => {
-    expect(drawn(atTheCard())).toContain('BILL THE DOG');
+    expect(drawn(atTheNameCard())).toContain('BILL THE DOG');
   });
 
   it('cannot be cut short by anything she is holding', () => {
-    // Every input at once — more than a pair of hands can do. The skip used
-    // to read held direction keys as level state, so the step after the card
-    // went up saw the key she was already holding and dismissed it: 16.7 ms
-    // of a 2.5 s card, which is why she had never seen the dog arrive.
-    const everything = press({
-      left: true,
-      right: true,
-      up: true,
-      down: true,
-      jumpHeld: true,
-      jumpPressed: true,
-      attackPressed: true,
-      dashPressed: true,
-    });
+    // Every direction at once and a held jump — more than a pair of hands can
+    // do. The old skip read held direction keys as LEVEL state, so the step
+    // after the card went up saw the key she was already holding and dismissed
+    // it: 16.7 ms of a 2.5 s card, which is why she had never seen the dog
+    // arrive. The derived direction edge is what closes that.
+    //
+    // A real held button produces its edge ONCE, on the frame it went down —
+    // `input.ts` guards against OS auto-repeat re-raising it. So "holding
+    // everything" is levels, not a stream of presses, and that is exactly what
+    // the card must be deaf to.
+    const holding = press({ left: true, right: true, up: true, down: true, jumpHeld: true });
     const session = atTheCard();
-    hold(session, BOSS.cardSeconds - 0.5, everything);
+    hold(session, dogTimedSeconds(BILL_ENTRANCE) + 6, holding);
     expect(drawn(session)).toContain('BILL THE DOG');
   });
 
-  it('ends itself once it has run its full length', () => {
+  it('waits for her rather than timing out', () => {
+    // Playtest 10 replaced the 2.5 s timer with a press. A held jump is not a
+    // press: its edge fired seconds ago, back when it was fast-forwarding the
+    // shout, and there is nothing left for the card to see.
     const session = atTheCard();
-    hold(session, BOSS.cardSeconds + 0.1, press({ jumpHeld: true }));
+    hold(session, 20, press({ jumpHeld: true }));
+    expect(drawn(session)).toContain('BILL THE DOG');
+  });
+
+  it('lets a FRESH press dismiss it, which is the whole point', () => {
+    const session = atTheNameCard();
+    expect(drawn(session)).toContain('BILL THE DOG');
+    session.step(press({ jumpPressed: true, jumpHeld: true }), FIXED_DT);
+    hold(session, 0.2);
+    expect(drawn(session)).not.toContain('BILL THE DOG');
+  });
+
+  it('takes a fresh DIRECTION too, not only a button', () => {
+    // "she has to press any button or move in any direction after that card
+    // has appeared to continue". Directions have no edge in InputFrame, so the
+    // session derives one; this is what says that derivation works.
+    const session = atTheNameCard();
+    session.step(press({ right: true }), FIXED_DT);
+    hold(session, 0.2);
     expect(drawn(session)).not.toContain('BILL THE DOG');
   });
 
@@ -293,7 +327,7 @@ describe("Bill the dog's entrance (playtest 6, note 5)", () => {
     // that actually has to hold, and which a future copy edit cannot break.
     const session = atTheCard();
     const before = clockLine(session);
-    hold(session, BOSS.cardSeconds - 0.5, press({ jumpHeld: true }));
+    hold(session, 8, press({ jumpHeld: true }));
     expect(clockLine(session)).toBe(before);
     expect(drawn(session).join(' ')).not.toMatch(/skip|hurry/i);
   });
@@ -310,10 +344,12 @@ describe("Bill the dog's entrance (playtest 6, note 5)", () => {
     expect(dogDrawnAt(session, 0)).toBeLessThan(CANVAS.width);
   });
 
-  it('walks him toward his mark while the card is up', () => {
+  it('walks him toward his mark on his own beat, after the woof', () => {
     const session = atTheCard();
+    // Into the walk beat, which is where the dog first exists at all.
+    hold(session, BILL_ENTRANCE.dogShout + BILL_ENTRANCE.dogWoof + 0.1);
     const start = dogDrawnAt(session, 0);
-    hold(session, 1);
+    hold(session, BILL_ENTRANCE.dogWalk / 2);
     expect(dogDrawnAt(session, 0)).toBeLessThan(start);
   });
 });
@@ -449,6 +485,12 @@ describe('god mode does not earn the ending', () => {
     // two seconds and keeps catching her for the next ninety.
     const session = afterEntrance({ comfort: COMFORT, godMode: true });
     hold(session, 1, press({ right: true }));
+    hold(session, BOSS.dogAt);
+    // The card waits for her now, so a ninety-second run has to answer it or
+    // it never reaches 1:30 at all — and this test would go green for the
+    // wrong reason, having proved only that the fight stopped.
+    hold(session, dogTimedSeconds(BILL_ENTRANCE) + 0.5);
+    session.step(press({ jumpPressed: true }), FIXED_DT);
     hold(session, BOSS.targetSeconds + 3);
 
     const copy = drawn(session).join(' ');

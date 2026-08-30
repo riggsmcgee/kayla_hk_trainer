@@ -15,8 +15,6 @@
  * caller decides what a crossing means — this file only says when.
  */
 
-import { tickDown } from './session';
-
 /**
  * - `intro`   — Bill's entrance (playtest 4, note 4). The arena opens empty
  *   but for the Knight; the clock is frozen throughout, and her input does
@@ -49,8 +47,20 @@ export const BOSS = {
   dogAt: 30,
   /** Both Bills speed up and leave less gap. */
   heatAt: 60,
-  /** How long the dog's name card holds the fight. */
-  cardSeconds: 2.5,
+  /**
+   * How long the dog's name card holds the fight — NOTHING, any more.
+   *
+   * It used to be a flat 2.5 s on which the shout, the answering woof, the
+   * dog's whole walk-in and the name card all happened at once, and playtest
+   * 10 was blunt about the result: "They come and go very quickly... It goes
+   * by so fast right now." The beats are sequential now (`entrance.ts`) and
+   * the card at the end of them waits for her to press something.
+   *
+   * The constant stays as the LOCKOUT: how long after the card raises before
+   * a press is allowed to dismiss it. Not a timer she waits out — a guard
+   * against the button she was already holding.
+   */
+  cardLockoutSeconds: 0.35,
 } as const;
 
 export interface BossState {
@@ -59,7 +69,11 @@ export interface BossState {
   introElapsed: number;
   /** FIGHT time — the score. Never moves during a card or after the touch. */
   elapsed: number;
-  /** Seconds left on the dog's card; zero in every other phase. */
+  /**
+   * Seconds the card has been up. Counts UP and stops at nothing: the card
+   * is dismissed by her, not by a clock. Used only to know whether the
+   * lockout above has passed.
+   */
   cardTimer: number;
   /**
    * The three one-way latches. `dogIn` doubles as "the dog is in the arena",
@@ -85,6 +99,24 @@ export function createBossState(): BossState {
 /** Her first input starts the clock. Harmless to call again. */
 export function startBoss(s: BossState): void {
   if (s.phase === 'ready') s.phase = 'fighting';
+}
+
+/**
+ * She pressed something on the dog's card, and the fight resumes.
+ *
+ * The one way out of `card`. It exists as its own function rather than as a
+ * branch inside `stepBoss` because the decision needs an input edge and a
+ * beat state that this file deliberately knows nothing about — and because a
+ * headless caller (the bot, the tests) needs a hand to dismiss it with. It
+ * used to end itself after 2.5 s, which is exactly what playtest 10 removed.
+ */
+export function leaveCard(s: BossState): void {
+  if (s.phase === 'card') s.phase = 'fighting';
+}
+
+/** Has the card been up long enough that a press is hers and not a leftover? */
+export function cardAcceptsInput(s: BossState): boolean {
+  return s.phase === 'card' && s.cardTimer >= BOSS.cardLockoutSeconds;
 }
 
 /**
@@ -125,8 +157,9 @@ export function stepBoss(
   dt: number,
 ): BossEvent | null {
   if (s.phase === 'card') {
-    s.cardTimer = tickDown(s.cardTimer, dt);
-    if (s.cardTimer === 0) s.phase = 'fighting';
+    // Counts up and never leaves on its own. The card ends when she says so,
+    // and `leaveCard` is the only door — see BOSS.cardLockoutSeconds.
+    s.cardTimer += dt;
     return null;
   }
 
@@ -145,7 +178,7 @@ export function stepBoss(
   if (!s.dogIn && s.elapsed >= BOSS.dogAt) {
     s.dogIn = true;
     s.phase = 'card';
-    s.cardTimer = BOSS.cardSeconds;
+    s.cardTimer = 0;
     return 'dog-arrives';
   }
   if (!s.hot && s.elapsed >= BOSS.heatAt) {

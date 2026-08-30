@@ -47,7 +47,8 @@ export const fightCopy = {
   introHurry: (jump: string): string => `hold ${jump} to hurry`,
 
   billName: 'BILL THE MAN',
-  billLine: "Your Dad was the Hollow Knight all along. Hitting him slows him down, but you have to outlast him.",
+  billLine:
+    'Your Dad was the Hollow Knight all along. Hitting him slows him down, but you have to outlast him.',
 
   /** The rules, in one line, on the screen she reads before she moves. */
   readyLine: 'One touch ends it. Survive 1:30. Move to begin.',
@@ -60,6 +61,16 @@ export const fightCopy = {
    * There is no audio anywhere in this project, so the barking is DRAWN.
    */
   billShout: 'I NEED SOME HELP!',
+  /**
+   * Under the dog's card, which waits for her rather than timing out.
+   *
+   * Names no key on purpose — it takes any button and any direction, and the
+   * overlays name actions rather than inputs anyway (playtest 10). It must
+   * contain neither "skip" nor "hurry": the card is unskippable, and a test
+   * says so, because an unskippable card that advertises a way out is a card
+   * she will spend the whole beat looking for the way out of.
+   */
+  dogCardPrompt: 'Press anything when you are ready.',
   dogAnswer: 'WOOF!',
 
   /** The fail screen. Short on purpose: she wants to be back in it. */

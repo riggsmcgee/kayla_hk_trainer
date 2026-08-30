@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
+import {
+  BOSS,
+  cardAcceptsInput,
+  leaveCard,
+  createBossState,
+  startBoss,
+  stepBoss,
+  stepIntro,
+} from './boss';
 import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import type { BossEvent, BossState } from './boss';
 import { FIXED_DT } from './constants';
@@ -52,9 +60,17 @@ function started(): BossState {
   return s;
 }
 
-/** Sit through the dog's card, which is the only way past it. */
+/**
+ * Dismiss the dog's card the way she does: wait out the lockout, then say so.
+ *
+ * This used to be `while (s.phase === 'card') stepBoss(...)`, which worked
+ * only because the card ended itself after 2.5 s. Playtest 10 made it wait for
+ * her instead — so that loop would now spin forever, and a headless caller
+ * needs a hand to dismiss it with. That hand is `leaveCard`.
+ */
 function dismissCard(s: BossState): void {
-  while (s.phase === 'card') stepBoss(s, CALM, FIXED_DT);
+  run(s, BOSS.cardLockoutSeconds + FIXED_DT);
+  leaveCard(s);
 }
 
 /** A fight underway with the dog already in and his card behind us. */
@@ -118,7 +134,7 @@ describe('the dog arrives at 0:30', () => {
     expect(fight(s, BOSS.dogAt + 1)).toEqual(['dog-arrives']);
     expect(s.dogIn).toBe(true);
     expect(s.phase).toBe('card');
-    expect(s.cardTimer).toBe(BOSS.cardSeconds);
+    expect(s.cardTimer).toBe(0);
     expect(s.elapsed).toBeGreaterThanOrEqual(BOSS.dogAt);
   });
 
@@ -132,20 +148,37 @@ describe('the dog arrives at 0:30', () => {
 });
 
 describe('the card is a pause, not a penalty', () => {
-  it('does not move the fight clock while it shows', () => {
+  it('does not move the fight clock while it shows, however long she takes', () => {
     const s = started();
     fight(s, BOSS.dogAt + 1);
     const frozen = s.elapsed;
 
-    run(s, BOSS.cardSeconds);
-    // The whole point: an interruption she did not ask for costs her nothing.
+    // A full minute of reading. The whole point: an interruption she did not
+    // ask for costs her nothing, and now that it waits for her the cost of
+    // taking her time has to be zero too.
+    run(s, 60);
     expect(s.elapsed).toBeCloseTo(frozen, 10);
   });
 
-  it('ends itself after its full length', () => {
+  it('never ends itself, however long it is left alone', () => {
+    // The inverse of the rule this test used to pin. Playtest 10: "Instead of
+    // automatically just going back to the match, let's have it be another
+    // thing where she has to press any button... She has time to read it and
+    // doesn't feel rushed."
     const s = started();
     fight(s, BOSS.dogAt + 1);
-    run(s, BOSS.cardSeconds);
+    run(s, 120);
+    expect(s.phase).toBe('card');
+  });
+
+  it('ends when she says so, and not before the lockout', () => {
+    const s = started();
+    fight(s, BOSS.dogAt + 1);
+    // A press on the frame it appears is a leftover, not an answer.
+    expect(cardAcceptsInput(s)).toBe(false);
+    run(s, BOSS.cardLockoutSeconds + FIXED_DT);
+    expect(cardAcceptsInput(s)).toBe(true);
+    leaveCard(s);
     expect(s.phase).toBe('fighting');
   });
 });

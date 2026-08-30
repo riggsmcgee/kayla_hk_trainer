@@ -14,7 +14,15 @@
  * its three thresholds live in engine/boss.ts; this file is the wiring.
  */
 
-import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
+import {
+  BOSS,
+  cardAcceptsInput,
+  leaveCard,
+  createBossState,
+  startBoss,
+  stepBoss,
+  stepIntro,
+} from './boss';
 import {
   ENDING,
   beatElapsed,
@@ -46,12 +54,16 @@ import {
   INTRO_FAST_FORWARD,
   arrivalX,
   billEntrance,
+  createDogArrival,
   dogArrivalT,
+  dogBeatProgress,
+  releaseDogCard,
+  stepDogArrival,
+  type DogBeat,
   entranceSeconds,
   stepEntrance,
 } from './entrance';
 import { dogLook } from './dogLook';
-import type { EntranceShape } from './entrance';
 import { createArenaState, stepArena } from './arena';
 import { CANVAS, FIXED_DT } from './constants';
 import { ENEMY_SIZES, createEnemy, stepEnemy, stepProjectile } from './enemies';
@@ -145,6 +157,35 @@ export interface BossSessionConfig extends OverlayControls {
   onPassed?: () => void;
   /** Fires once per touch, after the run is recorded. */
   onFailed?: () => void;
+}
+
+/** Remember this frame's directions so the next one can spot a fresh press. */
+function dirsOf(f: InputFrame) {
+  return { left: f.left, right: f.right, up: f.up, down: f.down };
+}
+
+/**
+ * Any button pressed this step, or any direction that went from released to
+ * pressed this step.
+ *
+ * Deliberately NOT `pressedAnything`, which reads directions as LEVELS: the
+ * card is raised while she may already be holding a direction, and a level
+ * read would dismiss it on the frame it appeared. That is verbatim the bug
+ * that meant nobody had ever seen the dog arrive.
+ */
+function freshPress(
+  f: InputFrame,
+  prev: { left: boolean; right: boolean; up: boolean; down: boolean },
+): boolean {
+  return (
+    f.jumpPressed ||
+    f.attackPressed ||
+    f.dashPressed ||
+    (f.left && !prev.left) ||
+    (f.right && !prev.right) ||
+    (f.up && !prev.up) ||
+    (f.down && !prev.down)
+  );
 }
 
 function pressedAnything(input: InputFrame): boolean {
@@ -259,6 +300,15 @@ export function createBossSession(config: BossSessionConfig): GameSession {
   let dogWalkFrom = 0;
   /** 0 → 1 across the dog’s card; the variant’s curve shapes the walk. */
   let dogWalkT = 0;
+  /** Where the dog's arrival is, once it starts. */
+  let dogArrival = createDogArrival();
+  /**
+   * Last step's direction LEVELS. `InputFrame` carries edges for the three
+   * buttons but none for the four directions, and the card is dismissed by
+   * "any button OR any direction" — so the direction edge has to be derived
+   * here, which is the only place that sees two consecutive frames.
+   */
+  let prevDirs = { left: false, right: false, up: false, down: false };
   let projectiles: Projectile[] = [];
 
   let simTime = 0;
@@ -317,6 +367,8 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     hitFlash = 0;
     phantomHits = 0;
     assistSpent = 0;
+    dogArrival = createDogArrival();
+    prevDirs = { left: false, right: false, up: false, down: false };
     godToast = 0;
     startedAtIso = '';
     prevFeet.x = player.position.x;
@@ -347,6 +399,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     bill.position.x = BILL_SPAWN_X;
     prevBillFeet.x = BILL_SPAWN_X;
     bringInTheDog();
+    // The dev shortcut never enters the card phase, so the beat machine is
+    // never stepped — say it is over rather than leaving it armed at 'shout'.
+    dogArrival = { beat: 'done', elapsed: 0 };
     if (dog) {
       dog.position.x = dogWalkTo;
       dog.walkingIn = false;
@@ -384,7 +439,9 @@ export function createBossSession(config: BossSessionConfig): GameSession {
     // oscillating on a faster one.
     prevDogFeet.x = dog.position.x;
     prevDogFeet.y = dog.position.y;
-    dogWalkT = Math.min(1, dogWalkT + dt / BOSS.cardSeconds);
+    // Denominated in the WALK beat now, not in one flat card: the walk is its
+    // own beat with its own length, and the card that follows it has none.
+    dogWalkT = Math.min(1, dogWalkT + dt / entrance.dogWalk);
     // Stepped like everything else the Bills do: the curve shapes the pace,
     // and the result lands on a whole 4 px step from his mark.
     dog.position.x = arrivalX(dogWalkFrom, dogWalkTo, dogArrivalT(entrance, dogWalkT));
@@ -636,12 +693,35 @@ export function createBossSession(config: BossSessionConfig): GameSession {
       // a jump on the fight's first frame. That is verbatim the bug playtest
       // 2 fixed.
       if (boss.phase === 'card') {
-        walkTheDogIn(dt);
-        stepBoss(boss, bossInput(false), dt);
-        if (boss.phase !== 'card' && dog) {
+        // Beats 1-3 are theatre and fast-forward under a held jump, exactly
+        // like Bill's own entrance: an impatient twentieth attempt still gets
+        // the scene, just briefly. The CARD does not, and cannot — it has no
+        // length to compress.
+        const hurrying = rawInput.jumpHeld || rawInput.jumpPressed;
+        const beatDt = dogArrival.beat === 'card' ? dt : dt * (hurrying ? INTRO_FAST_FORWARD : 1);
+        const entered = stepDogArrival(entrance, dogArrival, beatDt);
+        if (entered === 'walk') bringInTheDog();
+        if (dogArrival.beat === 'walk') walkTheDogIn(beatDt);
+        if (entered === 'card' && dog) {
+          // However fast the walk was hurried through, he lands on his mark.
           dog.position.x = dogWalkTo;
           dog.walkingIn = false;
         }
+        stepBoss(boss, bossInput(false), dt);
+
+        // The card waits for a FRESH press. The lockout is what makes that
+        // true for a button she was already holding: the jump that
+        // fast-forwarded beats 1-3 fired its edge seconds ago, and by the
+        // time the card is dismissable there is no edge left to see.
+        if (
+          dogArrival.beat === 'card' &&
+          cardAcceptsInput(boss) &&
+          freshPress(rawInput, prevDirs)
+        ) {
+          releaseDogCard(dogArrival);
+          leaveCard(boss);
+        }
+        prevDirs = dirsOf(rawInput);
         return;
       }
 
@@ -816,7 +896,10 @@ export function createBossSession(config: BossSessionConfig): GameSession {
 
       switch (stepBoss(boss, bossInput(events.playerHit), dt)) {
         case 'dog-arrives':
-          bringInTheDog();
+          // The dog is not created here any more: the beat machine brings him
+          // in when the WALK beat opens, which is after the shout and the
+          // answer. All this does is start the sequence.
+          dogArrival = createDogArrival();
           break;
         case 'heat':
           bill.hot = true;
@@ -948,8 +1031,24 @@ export function createBossSession(config: BossSessionConfig): GameSession {
         ctx.font = '17px system-ui, sans-serif';
         ctx.fillText(fightCopy.readyLine, CANVAS.width / 2, CANVAS.height / 2 + 76);
       } else if (boss.phase === 'card') {
-        drawBarking(ctx, 1 - boss.cardTimer / BOSS.cardSeconds, bill.position.x, entrance);
-        drawCard(ctx, fightCopy.dogName, fightCopy.dogLine, 0.7);
+        drawBarking(
+          ctx,
+          dogArrival.beat,
+          simTime,
+          bill.position.x,
+          dogBeatProgress(entrance, dogArrival),
+        );
+        // ONLY on the card beat. It used to be drawn from the first frame of
+        // the phase, on top of the shout and the woof and the walk-in all at
+        // once — which is the overlap playtest 10 pulled apart. She reads who
+        // he is after she has watched him arrive, not during.
+        if (dogArrival.beat === 'card') {
+          drawCard(ctx, fightCopy.dogName, fightCopy.dogLine, 0.7);
+          ctx.textAlign = 'center';
+          ctx.fillStyle = COLORS.hudDim;
+          ctx.font = '17px system-ui, sans-serif';
+          ctx.fillText(fightCopy.dogCardPrompt, CANVAS.width / 2, CANVAS.height / 2 + 76);
+        }
       } else if (boss.phase === 'won') {
         drawEnding(
           ctx,
@@ -1131,17 +1230,22 @@ const REVERENCE_TIP = 0.38;
  */
 function drawBarking(
   ctx: CanvasRenderingContext2D,
-  progress: number,
+  beat: DogBeat,
+  /** Seconds the whole arrival has been running, for the bob. */
+  simTime: number,
   billX: number,
-  shape: EntranceShape,
+  woofProgress: number,
 ): void {
   const step = (v: number) => Math.round(v / 4) * 4;
   ctx.textAlign = 'center';
   ctx.font = '22px system-ui, sans-serif';
 
-  // Bill's shout comes first and stays up.
-  if (progress > shape.dogShoutAt) {
-    const bob = step(Math.floor(progress * 8) % 2 === 0 ? 0 : 4);
+  // Bill's shout opens the sequence and stays up for the rest of it. The bob
+  // runs off simTime and NOT off beat progress, because the card at the end
+  // has no progress — it waits for her — and a shout bobbing off a frozen
+  // clock would freeze mid-bounce and read as a hang.
+  if (beat !== 'done') {
+    const bob = step(Math.floor(simTime * 8) % 2 === 0 ? 0 : 4);
     ctx.fillStyle = COLORS.hudText;
     // Clamped inward: Bill can be standing against either wall when the
     // dog is due, and a shout that runs off the edge of the canvas reads as
@@ -1149,9 +1253,10 @@ function drawBarking(
     drawShout(ctx, fightCopy.billShout, billX, bob);
   }
 
-  // The woof crosses in from the right edge over the back half of the card.
-  if (progress > shape.dogWoofAt) {
-    const t = Math.min(1, (progress - shape.dogWoofAt) / 0.45);
+  // The woof answers on its own beat, and stays up while the dog walks in —
+  // it is the thing she is watching arrive.
+  if (beat === 'woof' || beat === 'walk') {
+    const t = woofProgress;
     const x = step(CANVAS.width + 40 + (CANVAS.width * 0.45 - CANVAS.width - 40) * t);
     const y = step(FLOOR_Y - 150);
     ctx.fillStyle = COLORS.hudText;

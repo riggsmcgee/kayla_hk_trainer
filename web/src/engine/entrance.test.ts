@@ -17,6 +17,10 @@ import {
   dogArrivalT,
   entranceSeconds,
   stepEntrance,
+  createDogArrival,
+  dogTimedSeconds,
+  releaseDogCard,
+  stepDogArrival,
 } from './entrance';
 
 /** Run the whole beat at `rate`, collecting what happened. */
@@ -40,10 +44,16 @@ function play(rate = 1) {
 }
 
 describe('the Bills’ entrance timeline', () => {
-  it('runs thumps → arrival → name → done, inside the 2–3 s the user asked for', () => {
+  it('runs thumps → arrival → name → done, with time to READ the name', () => {
+    // The 2-3 s band this used to pin came from playtest 4, note 4. Playtest
+    // 10 overrode it looking at the same screen: "The Bill the Dog entrance
+    // just isn't quite hitting the text boxes for both Bill the Man and Bill
+    // the Dog. They come and go very quickly." His card went 0.7 s → 2 s, so
+    // the beat is longer than the note that sized it and deliberately so.
     const total = entranceSeconds(BILL_ENTRANCE);
     expect(total).toBeGreaterThanOrEqual(2);
-    expect(total).toBeLessThanOrEqual(3);
+    expect(total).toBeLessThanOrEqual(5);
+    expect(BILL_ENTRANCE.card).toBeGreaterThanOrEqual(1.5);
     expect(play().beats).toEqual(['thumps', 'arrival', 'name', 'done']);
   });
 
@@ -137,11 +147,13 @@ describe('the three entrances to choose between', () => {
     for (const e of BILL_ENTRANCES) expect(e.feel.length).toBeGreaterThan(20);
   });
 
-  it('all land inside the 2–3 seconds the note asked for', () => {
+  it('all hold their name card long enough to read it', () => {
     for (const e of BILL_ENTRANCES) {
       const total = entranceSeconds(e);
       expect(total).toBeGreaterThanOrEqual(2);
-      expect(total).toBeLessThanOrEqual(3);
+      expect(total).toBeLessThanOrEqual(5);
+      // The half of the beat playtest 10 was actually complaining about.
+      expect(e.card).toBeGreaterThanOrEqual(1.5);
     }
   });
 
@@ -207,23 +219,63 @@ describe('the three entrances to choose between', () => {
 });
 
 describe('the dog’s entrance rides the same choice', () => {
-  it('gives every variant a shout, a woof and a walk', () => {
+  it('gives every variant a shout, a woof and a walk, each long enough to land', () => {
     for (const e of BILL_ENTRANCES) {
-      // Both cues land inside the card, with room left to see them.
-      expect(e.dogShoutAt).toBeGreaterThanOrEqual(0);
-      expect(e.dogShoutAt).toBeLessThan(0.8);
-      expect(e.dogWoofAt).toBeGreaterThanOrEqual(0);
-      expect(e.dogWoofAt).toBeLessThan(0.8);
+      expect(e.dogShout).toBeGreaterThan(0.5);
+      expect(e.dogWoof).toBeGreaterThan(0.5);
+      expect(e.dogWalk).toBeGreaterThan(0.5);
       expect(['steady', 'stomp', 'loom']).toContain(e.dogStyle);
     }
   });
 
-  it('reads differently across the three — one of them answers before it is asked', () => {
-    // Ratified scene: Bill looks winded and calls for help, barking arrives
-    // from off-screen, the dog bursts in. "Sudden" plays it the other way
-    // round on purpose — the dog was already coming.
-    const orders = BILL_ENTRANCES.map((e) => e.dogShoutAt < e.dogWoofAt);
-    expect(new Set(orders).size).toBe(2);
+  it('takes at least twice as long as the 2.5 s it replaced', () => {
+    // "This can all take, honestly, at least double the amount of time that it
+    // takes right now. It goes by so fast right now." And that is the TIMED
+    // part alone — the card at the end of it waits for her, so the real beat
+    // is as long as she wants it to be.
+    for (const e of BILL_ENTRANCES) {
+      expect(dogTimedSeconds(e)).toBeGreaterThanOrEqual(2.5);
+    }
+  });
+
+  it('always answers AFTER it is asked, on every variant', () => {
+    // "Sudden" used to land the woof BEFORE the shout — the dog was already
+    // coming — and one variant reading the other way round was itself pinned
+    // here. Playtest 10 struck it: "Let's have everything pause when Bill
+    // calls... You hear a wolf from off screen, and THEN the dog comes on
+    // screen." Cause, then effect, everywhere. The variants still differ in
+    // pace, which is most of what they were for.
+    for (const e of BILL_ENTRANCES) {
+      const s = createDogArrival();
+      expect(s.beat).toBe('shout');
+      stepDogArrival(e, s, e.dogShout);
+      expect(s.beat).toBe('woof');
+      stepDogArrival(e, s, e.dogWoof);
+      expect(s.beat).toBe('walk');
+      stepDogArrival(e, s, e.dogWalk);
+      expect(s.beat).toBe('card');
+    }
+  });
+
+  it('stops dead on the card and waits, however long it is stepped', () => {
+    const s = createDogArrival();
+    stepDogArrival(BILL_ENTRANCE, s, dogTimedSeconds(BILL_ENTRANCE));
+    expect(s.beat).toBe('card');
+    for (let i = 0; i < 600; i++) stepDogArrival(BILL_ENTRANCE, s, 0.1);
+    expect(s.beat).toBe('card');
+    releaseDogCard(s);
+    expect(s.beat).toBe('done');
+  });
+
+  it('carries a fast-forward overshoot into the next beat instead of dropping it', () => {
+    // A held jump runs the theatre at 2.5x, so a single step can cross a whole
+    // beat boundary. Losing the remainder would make the hurried version drift
+    // shorter every beat.
+    const e = BILL_ENTRANCE;
+    const s = createDogArrival();
+    stepDogArrival(e, s, e.dogShout + e.dogWoof);
+    expect(s.beat).toBe('walk');
+    expect(s.elapsed).toBeCloseTo(0, 6);
   });
 
   it('walks the dog in with the same curve family as Bill’s own arrival', () => {

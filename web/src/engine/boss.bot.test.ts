@@ -16,7 +16,15 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createArenaState, stepArena } from './arena';
-import { BOSS, createBossState, startBoss, stepBoss, stepIntro } from './boss';
+import {
+  BOSS,
+  createBossState,
+  startBoss,
+  stepBoss,
+  stepIntro,
+  cardAcceptsInput,
+  leaveCard,
+} from './boss';
 import { BILL_ENTRANCE, entranceSeconds } from './entrance';
 import { ATTACKS, ENEMY_SIZES, createEnemy, stepEnemy, stepProjectile } from './enemies';
 import type { Projectile } from './enemies';
@@ -301,10 +309,15 @@ describe('the whole fight, with the touch disarmed', () => {
     let wasSpitting = false;
 
     for (let i = 0; i < Math.round(seconds / FIXED_DT); i++) {
-      // Nothing skips the card any more, so the bot sits through it like
-      // she does. The clock is paused, so it costs the measurement nothing.
+      // The card waits for a press since playtest 10, so a headless bot has to
+      // supply one or it sits here until the loop runs out of iterations —
+      // never reaching 1:00, never reaching 1:30, and failing for a reason
+      // that has nothing to do with the fight. It sits through the lockout
+      // first, like she does. The clock is paused throughout, so none of this
+      // costs the measurement anything.
       if (boss.phase === 'card') {
         stepBoss(boss, { playerHit: false, untouched: false }, FIXED_DT);
+        if (cardAcceptsInput(boss)) leaveCard(boss);
         continue;
       }
 

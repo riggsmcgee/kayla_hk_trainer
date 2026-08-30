@@ -89,19 +89,35 @@ export interface EntranceShape {
   card: number;
   style: ArrivalStyle;
   /**
-   * THE DOG'S ENTRANCE, at 0:30, expressed as fractions of his own card.
+   * THE DOG'S ENTRANCE, at 0:30 — the duration of each of its three timed
+   * beats, in seconds. The fourth beat, the card, has no duration: it waits
+   * for her.
    *
    * Ratified: Bill looks winded and calls for help, barking arrives from
    * off-screen, and the dog bursts in. There is no audio anywhere in this
    * project, so the calling and the barking are both DRAWN.
+   *
+   * These used to be FRACTIONS of one flat 2.5 s card on which everything
+   * happened at once — shout, woof, walk and name card all overlapping.
+   * Playtest 10 pulled them apart into a sequence, in his words: "Let's have
+   * everything pause when Bill calls... You hear a wolf from off screen, and
+   * then the dog comes on screen. Only after that point does the screen pop
+   * up with the card."
+   *
+   * One casualty, struck deliberately: the "Sudden" variant used to land the
+   * woof BEFORE the shout — the dog was already coming, and Bill was asking
+   * for help that was halfway across the arena. A strictly sequential
+   * cause-then-effect makes that reading impossible. The variants still differ
+   * in pace, which is what they were mostly for.
    *
    * It lives on the same variant as Bill's own entrance rather than on a
    * picker of its own, for the same reason the ball and the bones share one:
    * they are the same scene, and choosing them separately invites a
    * frantic shout answered by a leisurely dog.
    */
-  dogShoutAt: number;
-  dogWoofAt: number;
+  dogShout: number;
+  dogWoof: number;
+  dogWalk: number;
   dogStyle: ArrivalStyle;
 }
 
@@ -130,12 +146,13 @@ export const BILL_ENTRANCES: readonly EntranceShape[] = [
     thumps: 1.2,
     thumpCount: 4,
     arrival: 0.9,
-    card: 0.7,
+    card: 2,
     style: 'steady',
     // He calls, and a moment later he is answered. The scene in its plainest
     // reading: cause, then effect.
-    dogShoutAt: 0.1,
-    dogWoofAt: 0.35,
+    dogShout: 1.1,
+    dogWoof: 0.9,
+    dogWalk: 1.6,
     dogStyle: 'steady',
   },
   {
@@ -144,12 +161,13 @@ export const BILL_ENTRANCES: readonly EntranceShape[] = [
     thumps: 1.0,
     thumpCount: 2,
     arrival: 0.5,
-    card: 0.9,
+    card: 2,
     style: 'stomp',
-    // The woof lands BEFORE the shout: the dog was already coming, and Bill
-    // is asking for help that is halfway across the arena.
-    dogShoutAt: 0.3,
-    dogWoofAt: 0.05,
+    // Everything quick: he barely gets the word out and the dog is already
+    // through the wall.
+    dogShout: 0.8,
+    dogWoof: 0.6,
+    dogWalk: 1.1,
     dogStyle: 'stomp',
   },
   {
@@ -158,12 +176,13 @@ export const BILL_ENTRANCES: readonly EntranceShape[] = [
     thumps: 1.5,
     thumpCount: 6,
     arrival: 1.1,
-    card: 0.4,
+    card: 2,
     style: 'loom',
     // He calls, and nothing happens, and nothing keeps happening, and then
     // the answer arrives late and takes its time getting there.
-    dogShoutAt: 0.1,
-    dogWoofAt: 0.55,
+    dogShout: 1.5,
+    dogWoof: 1.3,
+    dogWalk: 2.1,
     dogStyle: 'loom',
   },
 ];
@@ -258,4 +277,97 @@ export function arrivalX(
   const eased = curve(style, Math.min(1, Math.max(0, progress)));
   const raw = from + (to - from) * eased;
   return to + Math.round((raw - to) / ENTRANCE_STEP_PX) * ENTRANCE_STEP_PX;
+}
+
+// ---------------------------------------------------------------------------
+// The dog's arrival, at 0:30
+// ---------------------------------------------------------------------------
+
+/**
+ * The beats of the dog's arrival, in order.
+ *
+ * - `shout` — Bill calls for help. EVERYTHING holds: the fight's clock, both
+ *   Bills, her Knight. Nothing is on screen but the word.
+ * - `woof`  — the answer, from off-screen, still with no dog in sight.
+ * - `walk`  — he crosses the frame edge and trots to his mark.
+ * - `card`  — and only now, his name and who he is. UNTIMED: it holds until
+ *   she presses something.
+ * - `done`  — the fight resumes.
+ */
+export type DogBeat = 'shout' | 'woof' | 'walk' | 'card' | 'done';
+
+export interface DogArrivalState {
+  beat: DogBeat;
+  /** Seconds spent in the CURRENT beat. */
+  elapsed: number;
+}
+
+export function createDogArrival(): DogArrivalState {
+  return { beat: 'shout', elapsed: 0 };
+}
+
+/** How long `beat` runs for on this variant; Infinity for the untimed card. */
+export function dogBeatSeconds(shape: EntranceShape, beat: DogBeat): number {
+  switch (beat) {
+    case 'shout':
+      return shape.dogShout;
+    case 'woof':
+      return shape.dogWoof;
+    case 'walk':
+      return shape.dogWalk;
+    default:
+      // The card waits for her, and `done` is over. Neither has a length.
+      return Number.POSITIVE_INFINITY;
+  }
+}
+
+/** 0 → 1 through the current beat; 0 for the two that have no length. */
+export function dogBeatProgress(shape: EntranceShape, s: DogArrivalState): number {
+  const total = dogBeatSeconds(shape, s.beat);
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  return Math.min(1, s.elapsed / total);
+}
+
+/**
+ * Advance the arrival by one step, returning the beat it ENTERED this step or
+ * null if it stayed put.
+ *
+ * The card is deliberately terminal here: nothing this function does can leave
+ * it, because the only thing that may is a fresh press, and that is the
+ * session's business. `releaseDogCard` is the one door out.
+ */
+export function stepDogArrival(
+  shape: EntranceShape,
+  s: DogArrivalState,
+  dt: number,
+): DogBeat | null {
+  if (s.beat === 'card' || s.beat === 'done') return null;
+  s.elapsed += dt;
+
+  // A LOOP and not a single advance: a held jump runs this at 2.5x, and the
+  // shortest beat on the shortest variant is 0.6 s — so one hurried step can
+  // cross a whole beat and land inside the next. Advancing once per call would
+  // stall the sequence a beat behind the clock and make the hurried version
+  // drift longer, not shorter, the faster she pushed it.
+  let entered: DogBeat | null = null;
+  while (s.beat !== 'card') {
+    const total = dogBeatSeconds(shape, s.beat);
+    if (s.elapsed + TIME_EPS < total) break;
+    // Carry the overshoot rather than dropping it, so no time is invented or
+    // lost at a boundary.
+    s.elapsed -= total;
+    s.beat = s.beat === 'shout' ? 'woof' : s.beat === 'woof' ? 'walk' : 'card';
+    entered = s.beat;
+  }
+  return entered;
+}
+
+/** She pressed something on the card. Nothing else may leave it. */
+export function releaseDogCard(s: DogArrivalState): void {
+  if (s.beat === 'card') s.beat = 'done';
+}
+
+/** Seconds of theatre before the card, which is what a fast-forward can skip. */
+export function dogTimedSeconds(shape: EntranceShape): number {
+  return shape.dogShout + shape.dogWoof + shape.dogWalk;
 }
