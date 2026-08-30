@@ -69,9 +69,22 @@ None of it was pre-existing rot; every red line traced to your edits, exactly as
 
 Nothing green at baseline is red now. Net +8 tests: 13 added, 5 deleted with the code they pinned.
 
-**Not done: I never drove the app in a browser.** Every claim above is from the suite and the type
-checker. The mini-game pages are canvas-heavy and jsdom cannot render them, so the arena changes in
-commit 4 in particular deserve two minutes of your eyes before you trust them.
+**Browser pass: done, after the sprint closed.** Real Chrome, real key events, every route visited
+with console errors and uncaught exceptions captured. **Zero of either, on every page.** What was
+confirmed with eyes rather than assertions:
+
+| checked in the browser | result |
+|---|---|
+| Colosseum clock and HUD | `0:30 / 0:30` → **Stage clear**, `0 hits · 0:30` — cleared without swinging once |
+| Two walkers | two distinct bodies ~105 px apart, matching the 100 px slot offset. No fusing. |
+| Two fliers | stage 2 opens with a separated pair |
+| Ready line | "Survive 30 seconds. Get touched, and you start this one over." — hits clause gone |
+| Overlay labels | "press **Jump** for the next one", "Press **Attack** to face the walker again", "Press **Jump** to finish the sentence" on the ending |
+| Roster strip | "no hits yet" before a run, "best 0" after — the post-`record()` re-read works |
+| Map sign, finale next | "Clear the level, all two waves, and **whatever's waiting at the bottom**" — and nothing on the page says Bill |
+| Both lesson pages | all nine typos gone, apostrophes correct, no Bill mention |
+| The Gauntlet lede | "Everything **you've** learned, Kayla" — the mojibake is fixed |
+| God mode | still badges and counts ("god mode · 20 hits ignored") |
 
 ## Started, sliced, continued in PLAN.md
 
@@ -137,5 +150,6 @@ they do not make them safe to build blind.
 Order: assist mode first (it is the most mechanical and touches `registerHazard`, which the dash
 gaps also edit), then the entrance, then the gaps.
 
-Before any of that, spend two minutes in the browser on `#/play/dodge` confirming commit 4 — two
-walkers that don't overlap, a 30-second clock, and `hits N · best —` in the corner.
+The browser pass is done and clean, so commit 4 no longer needs your eyes to be trusted — though
+the Colosseum at 30 s with no hit requirement is a FEEL question a screenshot cannot answer, and
+that one is still worth a play.
