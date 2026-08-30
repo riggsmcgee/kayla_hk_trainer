@@ -45,9 +45,9 @@ export const controllerNameCopy = {
 export const setupLessonCopy = {
   /** Three fragments: the middle one is bold, so the spaces travel in the strings. */
   ledeLead: 'Kayla, this one decides everything after it: ',
-  ledeStrong: 'pick one controller and stay with it.',
+  ledeStrong: 'pick one controller and stick with it.',
   ledeTail:
-    ' Everything the dojo teaches ends up stored in your hands — and your hands can only save one layout.',
+    ` If you switch between controllers every couple of times you play, you'll just bounce off the game every time.`,
 
   howToChoose: 'How to choose',
   thesis:
@@ -62,30 +62,30 @@ export const setupLessonCopy = {
    * makes it safe to offer as text boxes when the page's other lists are not.
    */
   joyConPoints: [
-    { tone: 'pro', text: 'Always in your hands — works handheld, docked, anywhere.' },
+    { tone: 'pro', text: 'Super convenient: works handheld, docked, anywhere.' },
     {
       tone: 'pro',
-      text: 'Jump and attack under one thumb, dash under one finger: the game was built around this.',
+      text: 'Familiar controls that align with other games you play.',
     },
-    { tone: 'con', text: 'Tiny buttons; cramps on long sessions.' },
+    { tone: 'con', text: 'One thumb controlling multiple buttons is slow.' },
     {
       tone: 'tip',
-      text: 'The stick is yours. If pogos keep coming out as side-slashes, the ↓ button is a more reliable down.',
+      text: 'The joystick / d-pad are not very consistent for pogos and up-slashes',
     },
   ],
   leverlessPoints: [
     { tone: 'pro', text: 'Down is exactly down, every time — the cleanest pogo input there is.' },
     {
       tone: 'pro',
-      text: 'One finger per button: jump, attack, dash and ↓ can all be held at once.',
+      text: 'One finger per button. On a purely technical level, this was made exactly for Hollow Knight.',
     },
     {
       tone: 'con',
-      text: 'Dock and cable only, plus a settings toggle — every extra step is a reason to grab the Joy-Con “just this once”.',
+      text: `It's not as convenient. You either have to be in dock mode or use a special adapter to play. Plus, you might have to play around with button mapping.`,
     },
     {
       tone: 'con',
-      text: 'Out of the box, jump (B) and attack (Y) sit under the same finger. Remap once.',
+      text: `There will be a larger hurdle to learn the muscle memory over the Joy-Con that you're more familiar and comfortable with.`,
     },
   ],
 } as const;
@@ -208,14 +208,14 @@ export const diagramCopy = {
  */
 export const setupFloorCopy = {
   title: 'Try it out',
-  lede: 'A floor and nothing else — nothing to fight, nothing to fall off, no clock. Move around until your controller feels like yours.',
+  lede: 'Move around and make changes until your controller feels like yours.',
   /**
    * Why the list is worth reading and not only ticking. Playtest 8 asked for
    * two things in one sentence — "make sure that all the core functionalities
    * work AND that she knows what she's supposed to be able to do" — and the
    * list is how one control does both.
    */
-  kit: 'The list is the whole kit: everything the dojo will ever ask you to do is one of these seven.',
+  kit: 'The list is the whole kit. Tool progression will be saved for the full game.',
 
   canvasLabel: 'A practice floor with your Knight on it, and nothing else',
 
@@ -288,10 +288,10 @@ export const setupFloorCopy = {
 
 /** What the Setup lesson says where the sandbox used to be. */
 export const setupHandoffCopy = {
-  heading: 'Now prove it',
+  heading: `Let's make sure your controller is working.`,
   // The button names the page it opens, so it reads the page's own title
   // rather than repeating it — two copies of "Try it out" can drift.
-  line: 'A bare floor, your Knight, and a list of the seven things your hands need to be able to do. Anything that does not answer, you can rebind right there on the line it failed on.',
+  line: `The next room will give you a chance to test your controller and change any buttons that aren't in the correct place.`,
   button: setupFloorCopy.title,
   where: 'Dirtmouth',
 } as const;

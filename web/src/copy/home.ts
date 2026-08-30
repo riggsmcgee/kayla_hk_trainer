@@ -13,9 +13,9 @@
  */
 export const homeCopy = {
   /** The one line at the top, and the only place the road is named as a road. */
-  hero: 'Kayla, it starts at the well.',
+  hero: 'Your training begins.',
   lede: (stops: string): string =>
-    `${stops} stops, one road down. Start where the Knight is standing.`,
+    `Soon you'll have the skills to enjoy one of the best games ever made.`,
 
   /**
    * The sign beside the map while there is still road ahead. `signLabel` is the
@@ -51,6 +51,5 @@ export const homeCopy = {
    * ampersand is a real character here; the page used to spell it as an HTML
    * entity, which is not something a text box should ever show her.
    */
-  thesis: 'The whole game in one line: hit them more than they hit you.',
-  signature: 'surveyed & inked for Kbug',
+  
 } as const;

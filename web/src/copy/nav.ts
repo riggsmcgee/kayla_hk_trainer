@@ -88,7 +88,7 @@ export const stopStateCopy = {
  * is the doctrine again, in the shortest form it has anywhere on the site.
  */
 export const siteChromeCopy = {
-  title: "Kayla's Hollow Knight Dojo",
+  title: "Hollow Knight Dojo",
   navLabel: 'Main',
   navMap: 'Map',
   navPogoCourse: 'Pogo Course',

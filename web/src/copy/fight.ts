@@ -47,19 +47,19 @@ export const fightCopy = {
   introHurry: (jump: string): string => `hold ${jump} to hurry`,
 
   billName: 'BILL THE MAN',
-  billLine: "Kayla's uncle. You cannot hurt him — only outlast him.",
+  billLine: "Your Dad was the Hollow Knight all along. Hitting him slows him down, but you have to outlast him.",
 
   /** The rules, in one line, on the screen she reads before she moves. */
   readyLine: 'One touch ends it. Survive 1:30. Move to begin.',
 
   dogName: 'BILL THE DOG',
-  dogLine: 'The family had two. Watch him come in — your clock is paused.',
+  dogLine: 'The Bills were working together all along.',
 
   /**
    * Bill shouts for the dog at 0:30, and the answer arrives from off-screen.
    * There is no audio anywhere in this project, so the barking is DRAWN.
    */
-  billShout: 'HELP!',
+  billShout: 'I NEED SOME HELP!',
   dogAnswer: 'WOOF!',
 
   /** The fail screen. Short on purpose: she wants to be back in it. */

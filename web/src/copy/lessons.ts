@@ -46,16 +46,16 @@ export const lessonCopy = {
  * edits it to type the number back in as a literal.
  */
 export const pogoLessonCopy = {
-  lede: 'Kayla, the pogo — bouncing off things with a downward slash — is the one skill that changes how this game feels. Spikes become trampolines. Enemies become platforms.',
+  lede: 'This is the fundamental skill that takes the game from feeling scary to exciting. If you can consistently pogo off enemies, projectiles, and obstactles then the game opens up to you and becomes far less intimidating.',
 
   /** The demo's accessible name — the whole animation, for anyone who cannot see it. */
   demoLabel:
     'Slow-motion demo of the Knight bouncing on an orb, with the down-slash hitbox drawn in green',
 
-  kinder: 'Three things that make it kinder than it looks',
-  beat: 'It’s a beat, not a mash',
-  hitThenLeave: 'Hit, then leave',
-  drills: 'Drills, in order',
+  kinder: 'Things to remember about pogos',
+  beat: 'Practice timing, not mashing',
+  hitThenLeave: 'Bring the dash into it',
+  drills: 'Drills coming up',
 
   /**
    * The one paragraph on the page that quotes the escape window IN WORDS, and
@@ -83,16 +83,15 @@ export const readingEnemiesCopy = {
   legendGold: 'gold — the punish window',
 
   /** Three fragments: the middle word is emphasised. */
-  ledeLead: 'Here’s the secret, Kayla: when you meet a new enemy, your job is ',
-  ledeEm: 'not',
+  ledeLead: 'Each new enemy is a puzzle. You have to figure out how to beat it, and the first step is learning what it can do.',
   ledeTail:
-    ' to kill it. Spend a whole life just dodging. When you can avoid everything it has, find the one safe moment to hit back.',
+    ' Spend a whole life just dodging. When you can avoid everything it has, find the one safe moment to hit back.',
 
-  twoQuestions: 'Before the fight: two questions',
-  threeBeats: 'Every attack has three beats',
-  duelist: 'The duelist answers whatever you do',
-  spitter: 'The spitter’s attack is your stepping stone',
-  warden: 'The warden: hit where the shield isn’t',
+  twoQuestions: 'Know when its time to learn',
+  threeBeats: 'Every attack has a rhythm',
+  duelist: 'Active enemies track you down.',
+  spitter: 'Projectile spammers make obstacles',
+  warden: 'Reactive enemies wait for you to move and punish it',
 
   duelistGroundDemo:
     'Slow-motion demo: approaching the duelist on the ground provokes its lunge; the attack hitbox shows in red, the recovery window in gold',
@@ -107,5 +106,5 @@ export const readingEnemiesCopy = {
 
   /** The hand-off to the Colosseum, which is what the whole lesson is for. */
   thesis:
-    'Now prove it in the arena, Kayla: survive a minute against each one and land your hits. Watch, dodge, then take it apart.',
+    'Can you survive the arena? Survive a minute against each enemy type and land your hits. Watch, dodge, then take it apart.',
 } as const;

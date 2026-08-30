@@ -20,47 +20,32 @@ export function LessonPogo() {
       <h2>{pogoLessonCopy.kinder}</h2>
       <ul className="plain-list">
         <li>
-          The down-slash is <em>wide</em> — wider than you. Near enough is enough.
+          The down-slash is <strong>wider</strong> than you. You don't always have to be perfectly over your target.
         </li>
-        <li>Every bounce is the same height (about half a jump). Learn one arc, trust it.</li>
+        <li>Unlike jumping, every bounce is the same height. Once you get it into muscle memory, it never changes.</li>
         <li>
-          <strong>Every bounce gives your dash back.</strong> That’s the secret that unlocks whole
-          areas later.
+          <strong>Every bounce gives your dash back.</strong> Using that, you can stay above many enemies, move out of the way of arial attacks, or just stall in the air for a few seconds.
         </li>
       </ul>
 
       <h2>{pogoLessonCopy.beat}</h2>
       <p>
-        Slash, bounce, breathe, slash — about two a second. If you’re hammering the button, land and
-        start again slower: a swing that misses its moment leaves you falling with your nail on
-        cooldown.
+        I'm not gonna lie, I definitely mash when I'm in a panick, but that's not the way to practice. In this simulator, and in the actual game, practice timing your slahes so you don't get caught out when your nail is on that short cooldown.
       </p>
 
       <h2>{pogoLessonCopy.hitThenLeave}</h2>
       <p>
-        The dash isn’t really for crossing rooms, Kayla. It’s for the moment right after you land a
-        hit: slash, dash out, and watch the answer arrive where you were standing.
+        A non-obvious skill is dashing right after your pogo. This lets you get a hit in then immediately move out of the way of your oppenent (or stay on them once you get more confident and want to go for more damage).
       </p>
       <ul className="plain-list">
         <li>
-          <strong>Running buys you {ESCAPE_WINDOW.running} s.</strong> Turn and go any later than
-          that after your hit and the duelist’s swipe catches you on the way out — it travels
-          forward with him, so running only just outpaces it. Dash and you have{' '}
-          {ESCAPE_WINDOW.dashing} s.
+          If you mess up your timing, dashing can save you from getting hit.
         </li>
         <li>
-          <strong>
-            {DASH_NUMBERS.distancePx} px in a quarter second, against {DASH_NUMBERS.runDistancePx}{' '}
-            running.
-          </strong>{' '}
-          That’s {DASH_NUMBERS.headStartPx} px of daylight, at {DASH_NUMBERS.timesRunSpeed}× your
-          run speed.
+          Not just for pogo, attacking than dashing back is a great way to get chip damage on an opponent you're still figuring out.
         </li>
         <li>
-          <strong>The rhythm is the dash, not the nail.</strong> Your nail is ready again after{' '}
-          {DASH_NUMBERS.nailReadySeconds} s but your dash takes {DASH_NUMBERS.dashReadySeconds} s,
-          so hit-and-away is paced by your legs. Bounce off something and the dash comes straight
-          back — that’s the secret from up the page, doing real work.
+          Practice running up, pogoing (or attacking) then immediately dashing away. Sometimes you'll accidentally dash into the enemy. This is one of the reasons I prefer the box controller. It makes those movements WAY easier.
         </li>
       </ul>
       <p className="thesis">
@@ -68,12 +53,6 @@ export function LessonPogo() {
           tenthsInWords(ESCAPE_WINDOW.running),
           tenthsInWords(ESCAPE_WINDOW.dashing),
         )}
-      </p>
-      <p>
-        One exception, and it’s the one waiting at the bottom of the well: <strong>never</strong>{' '}
-        dash away from Bill the man’s lance. Once he’s hot it travels at{' '}
-        {DASH_NUMBERS.hotLancePxPerSecond} px/s and your dash is {DASH_NUMBERS.dashPxPerSecond}. You
-        cannot outrun it along the floor. Get in the air instead.
       </p>
 
       <h2>{pogoLessonCopy.drills}</h2>
