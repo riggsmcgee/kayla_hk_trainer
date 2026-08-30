@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { CHAPTERS, countWord, countWordCap } from '../chapters';
+import { CHAPTERS, countWord } from '../chapters';
 import { DojoMap } from '../components/DojoMap';
 import { NextButton } from '../components/NextButton';
 import { homeCopy } from '../copy/home';
@@ -18,7 +18,7 @@ export function Home() {
     <div className="home">
       <div className="home-hero-block">
         <h1 className="home-hero">{homeCopy.hero}</h1>
-        <p className="lede">{homeCopy.lede(countWordCap(CHAPTERS.length))}</p>
+        <p className="lede">{homeCopy.lede}</p>
       </div>
       <DojoMap />
       <div className="home-side">
@@ -59,9 +59,6 @@ export function Home() {
           <li className="legend-skipped">{homeCopy.legendSkipped}</li>
           <li className="legend-locked">{homeCopy.legendLocked}</li>
         </ul>
-
-        <p className="thesis">{homeCopy.thesis}</p>
-        <p className="signature">{homeCopy.signature}</p>
       </div>
     </div>
   );

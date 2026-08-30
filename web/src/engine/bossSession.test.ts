@@ -68,6 +68,16 @@ function hold(session: Session, seconds: number, input: InputFrame = IDLE): void
 }
 
 /**
+ * The fight clock as the HUD is drawing it right now ("0:30 / 1:30"), or null
+ * if it is not on screen. Reading the clock through the same surface Kayla
+ * reads it through is deliberate: a paused clock that still ticks underneath
+ * would be a bug she could see.
+ */
+function clockLine(session: Session): string | null {
+  return drawn(session).find((line) => /^\d:\d\d \/ \d:\d\d$/.test(line)) ?? null;
+}
+
+/**
  * A boss session with Bill's entrance already played out.
  *
  * Almost every test here wants one: playtest 4 put a 2.8 s entrance in front
@@ -277,10 +287,15 @@ describe("Bill the dog's entrance (playtest 6, note 5)", () => {
   });
 
   it('keeps the promise that makes an unskippable card bearable', () => {
-    const copy = drawn(atTheCard()).join(' ');
-    // The reassurance survives; the two mechanisms it used to advertise do not.
-    expect(copy).toContain('your clock is paused');
-    expect(copy).not.toMatch(/skip|hurry/i);
+    // The promise used to be checked by looking for the words "your clock is
+    // paused" in the dog's line. Playtest 10 rewrote that line, so the test now
+    // checks the MECHANISM instead of the advertisement — which is the thing
+    // that actually has to hold, and which a future copy edit cannot break.
+    const session = atTheCard();
+    const before = clockLine(session);
+    hold(session, BOSS.cardSeconds - 0.5, press({ jumpHeld: true }));
+    expect(clockLine(session)).toBe(before);
+    expect(drawn(session).join(' ')).not.toMatch(/skip|hurry/i);
   });
 
   it('draws him where he actually is, not pinned to his off-screen start', () => {

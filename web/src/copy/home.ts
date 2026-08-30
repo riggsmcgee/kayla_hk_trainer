@@ -14,8 +14,13 @@
 export const homeCopy = {
   /** The one line at the top, and the only place the road is named as a road. */
   hero: 'Your training begins.',
-  lede: (stops: string): string =>
-    `Soon you'll have the skills to enjoy one of the best games ever made.`,
+  /**
+   * A plain string and not a function, unlike the sign's lines below it: the
+   * rule at the top of this module is that anything WITH A VALUE IN IT is a
+   * function, and this no longer has one. It used to open by counting the
+   * stops on the road.
+   */
+  lede: 'Soon you’ll have the skills to enjoy one of the best games ever made.',
 
   /**
    * The sign beside the map while there is still road ahead. `signLabel` is the
@@ -45,11 +50,4 @@ export const homeCopy = {
   legendDone: 'done',
   legendSkipped: 'skipped',
   legendLocked: 'locked',
-
-  /**
-   * The doctrine, in the user's own words, and the signature under it. The
-   * ampersand is a real character here; the page used to spell it as an HTML
-   * entity, which is not something a text box should ever show her.
-   */
-  
 } as const;

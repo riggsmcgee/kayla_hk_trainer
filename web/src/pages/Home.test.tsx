@@ -35,11 +35,10 @@ function renderAt(ui: ReactElement): HTMLElement {
 }
 
 describe('the front page', () => {
-  it('opens with the hero, the doctrine and the signature', () => {
+  it('opens with the hero and the lede', () => {
     renderAt(<Home />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(homeCopy.hero);
-    expect(screen.getByText(homeCopy.thesis)).toBeTruthy();
-    expect(screen.getByText(homeCopy.signature)).toBeTruthy();
+    expect(screen.getByText(homeCopy.lede)).toBeTruthy();
   });
 
   it('points a blank save at the first stop on the road', () => {

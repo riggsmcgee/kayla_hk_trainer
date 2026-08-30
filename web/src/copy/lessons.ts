@@ -39,14 +39,15 @@ export const lessonCopy = {
  * paragraphs.
  *
  * Almost all of this page's body stays where it is, and the reason is the third
- * rule above: every list item on it carries either markup or a number derived
- * from the simulation. `lessonPogo.helpers.ts` exists because this project has
+ * rule above: every list item on it carries markup. One paragraph also carries a
+ * number derived from the simulation — the thesis, whose escape window comes
+ * from `lessonPogo.helpers.ts`. That module exists because this project has
  * twice shipped a sentence whose number had stopped being true, and a sentence
- * quoting `DASH_NUMBERS` cannot become a text box without inviting whoever
+ * quoting a measured constant cannot become a text box without inviting whoever
  * edits it to type the number back in as a literal.
  */
 export const pogoLessonCopy = {
-  lede: 'This is the fundamental skill that takes the game from feeling scary to exciting. If you can consistently pogo off enemies, projectiles, and obstactles then the game opens up to you and becomes far less intimidating.',
+  lede: 'This is the fundamental skill that takes the game from feeling scary to exciting. If you can consistently pogo off enemies, projectiles, and obstacles then the game opens up to you and becomes far less intimidating.',
 
   /** The demo's accessible name — the whole animation, for anyone who cannot see it. */
   demoLabel:
@@ -82,12 +83,15 @@ export const readingEnemiesCopy = {
   legendGreen: 'green — your nail beats this',
   legendGold: 'gold — the punish window',
 
-  /** Three fragments: the middle word is emphasised. */
-  ledeLead: 'Each new enemy is a puzzle. You have to figure out how to beat it, and the first step is learning what it can do.',
-  ledeTail:
-    ' Spend a whole life just dodging. When you can avoid everything it has, find the one safe moment to hit back.',
+  /**
+   * One string, where it used to be three fragments around an emphasised
+   * "not". The emphasis went when the sentence it sat inside was rewritten,
+   * and a lede split into pieces that no longer wrap anything is three boxes
+   * in the site editor pretending to be one.
+   */
+  lede: 'Each new enemy is a puzzle. You have to figure out how to beat it, and the first step is learning what it can do. Spend a whole life just dodging. When you can avoid everything it has, find the one safe moment to hit back.',
 
-  twoQuestions: 'Know when its time to learn',
+  twoQuestions: 'Know when it’s time to learn',
   threeBeats: 'Every attack has a rhythm',
   duelist: 'Active enemies track you down.',
   spitter: 'Projectile spammers make obstacles',

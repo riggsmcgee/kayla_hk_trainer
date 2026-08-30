@@ -14,7 +14,7 @@ import { FIXED_DT, PHYSICS } from '../engine/constants';
 import { createEnemy, enemyAttackHitbox, stepEnemy, type Target } from '../engine/enemies';
 import { FLOOR_Y } from '../engine/dodgeArenaSession';
 import type { World } from '../engine/types';
-import { DASH_NUMBERS, ESCAPE_WINDOW, tenthsInWords } from './lessonPogo.helpers';
+import { ESCAPE_WINDOW, tenthsInWords } from './lessonPogo.helpers';
 
 /** A floor and nothing else — the escape is horizontal, so walls only confuse it. */
 function flatWorld(): World {
@@ -80,37 +80,6 @@ describe('the escape window the dashing section teaches', () => {
 
   it('is exactly the doubling the thesis claims', () => {
     expect(ESCAPE_WINDOW.dashing).toBe(ESCAPE_WINDOW.running * 2);
-  });
-});
-
-describe('the dash figures the page prints', () => {
-  it('covers 200 px against running 83 in the same quarter second', () => {
-    // Both derived from the decompiled constants: 800 × 0.25 and 332 × 0.25.
-    expect(DASH_NUMBERS.distancePx).toBe(200);
-    expect(DASH_NUMBERS.runDistancePx).toBe(83);
-  });
-
-  it('buys 117 px of daylight at 2.4x her run', () => {
-    expect(DASH_NUMBERS.headStartPx).toBe(117);
-    expect(DASH_NUMBERS.timesRunSpeed).toBe(2.4);
-  });
-
-  it('comes back slower than the nail, which is why the rhythm is the dash', () => {
-    // The page tells her hit-and-away repeats on the dash cooldown. That is
-    // only true while the dash is the slower of the two to return.
-    expect(DASH_NUMBERS.dashReadySeconds).toBeGreaterThan(DASH_NUMBERS.nailReadySeconds);
-  });
-
-  it('loses a straight race with Bill the man once he is hot', () => {
-    // The correction the page carries: dashing away from the lance is the
-    // wrong answer, and it is wrong by arithmetic, not by feel.
-    expect(DASH_NUMBERS.hotLancePxPerSecond).toBeGreaterThan(DASH_NUMBERS.dashPxPerSecond);
-  });
-
-  it('leaves nothing for a dash-cancel to save', () => {
-    // Why the section does NOT teach cancelling: her nail is not ready again
-    // until after the swing has finished on its own.
-    expect(PHYSICS.nailCadence).toBeGreaterThan(PHYSICS.nailSwingTime);
   });
 });
 

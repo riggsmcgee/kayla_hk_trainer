@@ -77,7 +77,12 @@ export const pogoCoursePlayCopy = {
  * edited as the sentences they are.
  */
 export const finalePlayCopy = {
-  lede: 'Everything you2019ve learned, Kayla, all at once. Nothing down here is new.',
+  // The apostrophe is a real character. This line spent a while reading
+  // "you2019ve" — a right single quote that lost its escape somewhere between
+  // an editor and the file, leaving the code point's digits sitting in the
+  // prose. He found it by reading the page, which is the only way anyone was
+  // ever going to.
+  lede: 'Everything you’ve learned, Kayla, all at once. Nothing down here is new.',
 
   beatsLabel: 'The three beats',
 
