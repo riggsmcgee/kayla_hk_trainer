@@ -21,6 +21,7 @@
 import { useCallback, useState } from 'react';
 import { DEFAULT_ROLL_VARIANT, ROLL_VARIANTS } from '../engine/enemies';
 import { createLocalStore } from './local';
+import { useDevMode } from './useDevMode';
 
 const store = createLocalStore();
 
@@ -36,7 +37,17 @@ function clamp(value: unknown): number {
   return n >= 0 && n < ROLL_VARIANTS.length ? n : DEFAULT_ROLL_VARIANT;
 }
 
+/**
+ * With the dev door shut this reports the RATIFIED roll whatever is stored,
+ * which is the same value `clamp` gives a browser that has never held the
+ * setting. That is deliberate and it is the point of the lock: the developer's
+ * own browser is the one place a comparison pick can still be sitting, so
+ * without this, "I turned the dev tools off to see what Kayla gets" would show
+ * a fight rolling with whichever variant was last being tried. The pick is not
+ * thrown away — it is in the blob, waiting for the next unlock.
+ */
 export function useRollVariant(): [number, (next: number) => void] {
+  const devMode = useDevMode();
   const [variant, setVariant] = useState<number>(() => clamp(store.getSettings().rollVariant));
 
   const update = useCallback((next: number) => {
@@ -45,5 +56,5 @@ export function useRollVariant(): [number, (next: number) => void] {
     store.saveSettings({ ...store.getSettings(), rollVariant: safe });
   }, []);
 
-  return [variant, update];
+  return [devMode ? variant : DEFAULT_ROLL_VARIANT, update];
 }

@@ -9,6 +9,7 @@
 import { useCallback, useState } from 'react';
 import { DEFAULT_DOG_LOOK, DOG_LOOKS } from '../engine/dogLook';
 import { createLocalStore } from './local';
+import { useDevMode } from './useDevMode';
 
 const store = createLocalStore();
 
@@ -18,7 +19,9 @@ function clamp(value: unknown): number {
   return n >= 0 && n < DOG_LOOKS.length ? n : DEFAULT_DOG_LOOK;
 }
 
+/** Shut door, shipped look — the same rule `useRollVariant` explains. */
 export function useDogLook(): [number, (next: number) => void] {
+  const devMode = useDevMode();
   const [look, setLook] = useState<number>(() => clamp(store.getSettings().dogLook));
 
   const update = useCallback((next: number) => {
@@ -27,5 +30,5 @@ export function useDogLook(): [number, (next: number) => void] {
     store.saveSettings({ ...store.getSettings(), dogLook: safe });
   }, []);
 
-  return [look, update];
+  return [devMode ? look : DEFAULT_DOG_LOOK, update];
 }

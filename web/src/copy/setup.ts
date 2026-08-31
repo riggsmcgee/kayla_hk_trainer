@@ -46,8 +46,7 @@ export const setupLessonCopy = {
   /** Three fragments: the middle one is bold, so the spaces travel in the strings. */
   ledeLead: 'Kayla, this one decides everything after it: ',
   ledeStrong: 'pick one controller and stick with it.',
-  ledeTail:
-    ` If you switch between controllers every couple of times you play, you'll just bounce off the game every time.`,
+  ledeTail: ` If you switch between controllers every couple of times you play, you'll just bounce off the game every time.`,
 
   howToChoose: 'How to choose',
   thesis:

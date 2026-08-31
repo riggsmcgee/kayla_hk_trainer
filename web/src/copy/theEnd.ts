@@ -13,13 +13,14 @@
  */
 
 export const theEndCopy = {
-  /**
-   * The heading, and the only place the page says what it is. Deliberately not
-   * "Congratulations": she has already had YOU DID IT on the arena screen, and
-   * repeating it here would make this a second victory card rather than a
-   * letter from the person who built it.
+  /*
+   * There is no heading on this screen any more, and its absence is the point.
+   * It was "From Riggs", which was already deliberately not "Congratulations"
+   * — she has had YOU DID IT on the arena screen, and a second victory card is
+   * not what this is. The rewrite went one further: a letter that opens by
+   * announcing itself as a letter is a card, and the first line signs its own
+   * name by the way it talks. The last one signs it properly.
    */
-  title: 'From Riggs',
 
   /**
    * The messages, typed out one at a time at talking pace.
@@ -28,15 +29,19 @@ export const theEndCopy = {
    * The last one signs off, so nothing after it needs to — and after playtest 8
    * deleted the credits, nothing after it EXISTS.
    *
-   * The cost of a longer letter is arithmetic, not taste: at 12 characters a
-   * second, every 150 characters added is another twelve seconds of her sitting
-   * and reading. These four run about a minute.
+   * The cost of a longer letter is arithmetic, not taste, and the numbers to do
+   * it with are in `pages/theEnd.helpers.ts` rather than here: at the pace set
+   * there, every 150 characters added is about another four and a half seconds
+   * of her sitting and reading, plus a gap. These six run a little over half a
+   * minute.
    */
   messages: [
-    'Kayla — you did it. 1:30 against both Bills, and they never laid a finger on you.',
-    'I want to be straight with you about what that means. That fight is harder than a lot of the real bosses in Hollow Knight. I built it that way. And you beat it clean.',
-    'Everything you just did — the bouncing, the waiting, the reading before the hitting — is the same thing the real game is asking you for. You’ve got it now.',
-    'I’m really proud of you. Go enjoy Hollow Knight. It’s one of my favourite games in the world and I hope this made it more fun. — Riggs',
+    `Wow... I'm really impressed`,
+    `When I started making this trainer I didn't intend to make it this hard. If you only completed 80% of the challenges, you would be in a great spot to play Hollow Knight.`,
+    `But you didn't do that, did you?`,
+    'No, you overcame every last obstacle that I threw at you.',
+    `Don't get me wrong, Hollow Knight is a very hard game. You will find challenges and frustration, but I hope you also find a lot of fun and accomplishment along the way.`,
+    `Best of luck in your digital adventures. - Riggs`,
   ],
 
   /**
@@ -59,10 +64,12 @@ export const theEndCopy = {
    * happened to earn first.
    */
   messagesAssisted: [
-    'Kayla — you did it. 1:30 against both Bills.',
-    'I want to be straight with you about what that means. That fight is harder than a lot of the real bosses in Hollow Knight. I built it that way.',
-    'Everything you just did — the bouncing, the waiting, the reading before the hitting — is the same thing the real game is asking you for. You’ve got it now.',
-    'I’m really proud of you. Go enjoy Hollow Knight. It’s one of my favourite games in the world and I hope this made it more fun. — Riggs',
+    `Wow... I'm really impressed`,
+    `When I started making this trainer I didn't intend to make it this hard. If you only completed 80% of the challenges, you would be in a great spot to play Hollow Knight.`,
+    `But you didn't do that, did you?`,
+    'No, you overcame every last obstacle that I threw at you.',
+    `Don't get me wrong, Hollow Knight is a very hard game. You will find challenges and frustration, but I hope you also find a lot of fun and accomplishment along the way.`,
+    `Best of luck in your digital adventures. - Riggs`,
   ],
 
   /**

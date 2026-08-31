@@ -228,4 +228,20 @@ export interface SettingsV1 {
    * portfolio rule as `rollVariant` and `entranceVariant`.
    */
   dogLook?: number;
+  /**
+   * Whether the dev tools above are reachable at all — the lock on the door
+   * the six fields before this one sit behind.
+   *
+   * Absent (the only state a browser that has not been unlocked can be in)
+   * means locked, and locked is not merely a tidier screen: every dev field
+   * above reads as its shipped value while it holds, so the site behind a
+   * shut door is exactly the site Kayla gets. `web/src/storage/useDevMode.ts`
+   * has the whole argument, and `web/src/components/devUnlock.ts` holds the
+   * ten keys that open it.
+   *
+   * Written only as `true`; shutting the door deletes the field rather than
+   * storing `false`, so a settings blob that was never unlocked stays
+   * pristine.
+   */
+  devMode?: boolean;
 }

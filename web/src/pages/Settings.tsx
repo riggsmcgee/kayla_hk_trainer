@@ -30,6 +30,7 @@ import { useBindings } from '../storage/useBindings';
 import { notifyProgressChanged, progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useAssistMode } from '../storage/useAssistMode';
+import { useDevMode } from '../storage/useDevMode';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
 import { useEntranceVariant } from '../storage/useEntranceVariant';
@@ -73,6 +74,7 @@ export function Settings() {
   const { progress } = useProgress();
   const [bindings, setBindings] = useBindings();
   const [comfort, setComfort] = useComfortSettings();
+  const devMode = useDevMode();
   const [godMode, setGodMode] = useGodMode();
   const assist = useAssistMode();
   const [rollVariant, setRollVariant] = useRollVariant();
@@ -293,7 +295,11 @@ export function Settings() {
 
       <section className="settings-section" aria-labelledby="settings-difficulty">
         <h2 id="settings-difficulty">{settingsCopy.difficultyHeading}</h2>
-        <AssistControl lives={assist.lives} confirmed={assist.confirmed} onChange={assist.setLives} />
+        <AssistControl
+          lives={assist.lives}
+          confirmed={assist.confirmed}
+          onChange={assist.setLives}
+        />
       </section>
 
       {/* Only once she has actually beaten them. A message that can be read
@@ -346,95 +352,103 @@ export function Settings() {
         </p>
       </section>
 
-      {/* DEV TOOL: remove in the final build */}
-      <details className="dev-tools">
-        <summary>Dev tools — remove in the final build</summary>
-        <div role="group" aria-label="Dev tools">
-          <label className="observe-toggle">
-            <input
-              type="checkbox"
-              checked={godMode}
-              onChange={(e) => setGodMode(e.target.checked)}
-            />
-            God mode — nothing can touch you
-          </label>
-          <p className="fine-print settings-note">
-            Every hit still flashes and still counts on the HUD, so you can see what would have got
-            you — it just does not end the run. Runs played with it on never become a personal best.
-          </p>
+      {/* DEV TOOL, and the reason this page no longer has one for Kayla: the
+          drawer is not in the DOM at all until the sequence in
+          components/devUnlock.ts is typed. Not hidden with CSS and not
+          disabled — absent, so there is nothing here to find, tab to or ask
+          about. Every switch inside it is separately inert while the door is
+          shut; see storage/useDevMode.ts. */}
+      {devMode && (
+        <details className="dev-tools">
+          <summary>Dev tools — hidden until the sequence is typed</summary>
+          <div role="group" aria-label="Dev tools">
+            <label className="observe-toggle">
+              <input
+                type="checkbox"
+                checked={godMode}
+                onChange={(e) => setGodMode(e.target.checked)}
+              />
+              God mode — nothing can touch you
+            </label>
+            <p className="fine-print settings-note">
+              Every hit still flashes and still counts on the HUD, so you can see what would have
+              got you — it just does not end the run. Runs played with it on never become a personal
+              best.
+            </p>
 
-          <fieldset className="roll-variants">
-            <legend>The dog’s roll — five to try</legend>
-            {ROLL_VARIANTS.map((variant, i) => (
-              <label key={variant.name} className="roll-variant">
-                <input
-                  type="radio"
-                  name="roll-variant"
-                  checked={rollVariant === i}
-                  onChange={() => setRollVariant(i)}
-                />
-                <span>
-                  <strong>{variant.name}</strong>
-                  <span className="fine-print">{variant.feel}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <p className="fine-print settings-note">
-            Fight the Two Bills with each one and pick a favourite. They all alternate between a hop
-            you can run under and a skitter you cannot — what changes is the pace, the rhythm and
-            how long you get to decide.
-          </p>
+            <fieldset className="roll-variants">
+              <legend>The dog’s roll — {ROLL_VARIANTS.length} to try</legend>
+              {ROLL_VARIANTS.map((variant, i) => (
+                <label key={variant.name} className="roll-variant">
+                  <input
+                    type="radio"
+                    name="roll-variant"
+                    checked={rollVariant === i}
+                    onChange={() => setRollVariant(i)}
+                  />
+                  <span>
+                    <strong>{variant.name}</strong>
+                    <span className="fine-print">{variant.feel}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            <p className="fine-print settings-note">
+              Fight the Two Bills with each one and pick a favourite. They all alternate between a
+              hop you can run under and a skitter you cannot — what changes is the pace, the rhythm
+              and how long you get to decide.
+            </p>
 
-          <fieldset className="roll-variants">
-            <legend>The entrances — three to try</legend>
-            {BILL_ENTRANCES.map((variant, i) => (
-              <label key={variant.name} className="roll-variant">
-                <input
-                  type="radio"
-                  name="entrance-variant"
-                  checked={entranceVariant === i}
-                  onChange={() => setEntranceVariant(i)}
-                />
-                <span>
-                  <strong>{variant.name}</strong>
-                  <span className="fine-print">{variant.feel}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <p className="fine-print settings-note">
-            Each one covers BOTH Bills: how many footfalls you hear before the man arrives and how
-            he crosses the ground, and then at 0:30 how quickly he calls for help, how long the
-            barking takes to answer and how the dog comes in. Hold jump during either to run it at
-            2.5×.
-          </p>
+            <fieldset className="roll-variants">
+              <legend>The entrances — {BILL_ENTRANCES.length} to try</legend>
+              {BILL_ENTRANCES.map((variant, i) => (
+                <label key={variant.name} className="roll-variant">
+                  <input
+                    type="radio"
+                    name="entrance-variant"
+                    checked={entranceVariant === i}
+                    onChange={() => setEntranceVariant(i)}
+                  />
+                  <span>
+                    <strong>{variant.name}</strong>
+                    <span className="fine-print">{variant.feel}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            <p className="fine-print settings-note">
+              Each one covers BOTH Bills: how many footfalls you hear before the man arrives and how
+              he crosses the ground, and then at 0:30 how quickly he calls for help, how long the
+              barking takes to answer and how the dog comes in. Hold jump during either to run it at
+              2.5×.
+            </p>
 
-          <fieldset className="roll-variants">
-            <legend>The dog’s ball and bones — three to try</legend>
-            {DOG_LOOKS.map((variant, i) => (
-              <label key={variant.name} className="roll-variant">
-                <input
-                  type="radio"
-                  name="dog-look"
-                  checked={dogLook === i}
-                  onChange={() => setDogLook(i)}
-                />
-                <span>
-                  <strong>{variant.name}</strong>
-                  <span className="fine-print">{variant.feel}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <p className="fine-print settings-note">
-            The ball’s pale “safe on top” cap is gone — it is lethal everywhere now — so it needs a
-            marker that says so. All three use the dark ring the red hazard orbs already wear in
-            Bounce Bog. “Stepped” also tumbles the bones in whole frames instead of spinning them
-            smoothly, which is the rule the rest of the Bills are held to.
-          </p>
-        </div>
-      </details>
+            <fieldset className="roll-variants">
+              <legend>The dog’s ball and bones — {DOG_LOOKS.length} to try</legend>
+              {DOG_LOOKS.map((variant, i) => (
+                <label key={variant.name} className="roll-variant">
+                  <input
+                    type="radio"
+                    name="dog-look"
+                    checked={dogLook === i}
+                    onChange={() => setDogLook(i)}
+                  />
+                  <span>
+                    <strong>{variant.name}</strong>
+                    <span className="fine-print">{variant.feel}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            <p className="fine-print settings-note">
+              The ball’s pale “safe on top” cap is gone — it is lethal everywhere now — so it needs
+              a marker that says so. All three use the dark ring the red hazard orbs already wear in
+              Bounce Bog. “Stepped” also tumbles the bones in whole frames instead of spinning them
+              smoothly, which is the rule the rest of the Bills are held to.
+            </p>
+          </div>
+        </details>
+      )}
     </div>
   );
 }

@@ -89,11 +89,7 @@ export interface ArenaEvents {
   absorbedByAssist: boolean;
 }
 
-export function createArenaState(
-  observe: boolean,
-  godMode = false,
-  assistLives = 0,
-): ArenaState {
+export function createArenaState(observe: boolean, godMode = false, assistLives = 0): ArenaState {
   return {
     started: false,
     over: false,

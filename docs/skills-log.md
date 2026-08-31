@@ -598,3 +598,35 @@ Observations (Session 20b):
   dirty tree was the user's own prose and the literal subject of the sprint. Committing it verbatim
   first made it safer than the rule's own outcome would have, and saying so in the first line of the
   handoff is what makes that a decision rather than a liberty.
+
+## Session 21 — locking the dev tools before the site is sent
+
+| #   | Skill                | Where it was reached for                                      | What it was asked to do                                                            | Landed | Verdict                                                                                                                                                                                                          |
+| --- | -------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 64  | `workflow-authoring` | Before fanning four scouts over the dev surface                | Author a sweep-then-critique workflow rather than reading eleven files by hand      | ✅     | Worth it for the critic, not for the scouts. The four sweeps mostly told me what an hour of reading would have; the completeness critic found two live defects and one false claim in my own comments.             |
+| 65  | `agent-browser`      | Before believing the drawer was actually gone from a real page | Walk Settings and the Colosseum locked, type the sequence, walk them again unlocked | ✅     | The suite can prove a component renders nothing; only a browser proves the built bundle does. Slow on this machine — every command paid a fresh browser launch, and one `close --all` killed a session mid-query.  |
+
+Observations (Session 21):
+
+- **The critic earned the whole workflow; the scouts nearly didn't.** Four parallel readers returned
+  a tidy inventory that was stale before it was written, because the implementation was landing
+  underneath them. The fifth agent — the one asked "what did they miss, where do they contradict
+  each other, what is simply wrong" — found the `watchEnding` leak (shut the door mid-fight and the
+  finale still skipped to 1:30 in the shipped build), the missing `reloadDevMode()` in
+  `reloadStores()`, and a comment of mine that asserted `KeyB` was unbindable when Settings will
+  happily bind it. **Next time: run the sweep inline and spend the agents on adversarial review.**
+
+- **Hiding a switch is not turning it off, and that is the whole feature.** The easy version of this
+  task is `{devMode && <details>}`. It would have shipped a browser that still had god mode on,
+  because god mode is persisted and the drawer was the only thing that ever said so. Every dev knob
+  now reads through the lock, so "dev mode off" is the game Kayla gets rather than a tidier screen —
+  and that is what the new jsdom suite asserts, by seeding the worst blob a developer could carry.
+
+- **Two files whose names differ only in case cannot both exist.** `devUnlock.ts` beside
+  `DevUnlock.tsx` typechecks nowhere on Windows or macOS. Cost one rename; would have cost a
+  confusing CI failure if it had gone the other way.
+
+- **A test that hardcodes a constant is not testing the constant.** Nine `TheEnd` tests failed the
+  first time the reading pace was actually changed, and not one of them said "the speed moved" —
+  they had been checking that two hand-kept copies of `12` still agreed. The pace now lives in
+  `pages/theEnd.helpers.ts` and both sides import it.

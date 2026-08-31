@@ -746,6 +746,45 @@ a {
   margin-top: 0;
 }
 
+/*
+ * The line that confirms the door just opened or shut (components/DevUnlock).
+ * Always in the DOM so the live region is there before its text is, and out of
+ * the layout entirely while it is empty — an invisible element with height
+ * would push the whole page down by a line on every route.
+ *
+ * Fixed to the bottom-left rather than in the flow because the sequence can be
+ * finished on any page, including one whose canvas fills the screen, and a
+ * confirmation you have to scroll to find is not one.
+ */
+.dev-flash {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 20;
+  max-width: min(28rem, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.5rem 0.9rem;
+  border: 1px dashed var(--rock);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/*
+ * Collapsed rather than `display: none` while it is empty, and that is the
+ * whole reason it is written as two rules. A live region that is display:none
+ * until the moment it has text is a live region a screen reader has never seen,
+ * and the announcement is lost — the box has to be there first and only look
+ * like nothing.
+ */
+.dev-flash:empty {
+  padding: 0;
+  border: 0;
+  opacity: 0;
+}
+
 /* ------------------------------------------------------------------ */
 /* Setup chapter: controller diagrams                                   */
 /* ------------------------------------------------------------------ */

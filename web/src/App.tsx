@@ -3,6 +3,7 @@
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router';
 import { SETUP_FLOOR_ROUTE, chapterById } from './chapters';
 import { MAIN_ID } from './components/focus';
+import { DevUnlock } from './components/DevUnlock';
 import { ScrollToTop } from './components/ScrollToTop';
 import { siteChromeCopy } from './copy/nav';
 import { Home } from './pages/Home';
@@ -23,6 +24,10 @@ export function App() {
           notably PracticeCanvas, which then takes the focus back on a
           mini-game page. That ordering is deliberate; see ScrollToTop. */}
       <ScrollToTop />
+      {/* Listens on the window for the ten keys that open the dev drawer, and
+          says so when they land. Outside .shell because it is fixed to the
+          viewport and belongs to no page — the sequence works on all of them. */}
+      <DevUnlock />
       <div className="shell">
         <header className="site-header">
           <NavLink to="/" className="site-title">

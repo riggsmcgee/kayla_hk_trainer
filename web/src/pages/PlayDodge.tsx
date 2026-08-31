@@ -6,7 +6,7 @@
  * records clears through the shared progress store, and shows her best for
  * the enemy she's on. Once all five are cleared, the road goes on.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import type { EnemyId, PracticeRun, ProgressV1 } from '@dojo/shared';
 import { chapterById, chapterIndex, countWordCap, nextChapter } from '../chapters';
@@ -26,6 +26,7 @@ import { arenaCleared } from '../storage/progress';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useAssistMode } from '../storage/useAssistMode';
+import { useDevMode } from '../storage/useDevMode';
 import { useGodMode } from '../storage/useGodMode';
 import { formatClock } from './bestLine';
 import '../styles/arena.css';
@@ -62,6 +63,7 @@ export function PlayDodge() {
   const next = nextChapter(CHAPTER_ID);
   const { progress, runs, refresh } = useProgress();
   const [comfort] = useComfortSettings();
+  const devMode = useDevMode();
   const [godMode] = useGodMode();
   const { lives: assistLives } = useAssistMode();
   // Functions, not strings: the overlays ask at draw time, so the copy can
@@ -78,10 +80,21 @@ export function PlayDodge() {
    */
   const [current, setCurrent] = useState(startIndex);
 
-  // DEV TOOL: remove in the final build — free play against one enemy, and
-  // observe mode. Neither records a clear; both are out of the progression.
+  // DEV TOOL — free play against one enemy, and observe mode. Neither records
+  // a clear; both are out of the progression.
+  //
+  // Plain component state rather than the settings blob, so unlike god mode
+  // and the three pickers there is nothing stored that could outlive a reload
+  // — the only way in is the drawer below, which is not there while the door
+  // is shut. The effect covers the one gap that leaves: shutting the door
+  // from THIS page, with a feather nail already on.
   const [freePlay, setFreePlay] = useState<EnemyId | null>(null);
   const [observe, setObserve] = useState(false);
+  useEffect(() => {
+    if (devMode) return;
+    setFreePlay(null);
+    setObserve(false);
+  }, [devMode]);
 
   const onStageCleared = useCallback(
     (index: number) => {
@@ -214,47 +227,50 @@ export function PlayDodge() {
 
       <FinePrint />
 
-      {/* DEV TOOL: remove in the final build */}
-      <details className="dev-tools">
-        <summary>Dev tools — remove in the final build</summary>
-        <div className="arena-controls" role="group" aria-label="Dev tools">
-          <div className="btn-row" role="group" aria-label="Free play: pick one enemy">
-            <button
-              type="button"
-              aria-pressed={freePlay === null}
-              className={freePlay === null ? 'chip chip-active' : 'chip'}
-              onClick={(ev) => {
-                blurOnPointerClick(ev);
-                setFreePlay(null);
-              }}
-            >
-              The roster
-            </button>
-            {ROSTER.map((e) => (
+      {/* DEV TOOL, absent rather than hidden until the sequence in
+          components/devUnlock.ts is typed — see the same note on Settings. */}
+      {devMode && (
+        <details className="dev-tools">
+          <summary>Dev tools — hidden until the sequence is typed</summary>
+          <div className="arena-controls" role="group" aria-label="Dev tools">
+            <div className="btn-row" role="group" aria-label="Free play: pick one enemy">
               <button
-                key={e.id}
                 type="button"
-                aria-pressed={freePlay === e.id}
-                className={freePlay === e.id ? 'chip chip-active' : 'chip'}
+                aria-pressed={freePlay === null}
+                className={freePlay === null ? 'chip chip-active' : 'chip'}
                 onClick={(ev) => {
                   blurOnPointerClick(ev);
-                  setFreePlay(e.id);
+                  setFreePlay(null);
                 }}
               >
-                {e.name}
+                The roster
               </button>
-            ))}
+              {ROSTER.map((e) => (
+                <button
+                  key={e.id}
+                  type="button"
+                  aria-pressed={freePlay === e.id}
+                  className={freePlay === e.id ? 'chip chip-active' : 'chip'}
+                  onClick={(ev) => {
+                    blurOnPointerClick(ev);
+                    setFreePlay(e.id);
+                  }}
+                >
+                  {e.name}
+                </button>
+              ))}
+            </div>
+            <label className="observe-toggle">
+              <input
+                type="checkbox"
+                checked={observe}
+                onChange={(e) => setObserve(e.target.checked)}
+              />
+              Observe mode — feather nail, no clears
+            </label>
           </div>
-          <label className="observe-toggle">
-            <input
-              type="checkbox"
-              checked={observe}
-              onChange={(e) => setObserve(e.target.checked)}
-            />
-            Observe mode — feather nail, no clears
-          </label>
-        </div>
-      </details>
+        </details>
+      )}
 
       <ChapterNext current={CHAPTER_ID} />
       <ChapterNav current={CHAPTER_ID} />

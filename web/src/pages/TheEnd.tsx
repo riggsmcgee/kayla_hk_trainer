@@ -25,6 +25,7 @@ import { paintRiggs } from '../engine/riggs';
 import { billsWinWasAssisted } from '../storage/bests';
 import { useOverlayLabels } from '../storage/useOverlayLabels';
 import { useProgress } from '../storage/useChapterProgress';
+import { CHARS_PER_SECOND, GAP_SECONDS } from './theEnd.helpers';
 import '../styles/the-end.css';
 
 /**
@@ -33,19 +34,6 @@ import '../styles/the-end.css';
  */
 const STAGE = { width: 480, height: 528 };
 const ORIGIN = { x: 240, y: 512 };
-
-/**
- * Talking pace, ratified in playtest 8.
- *
- * Conversational speech sits near 12 characters a second and comfortable adult
- * reading is 12–16, so one number serves both: it reads as fast as he would
- * say it. The messages average about 150 characters, which is twelve seconds
- * each — the arithmetic to check against if the letter ever gets longer.
- */
-const CHARS_PER_SECOND = 12;
-
-/** The silence between one message finishing and the next starting. */
-const GAP_SECONDS = 1.2;
 
 /**
  * The single frame he is frozen on under `prefers-reduced-motion`.
@@ -345,7 +333,8 @@ export function TheEnd() {
       </div>
 
       <div className="the-end-say">
-        <p className="eyebrow">{theEndCopy.title}</p>
+        {/* No eyebrow here any longer — see the note at the top of
+            copy/theEnd.ts. The letter opens on its own first line. */}
 
         {/* The typed text is hidden from screen readers and the whole message
             is announced beside it. A live region on the typing text would

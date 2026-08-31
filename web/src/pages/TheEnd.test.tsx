@@ -23,6 +23,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theEndCopy } from '../copy/theEnd';
+import { GAP_SECONDS, sayingMs } from './theEnd.helpers';
 import { TheEnd } from './TheEnd';
 
 /** Every `speaking` flag the page has handed the painter, oldest first. */
@@ -69,13 +70,39 @@ function runUntil(atMs: number): void {
   if (now < atMs) runFrame(atMs);
 }
 
-/** Seconds a message of `chars` characters takes to say, at the ratified pace. */
-function saying(chars: number): number {
-  return chars / 12;
+/**
+ * The pace comes from `theEnd.helpers`, not from a number typed again here.
+ *
+ * This file used to divide by a hand-written 12 and hold its own `GAP_MS` of
+ * 1200. The day the pace was actually changed, nine of these tests failed with
+ * messages about characters, buttons and a mouth, and not one of them said
+ * "the speed moved" — they had never been testing the page's pace, only that
+ * two copies of a number still agreed.
+ */
+const GAP_MS = GAP_SECONDS * 1000;
+
+/**
+ * Advance to the instant `chars` characters of the current message are due.
+ *
+ * The extra millisecond is not a fudge, it is the difference between a test
+ * that passes and one that passes on this machine. The page floors
+ * `elapsed / 1000 * CHARS_PER_SECOND`, and `chars / rate * 1000` does not
+ * always multiply back to exactly `chars` in binary floating point — landing a
+ * hair short prints one character fewer. A millisecond is a thirtieth of a
+ * character, so it cannot reach the next one.
+ */
+function runToChars(chars: number): void {
+  runUntil(sayingMs(chars) + 1);
 }
 
-/** The gap between messages, ratified at 1.2 s. */
-const GAP_MS = 1200;
+/**
+ * A moment when the first message is provably PART said — the state seven of
+ * these tests need, and the state a fixed `runUntil(1000)` stopped describing
+ * the moment the letter got faster than a second a sentence.
+ */
+function runToMidFirstMessage(): void {
+  runToChars(Math.floor(FIRST.length / 2));
+}
 
 beforeEach(() => {
   now = 0;
@@ -144,36 +171,37 @@ describe('the letter, arriving at talking pace', () => {
     expect(shown().length).toBeLessThan(FIRST.length);
   });
 
-  it('reads out twelve characters a second', () => {
-    // Derived from the ratified pace, not from running the page: after two
-    // seconds exactly 24 characters have arrived.
+  it('reads out its characters off the clock, at the ratified pace', () => {
+    // Derived from the pace, not from running the page: the instant the
+    // twelfth character is due is the instant twelve of them are showing.
     renderTheEnd();
-    runUntil(2000);
-    expect(shown()).toBe(FIRST.slice(0, 24));
+    runToChars(12);
+    expect(shown()).toBe(FIRST.slice(0, 12));
   });
 
   it('reads at the same speed on a 144 Hz monitor as on a 60 Hz one', () => {
     // The bug this exists for is a per-frame increment, which would be more
-    // than twice as far along here. Same two seconds, 2.4× the frames.
+    // than twice as far along here. Same instant, 2.4× the frames.
     renderTheEnd();
     runFrame(0);
-    for (let t = 7; t < 2000; t += 7) runFrame(t);
-    runFrame(2000); // land on the same instant the 60 Hz test measured at
-    expect(shown()).toBe(FIRST.slice(0, 24));
+    const at = sayingMs(12) + 1;
+    for (let t = 7; t < at; t += 7) runFrame(t);
+    runFrame(at); // land on the same instant the 60 Hz test measured at
+    expect(shown()).toBe(FIRST.slice(0, 12));
   });
 
   it('finishes the first message and pauses before starting the second', () => {
     renderTheEnd();
-    runUntil(saying(FIRST.length) * 1000);
+    runToChars(FIRST.length);
     expect(shown()).toBe(FIRST);
     // Still the first one a beat later: the gap is real, not a rounding error.
-    runUntil(saying(FIRST.length) * 1000 + GAP_MS - 100);
+    runUntil(sayingMs(FIRST.length) + GAP_MS - 100);
     expect(shown()).toBe(FIRST);
   });
 
   it('moves itself on once the gap has passed', () => {
     renderTheEnd();
-    runUntil(saying(FIRST.length) * 1000 + GAP_MS + 100);
+    runUntil(sayingMs(FIRST.length) + GAP_MS + 100);
     expect(shown()).toBe(SECOND.slice(0, shown().length));
     expect(shown().length).toBeLessThan(SECOND.length);
     expect(screen.getByText(`2 of ${theEndCopy.messages.length}`)).toBeDefined();
@@ -193,7 +221,7 @@ describe('forward, which finishes rather than skips', () => {
     // Playtest 5 deleted a card outright for needing no input; this is what
     // makes automatic text different from that.
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     expect(shown().length).toBeLessThan(FIRST.length);
     pressForward();
     runFrame(now + 16);
@@ -202,7 +230,7 @@ describe('forward, which finishes rather than skips', () => {
 
   it('moves to the next one only on a second press', () => {
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     pressForward();
     runFrame(now + 16);
     expect(shown()).toBe(FIRST);
@@ -215,7 +243,7 @@ describe('forward, which finishes rather than skips', () => {
   it('says which of the two jobs it is about to do', () => {
     // A button labelled "Next" that does not go next is worse than no button.
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     expect(screen.getByRole('button', { name: theEndCopy.finishButton })).toBeDefined();
     pressForward();
     runFrame(now + 16);
@@ -224,7 +252,7 @@ describe('forward, which finishes rather than skips', () => {
 
   it('works from the on-screen button too, for a mouse', () => {
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: theEndCopy.finishButton }));
     });
@@ -244,16 +272,16 @@ describe('forward, which finishes rather than skips', () => {
 describe('his mouth', () => {
   it('moves while characters are appearing', () => {
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     expect(spoken).toContain(true);
   });
 
   it('shuts when the sentence does, and stays shut through the gap', () => {
     renderTheEnd();
-    runUntil(saying(FIRST.length) * 1000 + 100);
+    runUntil(sayingMs(FIRST.length) + 100);
     spoken.length = 0;
     // The rest of the gap, with nothing being said.
-    runUntil(saying(FIRST.length) * 1000 + GAP_MS - 100);
+    runUntil(sayingMs(FIRST.length) + GAP_MS - 100);
     expect(spoken.length).toBeGreaterThan(0);
     expect(spoken).not.toContain(true);
   });
@@ -262,7 +290,7 @@ describe('his mouth', () => {
     // He has finished the sentence. His mouth should not still be moving
     // because the clock says he had more to say.
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     pressForward();
     runFrame(now + 16);
     spoken.length = 0;
@@ -292,14 +320,14 @@ describe('under prefers-reduced-motion', () => {
     // typing is the decoration; the talking is not.
     stubReducedMotion(true);
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     expect(spoken).toContain(true);
   });
 
   it('still moves itself on, at the same pace', () => {
     stubReducedMotion(true);
     renderTheEnd();
-    runUntil(saying(FIRST.length) * 1000 + GAP_MS + 100);
+    runUntil(sayingMs(FIRST.length) + GAP_MS + 100);
     expect(shown()).toBe(SECOND);
   });
 
@@ -308,7 +336,7 @@ describe('under prefers-reduced-motion', () => {
     // is already whole, so a press that did nothing would read as a dead key.
     stubReducedMotion(true);
     renderTheEnd();
-    runUntil(500);
+    runToMidFirstMessage();
     pressForward();
     runFrame(now + 16);
     expect(shown()).toBe(SECOND);
@@ -326,7 +354,7 @@ describe('what follows the letter', () => {
   it('does not offer it while he is still talking', () => {
     // It is the end of the letter, not an exit sign over it.
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     expect(screen.queryByRole('link', { name: theEndCopy.backToMap })).toBeNull();
   });
 
@@ -372,7 +400,7 @@ describe('what it does not assume', () => {
     // A live region on the typing text would say "K", "Ka", "Kay"... The
     // reading experience has to be the same for her; the markup does not.
     renderTheEnd();
-    runUntil(1000);
+    runToMidFirstMessage();
     const live = document.querySelector('[aria-live="polite"]');
     expect(live?.textContent).toBe(FIRST);
     expect(screen.getByText((_, el) => el?.className === 'the-end-message')).toHaveProperty(

@@ -7,7 +7,7 @@
  * Clears go through the shared progress store, and once the level, every
  * wave and the Bills are done the road is walked.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { PracticeRun, ProgressV1 } from '@dojo/shared';
 import { chapterById, chapterIndex } from '../chapters';
@@ -38,6 +38,7 @@ import { bestHits } from '../storage/bests';
 import { progressStore, useProgress } from '../storage/useChapterProgress';
 import { useComfortSettings } from '../storage/useComfortSettings';
 import { useAssistMode } from '../storage/useAssistMode';
+import { useDevMode } from '../storage/useDevMode';
 import { useGodMode } from '../storage/useGodMode';
 import { useRollVariant } from '../storage/useRollVariant';
 import { useEntranceVariant } from '../storage/useEntranceVariant';
@@ -359,6 +360,21 @@ function BossBeat({
     setWatchEnding(ending);
     setRunCount((n) => n + 1);
   };
+  /**
+   * Shutting the dev door while the ending shortcut is armed.
+   *
+   * The two buttons that set this are gated on `godMode`, which now reads false
+   * the moment the door shuts — so the row vanishes. The flag it set does not,
+   * and `godMode` is in `createSession`'s dependency list, so the fight rebuilds
+   * on that very change and `bossSession` reads `playTheEnding` on the way past.
+   * Without this the finale would wind itself to 1:30 in the build that has no
+   * dev tools in it, which is the one place that must never happen. Same guard,
+   * same reason, as the one on the Colosseum's observe toggle.
+   */
+  const devMode = useDevMode();
+  useEffect(() => {
+    if (!devMode) setWatchEnding(false);
+  }, [devMode]);
   /**
    * Whether she had already survived 1:30 BEFORE this visit. Read once and
    * held for the life of the beat, deliberately: `cleared` is baked into the

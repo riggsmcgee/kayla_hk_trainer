@@ -88,13 +88,13 @@ export const stopStateCopy = {
  * is the doctrine again, in the shortest form it has anywhere on the site.
  */
 export const siteChromeCopy = {
-  title: "Hollow Knight Dojo",
+  title: 'Hollow Knight Dojo',
   navLabel: 'Main',
   navMap: 'Map',
   navPogoCourse: 'Pogo Course',
   navDodgeArena: 'Dodge Arena',
   navSettings: 'Settings',
-  footer: 'Built for Kbug. Hit them more than they hit you and you beat the game.',
+  footer: `Built for Kayla. Not getting hit is more important than hitting them.`,
 } as const;
 
 /** The map on the front page (`components/DojoMap.tsx`). */

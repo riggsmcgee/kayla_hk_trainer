@@ -16,16 +16,27 @@
 import { useCallback, useState } from 'react';
 import { BILL_ENTRANCES } from '../engine/entrance';
 import { createLocalStore } from './local';
+import { useDevMode } from './useDevMode';
 
 const store = createLocalStore();
 
+/**
+ * The entrance an unset setting means — the first of the three, unlike the
+ * roll and the dog's look, whose ratified entries were appended and so carry
+ * a named constant. Written down here rather than left as a bare `0` in three
+ * places because it is now also what the site plays with the dev door shut.
+ */
+const DEFAULT_ENTRANCE_VARIANT = 0;
+
 /** Clamp anything a stale or hand-edited settings blob might hold. */
 function clamp(value: unknown): number {
-  const n = typeof value === 'number' ? Math.floor(value) : 0;
-  return n >= 0 && n < BILL_ENTRANCES.length ? n : 0;
+  const n = typeof value === 'number' ? Math.floor(value) : DEFAULT_ENTRANCE_VARIANT;
+  return n >= 0 && n < BILL_ENTRANCES.length ? n : DEFAULT_ENTRANCE_VARIANT;
 }
 
+/** Shut door, shipped entrance — the same rule `useRollVariant` explains. */
 export function useEntranceVariant(): [number, (next: number) => void] {
+  const devMode = useDevMode();
   const [variant, setVariant] = useState<number>(() => clamp(store.getSettings().entranceVariant));
 
   const update = useCallback((next: number) => {
@@ -34,5 +45,5 @@ export function useEntranceVariant(): [number, (next: number) => void] {
     store.saveSettings({ ...store.getSettings(), entranceVariant: safe });
   }, []);
 
-  return [variant, update];
+  return [devMode ? variant : DEFAULT_ENTRANCE_VARIANT, update];
 }
