@@ -1,0 +1,93 @@
+/*
+ * `#/the-end` — the last screen of the dojo.
+ *
+ * Two columns on a wide screen, stacked on a narrow one: Riggs on the left,
+ * what he is saying on the right. He is a fixed 480 px stage rather than a
+ * fluid one, because he is a PIXEL drawing on a 16 px grid — scaling him to
+ * the column would put his cell edges on fractional pixels, which is the one
+ * thing that would stop him looking like he came from the same world as the
+ * Bills.
+ */
+
+.the-end {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: end;
+  margin: 1.5rem 0 3rem;
+}
+
+@media (max-width: 60rem) {
+  .the-end {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    align-items: start;
+    gap: 1.5rem;
+  }
+}
+
+.the-end-stage {
+  /* He stands on the bottom edge of his own box; the arena ground behind him
+     is what keeps the handoff reading as the same world he was just in. */
+  background: var(--bg-canvas);
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.riggs-canvas {
+  display: block;
+  /* Never smoothed. A blurred pixel drawing is a different medium. */
+  image-rendering: pixelated;
+  max-width: 100%;
+}
+
+.the-end-say {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* Running text, kept near 62 characters the way the lessons are. */
+  max-width: 40rem;
+}
+
+.the-end-message {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+  margin: 0;
+  /* The messages differ in length AND each one now arrives a character at a
+     time, so without a floor here the button walks up the page sixty times a
+     second while he is talking. */
+  min-height: 7.5rem;
+}
+
+.the-end-advance {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.the-end-advance .button {
+  background: var(--gold);
+  border: 0;
+  cursor: pointer;
+  line-height: 1.6;
+  padding: 0.6rem 1.5rem;
+}
+
+.the-end-advance .button:hover {
+  background: #f3d98a;
+}
+
+.the-end-progress {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.the-end-back {
+  /* All that follows the last sentence. A quiet chip and not a gold button:
+     the forward key is how this site says "the next thing is worth doing",
+     and after playtest 8 deleted the credits there is no next thing. */
+  margin: 0.5rem 0 0;
+}

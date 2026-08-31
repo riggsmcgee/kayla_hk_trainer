@@ -1,71 +1,96 @@
-import { Link } from 'react-router';
+import { chapterById, chapterIndex } from '../chapters';
+import { ChapterGate } from '../components/ChapterGate';
+import { ChapterNav } from '../components/ChapterNav';
 import { LessonDemo } from '../components/LessonDemo';
+import { ChapterNext } from '../components/ChapterNext';
+import { lessonCopy, pogoLessonCopy } from '../copy/lessons';
 import { pogoRhythmDemo } from '../engine/demo';
+import { ESCAPE_WINDOW, tenthsInWords } from './lessonPogo.helpers';
 
 export function LessonPogo() {
+  const chapter = chapterById('pogo');
   return (
-    <>
-      <h1>Lesson: Pogo</h1>
-      <p className="lede">
-        Kayla, the pogo — bouncing off things with a downward slash — is the single skill
-        that will change how this game feels for you. Spikes stop being walls and start
-        being trampolines, and enemies become platforms. It&apos;s a rhythm, not a reflex:
-        jump, slash down as you fall, rise, repeat. We&apos;ll start slow and build the beat
-        together until your hands know it without you.
+    <ChapterGate current="pogo">
+      <p className="eyebrow">{lessonCopy.eyebrow(chapterIndex('pogo'), chapter.place)}</p>
+      <h1>{chapter.title}</h1>
+      <p className="lede">{pogoLessonCopy.lede}</p>
+
+      <LessonDemo script={pogoRhythmDemo} label={pogoLessonCopy.demoLabel} />
+
+      <h2>{pogoLessonCopy.kinder}</h2>
+      <ul className="plain-list">
+        <li>
+          The down-slash is <strong>wider</strong> than you. You don’t always have to be perfectly
+          over your target.
+        </li>
+        <li>
+          Unlike jumping, every bounce is the same height. Once you get it into muscle memory, it
+          never changes.
+        </li>
+        <li>
+          <strong>Every bounce gives your dash back.</strong> Using that, you can stay above many
+          enemies, move out of the way of aerial attacks, or just stall in the air for a few
+          seconds.
+        </li>
+      </ul>
+
+      <h2>{pogoLessonCopy.beat}</h2>
+      <p>
+        I’m not gonna lie, I definitely mash when I’m in a panic, but that’s not the way to
+        practice. In this simulator, and in the actual game, practice timing your slashes so you
+        don’t get caught out when your nail is on that short cooldown.
       </p>
 
-      <h2>How the bounce actually works</h2>
+      <h2>{pogoLessonCopy.hitThenLeave}</h2>
       <p>
-        While you&apos;re in the air, hold <strong>down</strong> and slash. If your nail
-        touches anything bounceable underneath you, you get launched: a quarter-second of
-        rising, then a gentle float at the top. Three things make this kinder than it
-        sounds:
+        A non-obvious skill is dashing right after your pogo. This lets you get a hit in then
+        immediately move out of the way of your opponent (or stay on them once you get more
+        confident and want to go for more damage).
       </p>
-      <p>
-        First, the down-slash is <em>wide</em> — noticeably wider than the Knight. You do
-        not need to be pixel-perfect above the target; near enough is enough. Second, the
-        bounce height is always the same (about half a jump), so your eyes can learn one
-        arc and trust it. Third — and this is the secret that unlocks whole areas later —{' '}
-        <strong>every bounce gives your dash back</strong>.
-      </p>
-      <LessonDemo
-        script={pogoRhythmDemo}
-        label="Slow-motion demo of the Knight bouncing on an orb, with the down-slash hitbox drawn in green"
-      />
-      <p className="muted">
-        This demo runs on the exact engine and hitboxes as the practice game, at half
-        speed. The green arc is your real down-slash — see how far it reaches?
+      <ul className="plain-list">
+        <li>If you mess up your timing, dashing can save you from getting hit.</li>
+        <li>
+          Not just for pogo, attacking then dashing back is a great way to get chip damage on an
+          opponent you’re still figuring out.
+        </li>
+        <li>
+          Practice running up, pogoing (or attacking) then immediately dashing away. Sometimes
+          you’ll accidentally dash into the enemy. This is one of the reasons I prefer the box
+          controller. It makes those movements WAY easier.
+        </li>
+      </ul>
+      <p className="thesis">
+        {pogoLessonCopy.thesis(
+          tenthsInWords(ESCAPE_WINDOW.running),
+          tenthsInWords(ESCAPE_WINDOW.dashing),
+        )}
       </p>
 
-      <h2>The rhythm</h2>
+      <h2>{pogoLessonCopy.drills}</h2>
       <p>
-        The nail swings about twice a second, and a full bounce takes about half a second
-        — which means pogo is a steady <em>beat</em>, not a mash. Slash, bounce, breathe,
-        slash. If you find yourself hammering the button, stop, land, and start again
-        slower. Mashing actually breaks the rhythm, because a swing that misses its moment
-        leaves you falling with your nail on cooldown.
+        These four are level 1 of the Pogo Course. Each is a lantern, so a miss costs seconds, not
+        the run:
       </p>
+      <ol className="plain-list">
+        <li>
+          <strong>One bounce.</strong> Cross the first pit. Cross it back. Until it’s boring.
+        </li>
+        <li>
+          <strong>Hold the beat.</strong> Three orbs in a row. No mashing.
+        </li>
+        <li>
+          <strong>Read while you bounce.</strong> Staggered heights — plan the next one while your
+          hands finish this one.
+        </li>
+        <li>
+          <strong>Trust the nail.</strong> Orbs low over spikes. Your <em>body</em> on spikes costs
+          seconds; your <em>nail</em> on spikes is flight.
+        </li>
+      </ol>
 
-      <h2>Drills</h2>
-      <p>
-        Head to the <Link to="/practice/pogo">Pogo Course</Link> and take these in order —
-        each one is a checkpoint on the same course, so a miss just puts you back a few
-        seconds:
-      </p>
-      <p>
-        <strong>One bounce.</strong> The first pit has a single orb. Cross it. Then turn
-        around and cross it back. Do it until it feels boring.
-        <br />
-        <strong>Hold the beat.</strong> The second pit is three orbs in a row — this is
-        where the rhythm lives. Two bounces a second, no mashing.
-        <br />
-        <strong>Read while you bounce.</strong> The third pit staggers the orb heights, so
-        your eyes have to plan the next bounce while your hands finish this one.
-        <br />
-        <strong>Trust the nail.</strong> The last pit puts the orbs low over the spikes.
-        Scary — and completely safe, because spikes are bounceable too. Touching them with
-        your <em>body</em> costs seconds; touching them with your <em>nail</em> is flight.
-      </p>
-    </>
+      <ChapterNext current="pogo" />
+
+      <ChapterNav current="pogo" />
+    </ChapterGate>
   );
 }

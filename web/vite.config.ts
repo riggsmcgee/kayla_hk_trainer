@@ -8,9 +8,12 @@ export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
   plugins: [react()],
   test: {
-    // Plain node: the storage module takes an injectable Storage-like backend
-    // and the engine constants are pure data, so no jsdom is needed.
+    // Plain node by default: the storage module takes an injectable
+    // Storage-like backend and the engine constants are pure data, so the
+    // engine suite needs no DOM and starts faster without one. The few
+    // component tests opt into jsdom per file with a
+    // '// @vitest-environment jsdom' docblock.
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 });

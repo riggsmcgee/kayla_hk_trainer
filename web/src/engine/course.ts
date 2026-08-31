@@ -1,14 +1,23 @@
 /**
- * Pogo Course (M2): course geometry types, the pure progression state
- * machine, and the layout of Course 1.
+ * Pogo Course (M2, levels 2–4 from playtest 2): course geometry types, the
+ * pure progression state machine, drifting-orb motion, and the hand-placed
+ * layouts of the four levels.
  *
  * Design intent (PLAN §5): a spike/bounce-target obstacle course crossed by
  * chaining downslash pogos, checkpointed so a miss costs seconds, not the
  * run. Spikes ARE pogoable — nail-bouncing off spikes is a real (and
  * eventually essential) Hollow Knight skill — but touching them with your
  * body sends you back to the last checkpoint.
+ *
+ * Playtest 2 added two more things to bounce on:
+ * - HAZARD ORBS (red): the nail bounces off them exactly like a blue orb,
+ *   but the body touching one counts like spikes. They teach bouncing early.
+ * - MOVERS (drifting orbs): pogoable and on a fixed path that is a pure
+ *   function of course time — no RNG, so a run is reproducible. Blue ones are
+ *   harmless; a mover marked `hazard` burns the body like a red orb does.
  */
 
+import { PHYSICS } from './constants';
 import type { AABB, Vec2 } from './types';
 
 export interface Checkpoint {
@@ -18,7 +27,41 @@ export interface Checkpoint {
   respawn: Vec2;
 }
 
+export interface MoverPath {
+  kind: 'horizontal' | 'vertical' | 'circle';
+  /** Half-travel for lines, radius for circles, in px. */
+  amplitude: number;
+  /** Seconds per full cycle. */
+  period: number;
+  /** Offset along the cycle as a fraction of the period (0.25 = a quarter ahead). */
+  phase: number;
+}
+
+/** A drifting orb: a square box of `size` px whose center rides `path` around `center`. */
+export interface Mover {
+  size: number;
+  center: Vec2;
+  path: MoverPath;
+  /**
+   * Red: the nail bounces off it exactly like a blue drifter, but the body
+   * touching it counts like spikes.
+   *
+   * A flag on the existing entity rather than a fourth list, ratified in
+   * playtest 10. Two reasons beyond taste: every consumer already iterates
+   * `movers`, and `course.test.ts` asserts that level 3 holds no
+   * `hazardOrbs` — a red DRIFTER expressed as a fourth list would have had to
+   * fight that assertion instead of passing it.
+   *
+   * Optional, so every drifter written before this stays a harmless blue one.
+   */
+  hazard?: boolean;
+}
+
 export interface CourseDef {
+  /** Short in-world name, shown as "Level N — name". */
+  name: string;
+  /** One line shown before the run starts. */
+  intro: string;
   /** Total course width in px (for camera clamping). */
   width: number;
   /** Feet position of the initial spawn. */
@@ -28,6 +71,10 @@ export interface CourseDef {
   spikes: AABB[];
   /** Bounce orbs: pogoable, harmless. */
   orbs: AABB[];
+  /** Red orbs: pogoable like an orb, but body contact counts like spikes. */
+  hazardOrbs: AABB[];
+  /** Drifting orbs: pogoable, harmless; their boxes come from moverBox(m, t). */
+  movers: Mover[];
   /** Ordered along the course; passing one moves the respawn point forward. */
   checkpoints: Checkpoint[];
   /** Touching this zone completes the course. */
@@ -40,33 +87,89 @@ export interface CourseState {
   finished: boolean;
   /** Run clock in seconds; frozen once finished. */
   elapsed: number;
-  /** Spike touches this run. */
+  /** Spike and hazard-orb touches this run. */
   misses: number;
   /** Highest checkpoint reached; −1 = none (respawn at spawn). */
   checkpointIndex: number;
   /** Where a spike hit sends the player back to. */
   respawnPoint: Vec2;
+  /**
+   * DEV TOOL: remove in the final build. God mode: a hazard costs her
+   * nothing but is still counted and still reported, so the developer can
+   * walk a level and see every place it would have sent her back.
+   */
+  godMode: boolean;
+  /**
+   * Assist mode: hazard touches she may absorb before one sends her back to
+   * the lantern. There is no death in the course, so this is what a life
+   * means here — the spikes stop costing her the walk.
+   */
+  assistLivesLeft: number;
+  /** Seconds until another hazard touch counts, for either forgiving mode. */
+  graceTimer: number;
 }
 
 export interface CourseEvents {
-  /** The player touched a spike this step and must be moved to respawnPoint. */
+  /** The player touched a spike or hazard orb this step and must be moved to respawnPoint. */
   respawned: boolean;
   /** Index of a checkpoint newly armed this step, else null. */
   checkpointReached: number | null;
   /** The goal was reached this step. */
   finishedNow: boolean;
+  /**
+   * DEV TOOL: remove in the final build. God mode only: this touch would
+   * have sent her back. `respawned` keeps its meaning so the session's
+   * respawn branch needs no god-mode check of its own.
+   */
+  wouldHaveRespawned: boolean;
+  /**
+   * Assist mode: a life was spent this step and she keeps her ground.
+   * `respawned` keeps its meaning, so the session's respawn branch needs no
+   * assist check of its own.
+   */
+  absorbedByAssist: boolean;
 }
 
 function overlaps(a: AABB, b: AABB): boolean {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
-export function createCourseState(course: CourseDef): CourseState {
+/**
+ * Where a drifting orb is at course time t. Pure and deterministic: the
+ * session and the renderer both call this with the same t, so what she sees
+ * is what the nail hits. Circles run clockwise on screen (right → down →
+ * left → up, since +y is down on a canvas).
+ */
+export function moverBox(m: Mover, t: number): AABB {
+  const theta = Math.PI * 2 * (t / m.path.period + m.path.phase);
+  const a = m.path.amplitude;
+  let dx = 0;
+  let dy = 0;
+  switch (m.path.kind) {
+    case 'horizontal':
+      dx = a * Math.sin(theta);
+      break;
+    case 'vertical':
+      dy = a * Math.sin(theta);
+      break;
+    case 'circle':
+      dx = a * Math.cos(theta);
+      dy = a * Math.sin(theta);
+      break;
+  }
+  return {
+    x: m.center.x + dx - m.size / 2,
+    y: m.center.y + dy - m.size / 2,
+    width: m.size,
+    height: m.size,
+  };
+}
+
+export function createCourseState(
+  course: CourseDef,
+  godMode = false,
+  assistLives = 0,
+): CourseState {
   return {
     started: false,
     finished: false,
@@ -74,13 +177,52 @@ export function createCourseState(course: CourseDef): CourseState {
     misses: 0,
     checkpointIndex: -1,
     respawnPoint: { ...course.spawn },
+    godMode,
+    assistLivesLeft: assistLives,
+    graceTimer: 0,
   };
+}
+
+/**
+ * Her body is in a spike strip or a red orb. Normally that costs her the
+ * ground back to the last checkpoint; in god mode it costs nothing but is
+ * still counted, because the miss counter IS the display she is being shown.
+ *
+ * The grace window is HK's own i-frame duration: without it, standing in a
+ * spike strip would tick the counter sixty times a second and read as a bug
+ * rather than as information.
+ */
+function registerHazard(state: CourseState, events: CourseEvents): void {
+  if (state.godMode) {
+    if (state.graceTimer > 0) return;
+    state.graceTimer = PHYSICS.iFrames;
+    state.misses += 1;
+    events.wouldHaveRespawned = true;
+    return;
+  }
+  // Assist mode: the touch is still a miss and still counted, because the
+  // miss counter IS the honest display — she is being told what it cost, only
+  // not made to walk back for it.
+  if (state.assistLivesLeft > 0) {
+    if (state.graceTimer > 0) return;
+    state.graceTimer = PHYSICS.iFrames;
+    state.assistLivesLeft -= 1;
+    state.misses += 1;
+    events.absorbedByAssist = true;
+    return;
+  }
+  state.misses += 1;
+  events.respawned = true;
 }
 
 /**
  * Advance course progression by one step against the player's hurtbox.
  * Pure with respect to the player: movement/respawn is the session's job;
  * this only reports what happened.
+ *
+ * Movers used to play no part here, being harmless by definition. A mover
+ * marked `hazard` is checked like a red orb — see the note on `moverT` below
+ * for the one-frame trap that comes with a target that moves.
  */
 export function stepCourse(
   course: CourseDef,
@@ -92,9 +234,26 @@ export function stepCourse(
     respawned: false,
     checkpointReached: null,
     finishedNow: false,
+    wouldHaveRespawned: false,
+    absorbedByAssist: false,
   };
   if (state.finished) return events;
+  // Both forgiving modes lean on this clock; guarding it on god mode alone
+  // would leave one life absorbing an entire spike strip forever.
+  if (state.godMode || state.assistLivesLeft > 0 || state.graceTimer > 0) {
+    state.graceTimer = Math.max(0, state.graceTimer - dt);
+  }
 
+  /**
+   * The mover positions to test against, captured BEFORE the clock advances.
+   *
+   * The session reads `moverTime = courseState.elapsed` and builds the
+   * pogoables from it BEFORE calling this, so a hazard box computed after the
+   * increment below would sit one frame ahead of both the box her nail could
+   * hit and the box she watched go by. A drifting hazard that burns you where
+   * it is about to be is unreadable.
+   */
+  const moverT = state.elapsed;
   if (state.started) state.elapsed += dt;
 
   for (let i = state.checkpointIndex + 1; i < course.checkpoints.length; i++) {
@@ -112,11 +271,23 @@ export function stepCourse(
     return events;
   }
 
-  for (const spike of course.spikes) {
-    if (overlaps(playerBox, spike)) {
-      state.misses += 1;
-      events.respawned = true;
-      break;
+  for (const hazard of course.spikes) {
+    if (overlaps(playerBox, hazard)) {
+      registerHazard(state, events);
+      return events;
+    }
+  }
+  for (const hazard of course.hazardOrbs) {
+    if (overlaps(playerBox, hazard)) {
+      registerHazard(state, events);
+      return events;
+    }
+  }
+  for (const m of course.movers) {
+    if (!m.hazard) continue;
+    if (overlaps(playerBox, moverBox(m, moverT))) {
+      registerHazard(state, events);
+      return events;
     }
   }
 
@@ -124,7 +295,7 @@ export function stepCourse(
 }
 
 // ---------------------------------------------------------------------------
-// Course 1 layout
+// Level layouts
 // ---------------------------------------------------------------------------
 
 /** Main walkway surface height (matches the arena floor). */
@@ -133,6 +304,8 @@ export const COURSE_FLOOR_Y = 600;
 const PIT_FLOOR_Y = 656;
 const SPIKE_HEIGHT = 24;
 const ORB_SIZE = 28;
+/** Resting orb height: center 100 px above the walkway (top 486), Level 1's norm. */
+const ORB_REST_Y = 500;
 
 interface PitSpec {
   from: number;
@@ -145,14 +318,25 @@ interface OrbSpec {
   top: number;
 }
 
-function buildCourse(
-  width: number,
-  spawn: Vec2,
-  pits: PitSpec[],
-  orbSpecs: OrbSpec[],
-  checkpoints: Checkpoint[],
-  goal: AABB,
-): CourseDef {
+interface LevelSpec {
+  name: string;
+  intro: string;
+  width: number;
+  spawn: Vec2;
+  pits: PitSpec[];
+  orbs: OrbSpec[];
+  hazardOrbs?: OrbSpec[];
+  movers?: Mover[];
+  checkpoints: Checkpoint[];
+  goal: AABB;
+}
+
+function orbBox(o: OrbSpec): AABB {
+  return { x: o.cx - ORB_SIZE / 2, y: o.top, width: ORB_SIZE, height: ORB_SIZE };
+}
+
+function buildCourse(spec: LevelSpec): CourseDef {
+  const { width, spawn, pits, checkpoints, goal } = spec;
   const solids: AABB[] = [];
   const spikes: AABB[] = [];
 
@@ -175,14 +359,19 @@ function buildCourse(
   solids.push({ x: -432, y: -800, width: 32, height: 1600 });
   solids.push({ x: width + 400, y: -800, width: 32, height: 1600 });
 
-  const orbs = orbSpecs.map((o) => ({
-    x: o.cx - ORB_SIZE / 2,
-    y: o.top,
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-  }));
-
-  return { width, spawn, solids, spikes, orbs, checkpoints, goal };
+  return {
+    name: spec.name,
+    intro: spec.intro,
+    width,
+    spawn,
+    solids,
+    spikes,
+    orbs: spec.orbs.map(orbBox),
+    hazardOrbs: (spec.hazardOrbs ?? []).map(orbBox),
+    movers: spec.movers ?? [],
+    checkpoints,
+    goal,
+  };
 }
 
 function checkpointAt(x: number): Checkpoint {
@@ -194,23 +383,42 @@ function checkpointAt(x: number): Checkpoint {
   };
 }
 
+/** A drifting orb at rest height unless told otherwise. */
+function mover(cx: number, path: MoverPath, cy: number = ORB_REST_Y): Mover {
+  return { size: ORB_SIZE, center: { x: cx, y: cy }, path };
+}
+
+/** The same, in red: pogo it, never touch it. */
+function hazardMover(cx: number, path: MoverPath, cy: number = ORB_REST_Y): Mover {
+  return { ...mover(cx, path, cy), hazard: true };
+}
+
+/** The goal doorway: a 60 × 160 arch standing on the walkway. */
+function goalAt(x: number): AABB {
+  return { x, y: COURSE_FLOOR_Y - 160, width: 60, height: 160 };
+}
+
 /**
- * Course 1: four pits of rising demand.
+ * Level 1 — The Shallows: four pits of rising demand. FROZEN: the user
+ * called this "a perfect level 1" in playtest 2; course.test.ts pins its
+ * geometry to a snapshot.
  *  A (320 px) — one orb: learn the single bounce.
  *  B (560 px) — three orbs in a row: hold the rhythm.
  *  C (960 px) — six orbs, heights staggered: read while you bounce.
  *  D (460 px) — two LOW orbs over spikes: precision, spike-pogo courage.
  */
-export const POGO_COURSE_1: CourseDef = buildCourse(
-  4200,
-  { x: 120, y: COURSE_FLOOR_Y },
-  [
+export const POGO_COURSE_1: CourseDef = buildCourse({
+  name: 'The Shallows',
+  intro: 'Bounce across on the glowing orbs — jump, then slash DOWN in the air.',
+  width: 4200,
+  spawn: { x: 120, y: COURSE_FLOOR_Y },
+  pits: [
     { from: 560, to: 880 },
     { from: 1160, to: 1720 },
     { from: 2160, to: 3120 },
     { from: 3400, to: 3860 },
   ],
-  [
+  orbs: [
     // Pit A
     { cx: 720, top: 486 },
     // Pit B — steady rhythm at one height
@@ -228,6 +436,192 @@ export const POGO_COURSE_1: CourseDef = buildCourse(
     { cx: 3500, top: 530 },
     { cx: 3690, top: 530 },
   ],
-  [checkpointAt(1000), checkpointAt(1900), checkpointAt(3260)],
-  { x: 3980, y: COURSE_FLOOR_Y - 160, width: 60, height: 160 },
-);
+  checkpoints: [checkpointAt(1000), checkpointAt(1900), checkpointAt(3260)],
+  goal: goalAt(3980),
+});
+
+/**
+ * Level 2 — Ember Pools: "red means early". Red orbs bounce like blue ones
+ * but burn the body, so a late, low swing that would have been fine on blue
+ * sends her back to the lantern. Blue and red mix so the eye learns the
+ * color; pit C is red only.
+ *  A — blue then red: the same bounce, now with a rule.
+ *  B — red, blue, red: read the color mid-rhythm.
+ *  C — four reds in a row: no safety net, every swing early.
+ *  D — staggered, the reds sitting LOW: the later you swing, the closer they are.
+ */
+export const POGO_COURSE_2: CourseDef = buildCourse({
+  name: 'Ember Pools',
+  intro: 'Red orbs burn to touch. Swing early, while they are still below you.',
+  width: 4960,
+  spawn: { x: 120, y: COURSE_FLOOR_Y },
+  pits: [
+    { from: 560, to: 960 },
+    { from: 1240, to: 1800 },
+    { from: 2040, to: 2760 },
+    { from: 3040, to: 3620 },
+    // E — THE DASH GAP. 700 px: see DASH_GAP_PX in course.test.ts.
+    { from: 3780, to: 4480 },
+  ],
+  orbs: [
+    // Pit A
+    { cx: 720, top: 486 },
+    // Pit B
+    { cx: 1490, top: 486 },
+    // Pit D
+    { cx: 3290, top: 450 },
+    // Pit E — the one orb in the dash gap, 300 px past the near ledge.
+    { cx: 4080, top: 486 },
+  ],
+  hazardOrbs: [
+    // Pit A
+    { cx: 860, top: 486 },
+    // Pit B
+    { cx: 1330, top: 486 },
+    { cx: 1650, top: 486 },
+    // Pit C — red only
+    { cx: 2130, top: 486 },
+    { cx: 2290, top: 486 },
+    { cx: 2450, top: 486 },
+    { cx: 2610, top: 486 },
+    // Pit D — low reds
+    { cx: 3130, top: 510 },
+    { cx: 3450, top: 525 },
+  ],
+  // The last lantern stands 80 px before the dash gap, deliberately close: the
+  // gap is the first thing on the road she cannot walk through, so failing it
+  // has to cost a two-second walk rather than the run.
+  checkpoints: [checkpointAt(1080), checkpointAt(1920), checkpointAt(2900), checkpointAt(3700)],
+  goal: goalAt(4740),
+});
+
+/**
+ * Level 3 — The Drift: "things that drift". Blue orbs on fixed paths —
+ * first sideways, then up and down, then circles, then all three. Timing
+ * on a moving target: watch the path, meet the orb where it is going.
+ *  A — a still orb, then one sideways drifter: it comes to you.
+ *  B — a sideways drifter between two still orbs: cross it either way.
+ *  C — three up-and-down drifters: swing when it is below you.
+ *  D — two circles turning together, close enough to chain.
+ *  E — sideways, up-and-down, circle: the mix.
+ */
+export const POGO_COURSE_3: CourseDef = buildCourse({
+  name: 'The Drift',
+  intro: 'These orbs drift. Watch the dotted path — meet them where they are going.',
+  width: 5470,
+  spawn: { x: 120, y: COURSE_FLOOR_Y },
+  pits: [
+    { from: 560, to: 1020 },
+    { from: 1200, to: 1760 },
+    { from: 2000, to: 2560 },
+    { from: 2780, to: 3220 },
+    { from: 3480, to: 4100 },
+    // F — the dash gap again, wider, and this time the target moves.
+    { from: 4260, to: 4990 },
+  ],
+  orbs: [
+    // Pit A — the familiar first bounce
+    { cx: 720, top: 486 },
+    // Pit B — still orbs either side of the drifter
+    { cx: 1300, top: 486 },
+    { cx: 1600, top: 486 },
+  ],
+  movers: [
+    // Pit A
+    mover(880, { kind: 'horizontal', amplitude: 60, period: 3, phase: 0 }),
+    // Pit B
+    mover(1450, { kind: 'horizontal', amplitude: 60, period: 2.5, phase: 0 }),
+    // Pit C — up and down
+    mover(2110, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0 }),
+    mover(2300, { kind: 'vertical', amplitude: 80, period: 3, phase: 0.25 }),
+    mover(2470, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0.5 }),
+    // Pit D — circles
+    mover(2900, { kind: 'circle', amplitude: 60, period: 3, phase: 0 }),
+    mover(3060, { kind: 'circle', amplitude: 60, period: 3, phase: 0 }),
+    // Pit E — the mix
+    mover(3600, { kind: 'horizontal', amplitude: 60, period: 2.5, phase: 0 }),
+    mover(3790, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0.25 }),
+    mover(3960, { kind: 'circle', amplitude: 60, period: 3, phase: 0 }),
+    // Pit F — VERTICAL on purpose. Its x never moves, so the gap is crossable
+    // at every phase of its drift; a sideways drifter would be reachable on
+    // half its cycle and not the other, which is a coin toss rather than a
+    // skill. The ±60 px of height costs nothing, because the bounce that
+    // clears this gap happens at terminal velocity where reach is flat.
+    mover(4590, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0 }),
+  ],
+  checkpoints: [
+    checkpointAt(1100),
+    checkpointAt(1900),
+    checkpointAt(2680),
+    checkpointAt(3380),
+    checkpointAt(4180),
+  ],
+  goal: goalAt(5250),
+});
+
+/**
+ * Level 4 — The Deep: "all of it at once", the finale's level. Red orbs,
+ * drifters, and longer gaps between bounces — the full-speed rhythm from
+ * Level 1, the early swing from Level 2, the tracking from Level 3.
+ *  A — blue, red, 190 px gaps: full speed from the first bounce.
+ *  B — red, an up-and-down drifter, a low red.
+ *  C — red, a circle, two low reds.
+ *  D — two low reds, a sideways drifter, a red to the ledge.
+ */
+export const POGO_COURSE_4: CourseDef = buildCourse({
+  name: 'The Deep',
+  intro: 'All of it at once — red, drifting, and further apart. You know this.',
+  width: 5240,
+  spawn: { x: 120, y: COURSE_FLOOR_Y },
+  pits: [
+    { from: 560, to: 1100 },
+    { from: 1320, to: 1980 },
+    { from: 2200, to: 2900 },
+    { from: 3120, to: 3900 },
+    // E — the dash gap, over a target that both moves AND burns.
+    { from: 4060, to: 4760 },
+  ],
+  orbs: [
+    // Pit A
+    { cx: 720, top: 486 },
+  ],
+  hazardOrbs: [
+    // Pit A
+    { cx: 910, top: 486 },
+    // Pit B
+    { cx: 1410, top: 500 },
+    { cx: 1780, top: 520 },
+    // Pit C
+    { cx: 2290, top: 500 },
+    { cx: 2590, top: 520 },
+    { cx: 2780, top: 530 },
+    // Pit D
+    { cx: 3210, top: 530 },
+    { cx: 3400, top: 530 },
+    { cx: 3700, top: 486 },
+  ],
+  movers: [
+    // Pit B
+    mover(1600, { kind: 'vertical', amplitude: 70, period: 2.5, phase: 0 }),
+    // Pit C
+    mover(2440, { kind: 'circle', amplitude: 60, period: 3, phase: 0 }),
+    // Pit D
+    mover(3550, { kind: 'horizontal', amplitude: 60, period: 3, phase: 0 }),
+    // Pit E — red AND drifting, which is the whole level in one orb: the
+    // early swing from level 2, the tracking from level 3, and the dash from
+    // both of the gaps before it. Red costs no reach — the optimal bounce is
+    // on a fast descent, by which point she is already past it horizontally —
+    // so it tightens the timing without narrowing the gap.
+    hazardMover(4370, { kind: 'vertical', amplitude: 60, period: 2.5, phase: 0 }, 470),
+  ],
+  checkpoints: [checkpointAt(1220), checkpointAt(2100), checkpointAt(3020), checkpointAt(3980)],
+  goal: goalAt(5020),
+});
+
+/** The Bounce Bog's levels in order; index 0 is Level 1. Level 4 is the finale's. */
+export const POGO_COURSES: readonly CourseDef[] = [
+  POGO_COURSE_1,
+  POGO_COURSE_2,
+  POGO_COURSE_3,
+  POGO_COURSE_4,
+];

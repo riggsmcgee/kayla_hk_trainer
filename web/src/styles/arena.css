@@ -1,0 +1,145 @@
+/*
+ * Kbug's Colosseum — the Dodge Arena page as a staged game (playtest 2,
+ * note 1): the roster strip above the canvas, the "Best:" line, and the
+ * cleared panel. Builds on .button, .chip, .btn-row, .dev-tools and .sr-only
+ * from styles.css so it reads as the same site. Gold is the mini-game
+ * colour: cleared stages and the check are gold; the one she's on is lit.
+ */
+
+/* The roster, as a row of stops: done / current / upcoming. */
+.arena-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.5rem 0.75rem;
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+.arena-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 1rem 0.3rem 0.45rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  font-size: 0.92rem;
+}
+
+.arena-stage-disc {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.arena-stage-name {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+
+.arena-stage-hits {
+  font-size: 0.85rem;
+}
+
+/* The one she is facing now: lit. */
+.arena-stage-current {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-raised));
+}
+
+.arena-stage-current .arena-stage-disc {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+/* Passed: gold check. */
+.arena-stage-done {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--rule));
+  color: var(--text);
+}
+
+.arena-stage-done .arena-stage-disc {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.arena-stage-done.arena-stage-current .arena-stage-disc {
+  background: var(--gold);
+  color: var(--bg);
+}
+
+.arena-check {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Not yet: the disc and the border fade, never the words — faded --text-dim
+   drops under the 4.5:1 the fine print needs (playtest 2, note 7). */
+.arena-stage-upcoming {
+  border-color: color-mix(in srgb, var(--rule) 60%, var(--bg-raised));
+}
+
+.arena-stage-upcoming .arena-stage-disc {
+  opacity: 0.5;
+}
+
+/* "Best: …" / "No run yet." for the enemy she's on. */
+.arena-best {
+  margin: 0.6rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* Under the canvas once every enemy is cleared: the road goes on. */
+.arena-clear {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.1rem;
+  max-width: 32rem;
+  margin: 0.75rem 0 0;
+  padding: 0.9rem 1.25rem;
+  background: color-mix(in srgb, var(--gold) 8%, var(--bg-raised));
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+}
+
+.arena-clear-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+
+.arena-clear .button {
+  margin: 0;
+  background: var(--gold);
+}
+
+.arena-clear .button:hover {
+  background: #f3d98a;
+}
+
+/* DEV TOOL: remove in the final build — the picker inside .dev-tools. */
+.dev-tools .arena-controls .chip[aria-checked='true'] {
+  border-style: dashed;
+}

@@ -1,0 +1,166 @@
+/*
+ * Gates, "Prove it →", the chapter strip's done/skipped/locked states, and
+ * the Setup chapter's controller question (playtest 2, notes 5–7).
+ *
+ * Loaded by ChapterGate, which every chapter page wraps its body in, so these
+ * rules are present wherever the strip and the buttons are. Everything here
+ * reuses the custom properties and the .button / .eyebrow / .pro-con classes
+ * from styles.css so it reads as the same site.
+ */
+
+/* ------------------------------------------------------------------ */
+/* The gate panel: "Finish X first" with the way back and the skip      */
+/* ------------------------------------------------------------------ */
+
+.gate {
+  max-width: 32rem;
+  margin: 1rem 0 2rem;
+  padding: 1.5rem 1.75rem 1.6rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+}
+
+.gate h1 {
+  margin-bottom: 0.5rem;
+}
+
+.gate-done {
+  color: var(--text-dim);
+  margin-bottom: 1.4rem;
+}
+
+.gate-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+/* A button that reads as a line of text — the quiet option beneath the obvious one. */
+.text-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--text-dim);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.text-button:hover {
+  color: var(--text);
+}
+
+/* ------------------------------------------------------------------ */
+/* Chapter strip: the same states the map draws                         */
+/* ------------------------------------------------------------------ */
+
+/* Done: a lit, full lantern (same as the map's lit stop). */
+.chapter-strip .stop-done .stop-lantern svg {
+  fill: var(--gold);
+  stroke: var(--gold);
+}
+
+/* Visited or skipped: the lantern is there but unlit — she has been, not finished. */
+.chapter-strip .stop-visited .stop-lantern svg,
+.chapter-strip .stop-skipped .stop-lantern svg {
+  fill: none;
+  stroke: var(--gold);
+}
+
+.chapter-strip .stop-skipped .stop-lantern svg {
+  stroke-dasharray: 2 1.5;
+}
+
+/* Locked: the lantern fades, not the words (faded --text-dim drops under the
+   4.5:1 she needs for the fine print — playtest 2, note 7). Still a link; the
+   page behind it explains and offers the skip. The page's own stop, even
+   while gated, is never the faintest thing in the strip. */
+.chapter-strip .stop-locked:not(.stop-current) .stop-lantern {
+  opacity: 0.45;
+}
+
+/* The words only a touch: --text-dim at 0.85 still reads ~5:1 on the page. */
+.chapter-strip .stop-locked:not(.stop-current) .stop-text {
+  opacity: 0.85;
+}
+
+.chapter-strip .stop-locked:not(.stop-current) a:hover .stop-lantern,
+.chapter-strip .stop-locked:not(.stop-current) a:hover .stop-text {
+  opacity: 1;
+}
+
+/* Six stops fit one row now that the strip is small print (playtest 3, note
+   14) — at 14 px lanterns and .85rem titles the six sit comfortably across a
+   laptop, so the old two-rows-of-three grid is gone. */
+@media (min-width: 720px) {
+  .chapter-strip {
+    column-gap: 1.6rem;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Setup chapter: the finish — "Which controller will you use?"         */
+/* ------------------------------------------------------------------ */
+
+.controller-question {
+  max-width: 32rem;
+  margin: 2rem 0 0.5rem;
+  padding: 1.25rem 1.5rem 1.4rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+}
+
+.controller-question h2 {
+  margin: 0 0 0.9rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  color: var(--accent-strong);
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.choice-button {
+  border: 0;
+  cursor: pointer;
+  font-size: 1.05rem;
+  padding: 0.7rem 1.8rem;
+  line-height: 1.3;
+}
+
+.controller-answer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+  margin: 0;
+  max-width: none;
+}
+
+.controller-answer strong {
+  color: var(--gold);
+}
+
+/* The one Joy-Con trick that fixes a pogo problem — a tip, not a minus. */
+.pro-con .tip::before {
+  content: '→';
+  color: var(--gold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice-button,
+  .text-button {
+    transition: none;
+  }
+}

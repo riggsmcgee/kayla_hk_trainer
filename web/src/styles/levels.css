@@ -1,0 +1,151 @@
+/*
+ * The Pogo Course page: level chips, the inline level gate, the "Best:"
+ * line and the clear panel (playtest 2, notes 3 and 5). Builds on .chip,
+ * .btn-row, .button and .sr-only from styles.css and .gate-actions /
+ * .text-button from gates.css, so it reads as the same site. Gold is the
+ * mini-game colour, so the selected level and the check are gold.
+ */
+
+.level-picker {
+  margin: 1rem 0 0;
+}
+
+.level-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 1rem 0.3rem 0.45rem;
+}
+
+.level-num {
+  display: grid;
+  place-items: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.level-name {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+}
+
+.level-chip.chip-active {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, var(--bg-raised));
+}
+
+.level-chip.chip-active .level-num {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--bg);
+}
+
+.level-chip:hover:not(:disabled) {
+  border-color: var(--gold);
+}
+
+.level-mark {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.level-cleared .level-mark-check {
+  stroke: var(--gold);
+}
+
+/* Locked: the number and the border fade, never the words (faded --text-dim
+   drops under 4.5:1 — playtest 2, note 7). Still pressable: pressing it
+   opens the gate below. */
+.level-locked {
+  border-color: color-mix(in srgb, var(--rule) 60%, var(--bg-raised));
+}
+
+.level-locked .level-num {
+  opacity: 0.5;
+}
+
+.level-locked:hover .level-num {
+  opacity: 0.8;
+}
+
+/* The inline gate under the chips: rule, way back, quiet skip. */
+.level-gate {
+  max-width: 32rem;
+  margin: 0.9rem 0 0;
+  padding: 1rem 1.25rem 1.1rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+}
+
+.level-gate-rule {
+  margin: 0 0 0.8rem;
+  color: var(--text);
+}
+
+/* .button is written for links; these two are real <button>s. */
+.level-gate .button,
+.level-clear .button {
+  border: 0;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+/* "Best: 0:14.3" / "No clear yet." for the selected level. */
+.level-best {
+  margin: 0.6rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+}
+
+/* Under the canvas once a level is cleared: the next level, or the next stop. */
+.level-clear {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.1rem;
+  max-width: 32rem;
+  margin: 0.75rem 0 0;
+  padding: 0.9rem 1.25rem;
+  background: color-mix(in srgb, var(--gold) 8%, var(--bg-raised));
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+}
+
+.level-clear-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+
+.level-clear .button {
+  margin: 0;
+  background: var(--gold);
+}
+
+.level-clear .button:hover {
+  background: #f3d98a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .level-chip,
+  .level-locked {
+    transition: none;
+  }
+}

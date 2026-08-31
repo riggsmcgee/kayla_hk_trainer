@@ -6,24 +6,24 @@ Columns: **Verdict** is filled in after the skill's output has been used (✅ us
 
 ## Session 1 — 2026-08-21 (project kickoff)
 
-| # | Skill | Trigger | What it was used for | Verdict | Notes |
-|---|-------|---------|----------------------|---------|-------|
-| 1 | `kickoff` | User invoked `/kickoff` (first-ever use) | Size the whole-project task, route over the installed skill stack, produce a flight plan before any code | ✅ | First impressions: the sizing rubric (surface / ambiguity / blast radius / risk / UI) was easy to apply to a greenfield project. Its skill table references `react-best-practices`, but the installed skill is named `vercel-react-best-practices` — flagged in the flight plan per the skill's own no-silent-skips rule. Plan approved by user unchanged. |
-| 2 | `grill-me` | Step 1 of approved flight plan | Alignment interview before writing PLAN.md + skeleton | ✅ | Turned out to be a one-line alias that redirects to `grilling`. Two skills, one behavior — consider deleting one or documenting the alias. |
-| 3 | `grilling` | Redirected from `grill-me` | The actual interview engine: design-tree/frontier-rounds interview format | ✅ | Excellent. 3 rounds / 20 questions emptied the design tree; every stack + scope decision ratified explicitly (see PLAN.md decision record). The recommended-answer-per-question format kept rounds fast. Fact-vs-decision split worked: frame-data research ran as a background sub-agent during round 1 instead of blocking the interview. One watch-out: sub-agent left litter in the repo root (`ddg.html`, deleted). |
-| 4 | `find-skills` | User asked (grilling Q3/Q7 answers) to peruse registry for art-direction help | Searched skills.sh registry via `npx skills find` across 4 queries: art direction, game design, game feel, visual identity | ✅ | CLI worked cleanly non-interactively. Notable: no official-source (anthropics/vercel) results for game art; best candidates are community skills — game-feel (2.2K installs), game-ui-design (2.7K), animation-principles (812). All art-direction-specific results are <500 installs from unknown authors. Candidates presented to user; user approved game-feel only → installed. |
-| 5 | `game-feel` (installed, not yet invoked) | User approved install, project-local per their request | `npx skills add gamedev-skills/awesome-gamedev-agent-skills@game-feel` (no `-g`) → lives at `.agents/skills/game-feel/` with a `.claude/skills/game-feel` junction; `skills-lock.json` added at root | ⏳ | Full pre-use review done: SKILL.md + references/feedback-recipes.md are clean, high-quality, engine-neutral (examples are Godot/Unity but the models — trauma shake, hit-stop via time scale, easing tiers — port directly to our canvas engine). Bonus: ships accessibility guidance (reduce-shake/flash toggles) we should adopt. Security scan at install: Socket 0 alerts, Snyk low risk. Side note: the research subagent left a stray `ddg.html` (DuckDuckGo page dump) in the repo root — deleted; watch for cwd litter from future research agents. |
+| #   | Skill                                    | Trigger                                                                       | What it was used for                                                                                                                                                                                 | Verdict | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `kickoff`                                | User invoked `/kickoff` (first-ever use)                                      | Size the whole-project task, route over the installed skill stack, produce a flight plan before any code                                                                                             | ✅      | First impressions: the sizing rubric (surface / ambiguity / blast radius / risk / UI) was easy to apply to a greenfield project. Its skill table references `react-best-practices`, but the installed skill is named `vercel-react-best-practices` — flagged in the flight plan per the skill's own no-silent-skips rule. Plan approved by user unchanged.                                                                                                                                                                                                  |
+| 2   | `grill-me`                               | Step 1 of approved flight plan                                                | Alignment interview before writing PLAN.md + skeleton                                                                                                                                                | ✅      | Turned out to be a one-line alias that redirects to `grilling`. Two skills, one behavior — consider deleting one or documenting the alias.                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 3   | `grilling`                               | Redirected from `grill-me`                                                    | The actual interview engine: design-tree/frontier-rounds interview format                                                                                                                            | ✅      | Excellent. 3 rounds / 20 questions emptied the design tree; every stack + scope decision ratified explicitly (see PLAN.md decision record). The recommended-answer-per-question format kept rounds fast. Fact-vs-decision split worked: frame-data research ran as a background sub-agent during round 1 instead of blocking the interview. One watch-out: sub-agent left litter in the repo root (`ddg.html`, deleted).                                                                                                                                    |
+| 4   | `find-skills`                            | User asked (grilling Q3/Q7 answers) to peruse registry for art-direction help | Searched skills.sh registry via `npx skills find` across 4 queries: art direction, game design, game feel, visual identity                                                                           | ✅      | CLI worked cleanly non-interactively. Notable: no official-source (anthropics/vercel) results for game art; best candidates are community skills — game-feel (2.2K installs), game-ui-design (2.7K), animation-principles (812). All art-direction-specific results are <500 installs from unknown authors. Candidates presented to user; user approved game-feel only → installed.                                                                                                                                                                         |
+| 5   | `game-feel` (installed, not yet invoked) | User approved install, project-local per their request                        | `npx skills add gamedev-skills/awesome-gamedev-agent-skills@game-feel` (no `-g`) → lives at `.agents/skills/game-feel/` with a `.claude/skills/game-feel` junction; `skills-lock.json` added at root | ⏳      | Full pre-use review done: SKILL.md + references/feedback-recipes.md are clean, high-quality, engine-neutral (examples are Godot/Unity but the models — trauma shake, hit-stop via time scale, easing tiers — port directly to our canvas engine). Bonus: ships accessibility guidance (reduce-shake/flash toggles) we should adopt. Security scan at install: Socket 0 alerts, Snyk low risk. Side note: the research subagent left a stray `ddg.html` (DuckDuckGo page dump) in the repo root — deleted; watch for cwd litter from future research agents. |
 
 ## Session 3 — 2026-08-21 (overnight autonomous session: M1–M5)
 
 (Numbering note: Session 1 = planning/grilling, Session 2 = the M0 skeleton build the same evening; this is the overnight session that followed.)
 
-| # | Skill | Trigger | What it was used for | Verdict | Notes |
-|---|-------|---------|----------------------|---------|-------|
-| 6 | `grill-me` | User suggested it for scoping the overnight work ("if applicable") | **Deliberately skipped** | ⚠️ | It's an interactive interview; the user was asleep in a non-interactive session, so it would block rather than sharpen. PLAN.md's milestone roadmap already answered "what should be accomplished tonight." Observation: interview skills need an awake user — worth noting in the skill's own description. |
-| 7 | `tdd` | M1 roadmap says "Built TDD" | Red→green loop across M1–M4: 94 web tests total — player sim (29), input (8), combat/pogo (14), course + a completability bot (6), enemies (7), attacker state machines (12), arena (9), plus the M0 constants/storage suites | ✅ | Worked very well for physics/game code — the research doc gave independent expected values (jump heights 236/53 px, dash 200 px, pogo rise 120 px), so tests were real specifications, not tautologies. Caught two genuinely broken tests of mine before they ossified (unlandable drop height; an air dash that carried the player away from the test's orb) and one real engine issue (float accumulation at exact step-count boundaries → TIME_EPS). Best single idea the discipline produced: the Course-1 "bot completability" test — a scripted run-right + downslash-mash player that proves the course is beatable with the shipped physics. |
-| 8 | `webapp-testing` | M1 browser verification | **Blocked** — skill requires Python; this machine has no Python install (only the Windows Store stub) | ❌ | Environment mismatch, not a skill-quality issue. Either install Python or swap the skill for a Node-based equivalent. Worked around with a scratchpad-local Playwright + system Edge (channel 'msedge', no repo changes, no globals). |
-| 9 | `agent-browser` | Fallback for browser verification | **Blocked** — CLI not installed; install requires `npm i -g`, which conflicts with the user's standing project-local-only preference | ❌ | Decision deferred to the user: install agent-browser globally, or adopt the scratchpad-Playwright pattern as the project's browser-verification route. The Playwright workaround verified M1 fine (screenshots + pageerror capture). |
+| #   | Skill            | Trigger                                                            | What it was used for                                                                                                                                                                                                          | Verdict | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --- | ---------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 6   | `grill-me`       | User suggested it for scoping the overnight work ("if applicable") | **Deliberately skipped**                                                                                                                                                                                                      | ⚠️      | It's an interactive interview; the user was asleep in a non-interactive session, so it would block rather than sharpen. PLAN.md's milestone roadmap already answered "what should be accomplished tonight." Observation: interview skills need an awake user — worth noting in the skill's own description.                                                                                                                                                                                                                                                                                                                                          |
+| 7   | `tdd`            | M1 roadmap says "Built TDD"                                        | Red→green loop across M1–M4: 94 web tests total — player sim (29), input (8), combat/pogo (14), course + a completability bot (6), enemies (7), attacker state machines (12), arena (9), plus the M0 constants/storage suites | ✅      | Worked very well for physics/game code — the research doc gave independent expected values (jump heights 236/53 px, dash 200 px, pogo rise 120 px), so tests were real specifications, not tautologies. Caught two genuinely broken tests of mine before they ossified (unlandable drop height; an air dash that carried the player away from the test's orb) and one real engine issue (float accumulation at exact step-count boundaries → TIME_EPS). Best single idea the discipline produced: the Course-1 "bot completability" test — a scripted run-right + downslash-mash player that proves the course is beatable with the shipped physics. |
+| 8   | `webapp-testing` | M1 browser verification                                            | **Blocked** — skill requires Python; this machine has no Python install (only the Windows Store stub)                                                                                                                         | ❌      | Environment mismatch, not a skill-quality issue. Either install Python or swap the skill for a Node-based equivalent. Worked around with a scratchpad-local Playwright + system Edge (channel 'msedge', no repo changes, no globals).                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 9   | `agent-browser`  | Fallback for browser verification                                  | **Blocked** — CLI not installed; install requires `npm i -g`, which conflicts with the user's standing project-local-only preference                                                                                          | ❌      | Decision deferred to the user: install agent-browser globally, or adopt the scratchpad-Playwright pattern as the project's browser-verification route. The Playwright workaround verified M1 fine (screenshots + pageerror capture).                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 | 10 | `game-feel` | M6 roadmap (juice pass) — first actual invocation of the skill installed in Session 1 | Trauma-based screen shake, hit-stop with real-time clocks, squash & stretch, feedback tiers, and the reduce-shake/reduce-flashing accessibility toggles it recommends | ✅ | The engine-neutral models ported directly to our canvas fixed-timestep loop (trauma² shake driving a camera translate; hit-stop as skipped sim steps with input-edge carry; volume-conserving stretch). Its pitfalls list drove two real design decisions: sampled-sine shake instead of per-frame random, and press-edge buffering through the freeze so hit-stop never eats an input. The accessibility guidance it ships matched PLAN's M6 requirements exactly. Worth keeping. |
 | 11 | `tdd` (continued) | M6 + review fixes | Juice clocks (5 tests), review-driven defect tests (ghost bounce, ground-dash grounded, checkpoint heights, duelist vertical gate) — red first where the defect was reproducible | ✅ | Notably, the review's planted-mutation experiment showed exactly which behaviors lacked tests; writing those tests red-first against the real defects was fast and each one failed for the documented reason before the fix. |
@@ -32,9 +32,601 @@ Columns: **Verdict** is filled in after the skill's output has been used (✅ us
 
 ## Open observations (Session 3)
 
-- **Multi-agent review verifiers mutate the working tree.** During the overnight adversarial review (Workflow tool, not a skill), verifier agents ran live mutation testing: they edited engine files to plant defects, ran the suite, and reverted. Two consequences observed: (1) it's *effective* — a planted mutation survived the then-95-test suite and exposed real coverage gaps; (2) it *races* with concurrent edits — one mutation was transiently visible, one repro test file (`__repro_dashground.test.ts`) had to be deleted, and an edit of mine collided with an agent's self-revert. Rule adopted: freeze edits to files under review until the workflow completes, then re-scan (`grep MUTATION`, full suite) before trusting the tree.
+- **Multi-agent review verifiers mutate the working tree.** During the overnight adversarial review (Workflow tool, not a skill), verifier agents ran live mutation testing: they edited engine files to plant defects, ran the suite, and reverted. Two consequences observed: (1) it's _effective_ — a planted mutation survived the then-95-test suite and exposed real coverage gaps; (2) it _races_ with concurrent edits — one mutation was transiently visible, one repro test file (`__repro_dashground.test.ts`) had to be deleted, and an edit of mine collided with an agent's self-revert. Rule adopted: freeze edits to files under review until the workflow completes, then re-scan (`grep MUTATION`, full suite) before trusting the tree.
 
 ## Open observations
 
 - The kickoff skill's internal stack table is slightly out of date vs. the actually installed skills (naming mismatch noted above). If this recurs, consider editing the skill's table to match the real install list.
 - Skills installed but not in kickoff's routing table (so kickoff will never route to them on its own): `webapp-testing`, `frontend-design`, `dataviz`, `theme-factory`, `simplify`, `code-review`, `grilling` (overlaps `grill-me`). Worth watching whether kickoff misses useful routes because of this.
+
+## Session 5 — 2026-08-21 (evening: playtest 1 response)
+
+| #   | Skill                              | Trigger                                                                                                    | What it was used for                                                                                                                                                            | Verdict | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 13  | `tdd`                              | Engine changes from playtest notes 5 and 6 (continuous jump release; warden positional shield + bash)      | Red→green on the existing seams (`stepPlayer`, `stepEnemy`, `resolveNailHit`, `enemyAttackHitbox`, `createLocalStore`): 3 jump tests, 5 warden tests, 1 storage test; 121 total | ✅      | The skill's "confirm seams with the user" step was impossible (autonomous session) — used the seams already ratified in Session 3 instead and said so here. Best moment: the "no cliff" jump test (max gap between neighbouring release times < 16 px) is a property the research doc implies but never states, and it failed red with a 116 px gap exactly where the user felt it. Also the live-check refinement came from the research agent reading the decompiled source, not from the test — TDD found the bug, research found the right fix.                                          |
+| 14  | `frontend-design`                  | M6 art direction, unblocked by the user's playtest brief ("map of Hollow Knight… mini-games… fewer words") | Design plan (tokens, type, signature element) before code; then the map Home, chapter strip, controller diagrams, copy trim                                                     | ✅      | The "brainstorm → critique against the generic default → build" gate was genuinely useful: my first instinct was a landscape Mario-style map; the judged design panel (Workflow, not a skill) picked a vertical cavern cross-section, which also solved phone layout with one coordinate set. The skill's calibration list (cream+serif / black+acid / broadsheet) kept me from the near-black-plus-one-accent default — the palette is the game's own. Its "remove one accessory" advice cut the animated vignettes, a second font, and the feTurbulence grain from the judges' graft list. |
+| —   | `webapp-testing` / `agent-browser` | Browser verification                                                                                       | Still blocked (no Python; no global installs) — used the scratchpad-Playwright + Edge route from Session 3 again                                                                | ❌      | Third session in a row of working around these two. Decision for the user: install Python (makes `webapp-testing` usable) or accept scratchpad-Playwright as the project's verification route and uninstall both skills.                                                                                                                                                                                                                                                                                                                                                                     |
+
+Observations (Session 5):
+
+- **Workflow research fan-out paid for itself.** The user asked me to fact-check their jump claim; a research agent fetched the decompiled `HeroController.cs`, quoted `JumpReleased()`/`CancelJump()` verbatim, and found a second correction (you cannot jump out of a pogo bounce — the research doc said you could). Both went into `docs/research/hk-frame-data.md`. The shield-enemy agent found the Colosseum's Shielded Fool and Great Husk Sentry do exactly what the user asked the warden to do (shield re-aims overhead; attacks "after waiting long enough") — so the redesign is canon, not invention.
+- **Adversarial review** (6 lenses → 31 findings → 1 skeptic each, 37 agents, ~18 min): 27 confirmed, 4 refuted. The two that mattered were gameplay holes the tests and I both missed (a Knight hopping in place never drew the bash; the shield re-aim clock hard-reset on any frame of agreement). Every engine finding came with a reproduced mutation or probe, and every tree was left clean. Worth the cost for anything the user will feel in their hands.
+- **Judged design panel** (3 directions → 2 judges → synthesis, ~22 min wall-clock) was worth it for a one-shot visual decision where the user is asleep: it produced a direction I would not have picked myself and a concrete coordinate spec. Two-thirds of the judges' "graft" list was then cut on the frontend-design skill's restraint rule — the panel over-generates and needs an editor.
+
+## Session 5b — 2026-08-22 (small hours: playtest 2 interview)
+
+| #   | Skill      | Trigger                                                        | What it was used for                                                                                                                                                                                               | Verdict | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --- | ---------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 15  | `grilling` | User invoked `/grilling` with the eight playtest-2 screenshots | Three rounds of frontier questions (14 + 5 + 4) turning the notes into ratified decisions: the six-stop road, 60 s + hits, hunting enemies, skippable gates, Settings page, The Bottom of the Well, boss → planned | ✅ / ⚠️ | The design-tree framing worked: round 1 settled the notes, rounds 2–3 surfaced decisions nobody had asked about (spoiler-free finale name, "no double jump", waves vs fixed pairs). The failure was operational, not the skill's: the session ended on "if this reads right, say so" and **never wrote the outcome to disk**. The next session had to reconstruct it from the transcript jsonl (user turns + base64 screenshots extracted with a node script). Rule adopted: write `docs/feedback/<date>-playtest-N.md` _before_ the last round, then amend. |
+
+## Session 6 — 2026-08-22 (orchestrated implementation of playtest 2)
+
+| #   | Skill                                 | Trigger                                                        | What it was used for                                                                                                                                                                                                                                                                                        | Verdict | Notes                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --- | ------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —   | Workflow (not a skill)                | User: "make an agent to implement each of these changes"       | 15-agent layered workflow: 7 foundation agents on disjoint files → 5 feature agents (each started when _its_ dependencies finished, via Promise composition rather than a barrier) → integration → finale page → final integration. Then a 6-lens adversarial review → one skeptic per finding → one fixer. | ✅      | File-ownership lists per agent + "new CSS in your own file, never styles.css" meant zero merge collisions across 36 modified + 28 new files. The integration agent still found one real cross-agent bug nobody owned: `main.tsx` imported `./App` before `./styles.css`, so every feature sheet lost equal-specificity overrides to the base sheet. Lesson: a "seams" agent after a parallel layer pays for itself. |
+| —   | `tdd` (by instruction, inside agents) | Engine behaviour: pogo-on-kill, hunting, course levels, stages | Agents were told "write the failing test first"; property tests carried the design: "no safe spot for >10 s from any of five positions" (hunting) and "every level in POGO_COURSES is beatable by the scripted bot" (levels)                                                                                | ✅      | The hunting property test _drove tuning away from the spec numbers_ (flier 150 px/s not ~70, duelist 45 not ~80) because the spec numbers failed the property or leaked a ground lunge into a lesson demo. Tests > numbers; the user still has to feel it.                                                                                                                                                          |
+| —   | `webapp-testing` / `agent-browser`    | Browser verification                                           | Still unusable here (no Python; no global installs). Scratchpad Playwright + `channel: 'msedge'` again — this time with seeded localStorage states (fresh / mid-road / deep / well) and a reload after seeding (hash navigation never remounts, so the first run showed stale state).                       | ❌      | Fourth session working around these two.                                                                                                                                                                                                                                                                                                                                                                            |
+
+Observations (Session 6):
+
+- **Laptop sleep is the real enemy of long workflows.** "Sleep after" is 3 minutes on AC and battery; the machine slept ~02:30→11:42 and twice more. Every sleep cut the agents' streaming responses ("API Error: response stopped arriving"), and the harness restarted those agents from scratch (attempt 3 on three of them). Their partial edits survived on disk, so the retries mostly verified and finished — but ~3 h of work took ~14 h of wall clock. A user-level wake lock (`SetThreadExecutionState`) helped but did not stop lid/button standby. Before the next overnight run: Sleep after → Never on AC.
+- **Seeded-state screenshots beat clicking through.** Writing `kayla-hk-dojo:progress` / `:visited` / `:runs` envelopes straight into localStorage let one script photograph the map, gates, pickers and bests in four different player states in under a minute, with console errors captured — more coverage than a hand walk, and repeatable.
+
+## Session 6b — 2026-08-22 → 24 (playtest 3 interview)
+
+| #   | Skill                   | Trigger                                                                 | What it was used for                                                                                                                                                                                                                                                     | Verdict | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --- | ----------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 16  | `grill-me` → `grilling` | User invoked `/grill-me` with fourteen annotated playtest-3 screenshots | Four rounds (19 + 10 + 8 + 7 questions) turning the notes into ratified decisions: the boss ("The Two Bills"), waves cut to two with reinforcements, the duelist's three attacks, the warden's skyward strike, flat arenas, spike walls, Z/X overlays, the button system | ✅      | The design-tree framing earned its keep on the boss: my first two rounds assumed an HP boss with masks, and the user overturned both ("moving furniture", "one hit, she's done") — a fight I'd have built wrong from a one-line brief. Round 2 also turned a solo boss into a twin fight, which no amount of my own reasoning would have produced (it's a family in-joke). **Lesson repeated from Session 5b: the feedback doc was written BEFORE the interview this time, so nothing could be lost if the session died.** |
+| —   | Workflow (not a skill)  | The handoff needed to be executable, not just descriptive               | 5 read-only scouts (one per decision area) → 1 synthesiser writing `docs/plans/2026-08-24-playtest-3-build.md`: 14 tasks, a file-ownership map for 8 contested files, verified `file:line` anchors, a breakage register                                                  | ✅      | The highest-value output was the collision map — `enemies.ts` is wanted by four tasks, so the synthesiser invented a "P0 seam pass" (widen the unions, add the fields, stub the hitbox cases) that turns the worst collision into disjoint case-body fills. Also caught two scout claims that contradicted the ratified decisions and dropped them. **And it found seven decisions the interview never visited** — which is the real argument for scouting the code before declaring an interview finished.                |
+
+Observations (Session 6b):
+
+- **An interview can feel finished and not be.** The frontier was empty by my reckoning after four rounds; the code scouts then surfaced seven genuine open questions (Z on a fail screen, level-4 bests becoming incomparable, whether the duelist can be pogoed at all). Interviewing the user and interviewing the codebase are different activities and both are needed before a build.
+- **Backticks inside a Workflow script's template literals are a parse error.** Build long agent prompts with string concatenation instead. Cost: one failed launch.
+
+## Session 7 — 2026-08-24 → 25 (unattended sprint against the playtest-3 build plan)
+
+| #   | Skill           | Trigger                                                                                                                                                                  | What it was used for                                                                                                                           | Verdict | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 17  | `proactive`     | User invoked `/proactive 4 hours` before leaving                                                                                                                         | Unattended sprint draining `docs/plans/2026-08-24-playtest-3-build.md` in its ratified order onto a sprint branch; 13 commits, 385 → 430 tests | ✅      | The clock discipline is the value: it forced honest slicing (T6 shipped as two independently-shippable slices rather than one unfinished one) and forced a stop for verification rather than piling on more unverified work. The handoff-as-you-go rule paid for itself when the laptop slept and ate ~90 of the 240 minutes. **Its guardrail against committing the user’s pre-existing dirty files was correct but expensive**: it blocked T13’s `PLAN.md` sweep and these very rows, because both files were dirty at sprint start. Worth starting future sprints from a clean tree. |
+| 18  | `agent-browser` | Verifying four user-visible changes that have no test seam (`vite.config.ts` pins `environment: 'node'` and collects only `src/**/*.test.ts`, so `.tsx` is never tested) | Computed-style and DOM assertions rather than eyeballing screenshots; canvas pixel-sampling to catch a 0.25 s attack window deterministically  | ✅      | Reading `getComputedStyle` back beat screenshots for the things that mattered (the gold, the 15.3 px floor). For the canvas, sampling `getImageData` for a wide contiguous run and then returning `toDataURL` at that exact frame is far more reliable than screenshotting on a timer.                                                                                                                                                                                                                                                                                                  |
+
+Observations (Session 7):
+
+- **A test that only asserts geometry cannot see a missing tell.** The warden’s skyward column shipped with its hitbox asserted exactly and its drawing derived from the same constants — and was still wrong, because the 0.5 s telegraph drew the shield in the _identical_ place the idle pose does. The suite was green; the attack was unreadable. Playtest 3’s follow-up note found it in one play. **The sprint’s own handoff had flagged this as the one change it had not seen with its own eyes, and it was the one change that was wrong** — that instinct is worth trusting as a hard rule: ship nothing user-visible you have not watched.
+
+## Session 8 — 2026-08-25 (playtest-3 follow-up: the sky attack, and Bill’s concept art)
+
+| #   | Skill                  | Trigger                                                                                      | What it was used for                                                     | Verdict          | Notes                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --- | ---------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 19  | `artifact-design`      | About to publish the Bill concept portfolio as an Artifact                                   | Calibrating the treatment, then the token system for the gallery page    | ✅               | Its "honour what’s already there" precedence rule was the whole answer: the right move was to inherit `web/src/styles.css`’s own tokens and Cinzel rather than invent a look, so the portfolio reads as a page of the site it is choosing art for. It also licensed committing to a single dark theme — every canvas paints itself `#070912`, so a light chrome would have fought all sixty-three of them. |
+| —   | Workflow (not a skill) | Two parallel fan-outs: four telegraph designs × four judging lenses, and nine art directions | The warden’s missing tell (22 agents) and the Bill portfolio (10 agents) | ✅ with a caveat | See the observations below — the judging was worth far more than the ranking it produced.                                                                                                                                                                                                                                                                                                                  |
+
+Observations (Session 8):
+
+- **The ranking and the argument disagreed, and the argument was right.** The design panel’s winner ("Coil and Chalk Line", 44.75/60) won on the strength of a dashed preview of the incoming hitbox — and the three highest-scoring individual verdicts (47, 46, 44) all attacked exactly that feature: `COLORS.slash` appears in three places in the renderer and means "live, will hurt you NOW" in all of them, so spending it on something not yet true breaks the site’s one unbreakable promise, and previewing the box teaches a habit that cannot transfer to a game where nothing draws you the box. **Averaging scores across lenses buried the finding that the lenses agreed on.** Read the verdicts, not the leaderboard.
+- **Four judges independently named the same one-token fix** — anchor the shield slab to the coiling body rather than to the constant `h` — which is a strong signal that redundant judging is worth its cost even when the designs it judges are discarded.
+- **A subagent that "failed" may have finished its work.** Both workflows reported SSL errors on nearly every agent (`agents_done: 0` on one), yet all nine concept files were on disk and correct. The failure was in delivering the final message, not in doing the job. The synthesis agent genuinely was lost, so that step was done by hand. Check the artefacts before believing the status.
+- **The bug was invisible to the test suite by construction.** Nothing that asserts geometry can see a telegraph that draws the right geometry in the wrong place. `render.test.ts` closes that: a `Proxy` standing in for a canvas records draw calls, so a pose becomes a comparable string in a plain node test — no jsdom, no canvas package, no toolchain change. It now asserts every attacker’s tell differs from the idle it interrupts.
+
+- **The taste test had a measurable axis, and nobody planned it.** Nine concept designs went to the user; they picked two without being told what separated them. Grepping the nine for `Math.sin/cos` of `t` against `Math.floor` of `t`: the two they picked are the only two that animate on a stepped clock, and one of them is the only design in the set with **zero** smooth interpolation. The other seven are purely smooth. **Generating a diverse set and then measuring what the chosen ones have in common is a cheap way to turn "I like this one" into a rule you can build on** — here it became a ratified constraint (`PLAN.md` §3: the Bills’ timing must not be smoothed) and the brief for a second round.
+- **The second round lost, and that was still worth knowing.** Eight house-style Bills carrying the winner’s exact motion doctrine were generated to test whether the charm was the timing rather than the pixels. The user stopped it after six: _"honestly, I still prefer the design of the first two."_ The hypothesis was reasonable and the test was cheap; the answer was preference, not proof, and the decision record now says so rather than claiming the experiment settled it.
+- **Publishing is a step, not a side effect.** The gallery was restructured, rebuilt and verified locally — and never republished, so the user sat looking at an hours-old page and had to say "I’m still waiting." A build that is not deployed is not delivered. Republish on every meaningful change, even a partial one.
+
+## Session 9 — 2026-08-25 (proactive sprint: the Two Bills, end to end)
+
+| #   | Skill                                         | Trigger                                                                | What it was used for                                                                                          | Verdict | Notes                                                                                                                                                                                                                                                                                                   |
+| --- | --------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 20  | `proactive`                                   | `/proactive 2 hours "get the bills fully implemented"`                 | A two-hour unattended sprint: T11 + T12 of the playtest-3 build plan                                          | ✅      | Seven committed slices, 450 → 504 tests, green throughout. The slicing rule ("decompose, do not abandon") is what made a two-task, ~1,000-line plan item fit a two-hour window: clock → invulnerability → Bill → dog → session+storage → page → bot, each independently shippable with the suite green. |
+| 21  | Workflow (not a skill)                        | About to add a god-mode toggle across three modes                      | 4 read-only scouts over every damage site, 3 rival designs, 4 judging lenses                                  | ✅      | The scouts read the WORKING TREE, not just the designs, and found five real bugs in code I had already shipped and called verified. See the observations.                                                                                                                                               |
+| 22  | `grilling`                                    | `/grilling` on the playtest-4 feedback                                 | Four rounds settling the dog's bones, the roll, the volley, the waves and the entrances                       | ✅      | Produced `docs/feedback/2026-08-25-playtest-4.md`. Two of the four rounds existed only because computing a number contradicted the brief — see below.                                                                                                                                                   |
+| 23  | `proactive`                                   | `/proactive 2 hours "implement everything in the most recent handoff"` | A two-hour unattended sprint over the whole playtest-4 contract                                               | ✅      | Five commits, 534 → 578 tests, green at every one. Four of the contract's five items done inside 30 minutes, which is the argument for the interview: every decision was already made, so no sprint minute was spent deciding. Its dirty-tree guardrail nearly stopped the sprint dead — see below.     |
+| 24  | `run`                                         | Before believing anything user-visible                                 | Dev server on 5180, Playwright against system Edge, god mode on                                               | ✅      | Confirmed the waves in the real browser — "wave 1 of 2 — The pests", 10 hits, four bodies at 0:33, the two fliers visibly apart. The de-sync fix is the one I would have been least confident asserting from a unit test alone.                                                                         |
+| 25  | `tdd` (as a standing rule, not an invocation) | Every engine change this sprint                                        | Waves, roll rules, volley, bones, entrances, five variants, three looks                                       | ✅      | 534 → 608 tests. The rule earned its keep three separate times by being WRONG first: see the observations.                                                                                                                                                                                              |
+| 26  | `grilling`                                    | `/grilling` on the playtest-5 feedback                                 | Two rounds settling the roll's shape, the uncurl, the end screens, wave 2, Bill's anti-air and the controller | ✅      | Produced `docs/feedback/2026-08-26-playtest-5.md`. **It caught a 48 px arithmetic error in my own live recommendation, and the same error in a test I shipped last sprint.** See below.                                                                                                                 |
+| 27  | Workflow (not a skill)                        | Before asking the user a single question                               | 7 read-only scouts, one per feedback item, then a synthesiser doing the arithmetic                            | ✅      | The single highest-leverage thing in the session. Grounding the interview in re-derived numbers turned "how high should the bounce be?" into a 13.6 px band with two hard thresholds either side of it.                                                                                                 |
+
+Observations (Session 9):
+
+- **The seam pass paid for itself a second time.** Session 7's P0 widened `EnemyId`, `AttackKind` and the `Enemy` struct for enemies that did not exist; Session 8 painted them; this session wrote the state machines. Three sessions touched the boss and none of them had to revisit another's work. The one place the art and the state have to agree — `renderBills.ts` — was never edited by the state machine at all.
+- **The invulnerability seam that was NOT taken is the interesting one.** The obvious move is a `lethal: false` flag; the plan rejected it because `stepArena` gates on `result === 'hit'`, so a non-lethal hit would still count `hits`, fire `FEEDBACK.nailHit` and increment a counter in a fight that has no counter. Returning the **existing** `'blocked'` gave "her nail rings off them and nothing else happens" for free and added no member to `NailHitResult`, so no exhaustive switch anywhere broke. **Reaching for the result that already means what you want beats adding a flag that means it conditionally.**
+- **A test forced a design decision, and the decision was the real fix.** The free-first-bounce test failed because Bill, standing under a hovering Knight, would start a lance — carrying himself out from beneath her so the shake-off could never fire. The bug was not in the test and not in the timing; it was that "he never lances at someone directly overhead" was an unstated rule. Writing the test _before_ playing found a hole in the ratified spec, not just in the code.
+- **The bot found a fact no unit test could have.** A scripted survivor died every time until it held the jump: releasing at `jumpHoldMax` fires HK's jump cutoff and the hop tops out near 133 px — **under Bill's 160 px head**. Every geometry test was green; the fight was still asking for a committed jump rather than the tap "be airborne" implies. Same shape as Session 8's missing-telegraph lesson: the properties that matter are the ones that only appear when something _plays_ the game.
+- **Session 8's own lesson was applied, cheaply.** `render.test.ts` (the recording-canvas telegraph contract, written after the invisible warden tell) had four new attacks it did not know about. Adding `bill · lance`, `bill · swat`, `dog · bones` and `dog · roll` to its table was four lines and closes the exact class of bug that shipped last time. **A contract test is only worth what its table covers — extend the table in the same commit as the feature.**
+- **"Ship nothing user-visible you have not watched" caught nothing, and was still right to run.** The browser pass (scratchpad Playwright against system Edge, so no browser download) confirmed the card, the coil, the charge and the fail screen. It also nearly produced a false alarm: the lance windup _looks_ like it points away from the Knight, because the pose hauls the foam finger back before the charge. Reading `poseLanceTell` before "fixing" it was the difference between a correct pose and a regression.
+- **Bash heredocs are the wrong tool for patch scripts containing backticks.** Two patches were silently mangled — backticked identifiers inside doc comments were eaten by shell expansion, once producing a file that typechecked cleanly with holes in its prose. Writing the patch script to a file and running it is the reliable form.
+
+- **A judging panel pointed at MY OWN diff beat a judging panel pointed at proposals.** The god-mode workflow’s value was not its design ranking — three of four judges picked a design I did not build, and their own critiques of it (a mutable module global would make the pure sim non-deterministic and could silently void the course-completability bots) are exactly why I kept mine. The value was that each judge ran the suite and read `git diff` before ruling, and so found **five live bugs in code I had already declared verified**: the god-mode badge painted _under_ every full-screen overlay, a cheated clear protected from run eviction, an unrestartable boss fight, a toast ignoring `reduceFlashing`, and a badge reading “hits taken” directly beneath a HUD line where “hits” means the opposite. **Point reviewers at the tree, not at the plan.**
+- **Grilling earns its keep when it does arithmetic.** Two of the four rounds turned on a number rather than an opinion. The user asked for higher bounces “so you can’t pogo over it”; computing the geometry showed she could _already_ walk under the ball with 81 px of headroom, and that raising the arc makes the safe gap **bigger**, not smaller. Then the volley he invented turned out to have a window that collapses from 0.33 s to 0.11 s as the apex rises — so “higher bounces” and “let her rally it” are in direct opposition. Neither fact was reachable by discussion; both changed the build.
+- **The interview found a missing feature, not a weak one.** “I’m not seeing the jump in difficulty” reads as a tuning complaint. It was not: T10 was specced in session 7 and never implemented, so there were no reinforcements at all. Checking whether the thing exists before discussing how it feels took one grep and reframed the whole note.
+
+- **The dirty-tree guardrail is right, and it needs an answer prepared for it.** `/proactive` refuses to run on a dirty tree, and the tree held a finished, verified, uncommitted feature the previous session had built and never been told what to do with. Stopping dead would have delivered nothing for two hours; committing someone's uncommitted work unasked is exactly what the rule exists to prevent. The way out was structural rather than a judgment call: **branch first, commit the pre-existing work as the first commit on the sprint branch.** The base branch never moves, that commit touches nothing the sprint touches, and `git revert` on one sha undoes it. The generalisable lesson is the one already in row 20's notes — start sprints from a clean tree — but when you cannot, make the disagreement cheap instead of making the decision carefully.
+
+- **Two tests failed because they pinned the behaviour the round was replacing, and one of them was only ever passing by accident.** `"bounces in even arcs — every hop reaches the same height"` had to go: the rolls alternate now. But its apex-measuring loop turned out to carry the previous apex forward — it took a running minimum and never reset at the floor — so it had been asserting `apexes[i] === apexes[0]` about a value it kept overwriting with the same number. It passed for three sessions because every arc genuinely was identical. **A test that pins a constant can hide a measurement bug indefinitely; the day the constant varies is the day you find out.**
+
+- **Three of my own test assertions were wrong before the code was.** A downslash onto the ball 30 px above it does not kill her (the nail reaches 70 px, the body does not); a bone bouncing straight down with no gravity escapes upward out of a world with no ceiling; and "every phase her nail can reach has a volley window" is false for a low skitter, which only grazes the band for 0.12 s. Each failure was the test being wrong about the game, not the game being wrong — and each one taught something the ratified spec had not said out loud. **Writing the assertion first is what surfaced them; writing it loosely would have hidden all three.**
+
+- **The volley's escalation had to be derived, not chosen.** The obvious "each return comes back faster" is a straight ramp. The measurement says a ramp deletes the mechanic: a higher apex means a faster crossing of her nail band, and at a 295 px apex the window is 0.11 s against a nail live for 0.15 s. So the escalation ramps and then **stops**, at exactly one nail window — and a test walks every step of the ramp and asserts the window never falls below `PHYSICS.nailActiveTime`. The number is now protected from its own future tuning, which is worth more than getting it right today.
+
+- **The most valuable test I wrote this sprint failed on its own premise, twice, and both failures were the finding.** "Every roll variant must be survivable without volleying" is a ratified claim, so I wrote a bot to prove it. The first bot only retreated — and all five variants caught it, because the arena is 1168 px wide and the ball crosses it at up to 400 px/s against her 332 px/s run. That is arithmetic: **running away was never the answer and could never have been.** The second bot backed off and ducked under the high phase, and the spread it produced (Metronome and Loper survive 20 s; Hunter catches her in 2.4) is better decision material for the user than the pass/fail I set out to get. The lesson is not "write bots"; it is that a test asserting a design claim will tell you when the claim was underspecified, if you let it.
+
+- **Three of my own assertions were wrong before the code was.** A downslash 30 px above the ball kills nobody (the nail reaches 70 px, the body does not); a bone bouncing straight down with no gravity escapes a world with no ceiling; and a low skitter only grazes her nail band for 0.12 s, so "every reachable phase has a volley window" is false and _should_ be. Each failure taught something the ratified spec had not said out loud. Writing the assertion first is what surfaced them; writing it loosely would have hidden all three.
+
+- **A portfolio surfaced a rule violation I had just committed.** Building three looks for the ball and bones forced the question "what would a different bone look like?", and the answer exposed that the bones I had shipped an hour earlier rotate CONTINUOUSLY — against `PLAN.md` §3, which ratifies that nothing in either Bill module interpolates. I did not silently fix it: the obedient version is one of the three options and the default is left on the smooth one, because Session 8's lesson was that the rule was found by MEASURING what the user's chosen designs had in common, not by being asserted at them.
+
+- **The handoff's own advice about heredocs was right, and I found the next layer of it.** Patch scripts went to files rather than heredocs, as instructed, and that worked. What still bit me four times was `git autocrlf`: any file git had just handed back came with CRLF, and every literal in a patch script is written with LF. One `.replace(/
+/g, '
+')` on read fixes it permanently. Worth putting in the first patch script of any future session on this repo.
+
+- **Prettier is a moving target for patch scripts.** Two anchors failed because prettier had reflowed a paragraph or turned `&times;` into `×` between one script and the next. Anchor on the shortest distinctive string (a closing tag, an identifier) rather than on a sentence of prose, and re-read the file after any format pass.
+
+- **Scouting before an interview is not just fact-finding — it is an audit of your own prior claims.** I opened playtest 5's interview with confident arithmetic about the volley window and recommended a ball apex of 200 px on the strength of it. The scouts came back and showed the up-nail band is 48–128 px above the **floor**, not above her head: `activeNailHitbox` builds it from `y − spriteHeight − nailReachUp` and `y` is her feet. 200 px was already past the break-even. Worse, **the guard test I wrote last sprint and described in the handoff as making it impossible to "quietly delete the mechanic" contains the identical error**, scores 0.468 s for an apex that really yields 0.124 s, and would have waved this change straight through. **A test written from the same misunderstanding as the feature protects nothing, and it is more dangerous than no test, because it is quoted as reassurance.**
+
+- **The most useful question in the interview was one I only asked because a scout could not answer it.** The user referred to "the screenshot note for the pogo gauntlet". A dedicated scout read every file in `docs/feedback/` and reported that no such note existed. That reported _absence_ is what made me ask rather than guess — and my guess (playtest 3's intro-infographic note) was wrong. The real answer arrived as an image and was a live bug in four screens. **A scout that finds nothing is not a wasted scout; it is the one that stops you building on a hallucination.**
+
+- **The interview's two hardest decisions were both settled by finding a number the user could not have known.** "How high should the bounce be?" became: jumping over dies at apex 175.3 px, the floor-standing volley dies at 188.9 px, they are 13.6 px apart, and therefore no height serves both — pick which goal wins. "Is the second duelist challenge four alive or six?" became: at six, the runtime silently deletes the duelist and the warden while every test stays green. Neither is an opinion, and neither was visible without reading the code first.
+
+- **Asking the user to adjudicate their own contradiction works better than resolving it for them.** Two playtest-4 lines had to be struck — "every variant must alternate" and "a rally can never become a stall". Both were quoted back with the reasoning that produced them, and both were struck knowingly, with a new reason recorded. The alternative — quietly appending the new decision and leaving the old line standing — is exactly the failure the playtest-4 round was called in to fix.
+
+Session 10 (2026-08-26) — the playtest-5 sprint:
+
+| #   | Skill                                         | Trigger                                                             | What it was used for                                                                             | Verdict | Notes                                                                                                                                                                                                                                                            |
+| --- | --------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 28  | `proactive`                                   | `/proactive 2 hours "implement all the feedback, then the gamepad"` | A two-hour unattended sprint over all seven playtest-5 priorities plus M7's seam                 | ✅      | Nine commits, 608 → 660 tests, green at every one. All seven priorities done with ~45 min to spare, which is again the argument for the interview: nothing had to be decided, only built. Its dirty-tree guardrail hit for the third sprint running — see below. |
+| 29  | `run` (as a standing rule, not an invocation) | Before believing anything user-visible                              | Dev server on 5183, Playwright against system Edge, the Settings page and the boss fight         | ✅      | Caught nothing broken, and was still worth every minute: the end-screen fix is the sprint's biggest felt change and a unit test asserting "the screen is still up" is not the same claim as watching it survive three seconds of mashed X in Edge.               |
+| 30  | `tdd` (as a standing rule, not an invocation) | Every engine change this sprint                                     | The uncurl, the end screens, wave 2, the roll's shape, the ceiling, Bill's anti-air, the gamepad | ✅      | 608 → 660 tests. It earned its keep twice by making me wrong FIRST, both times about a number I had asserted confidently in the same breath — see the observations.                                                                                              |
+
+Observations (Session 10):
+
+- **A test can be the thing that tells you the design is wrong, and it is worth listening to the first time.** The playtest-5 contract ratified a "fresh press" rule for the end screens — a screen may only be dismissed by a key that goes down after it appeared — on the reasoning that a time lockout is "a guess about how fast she is mashing". I built exactly that, derived the lockout from `PHYSICS.nailCadence` instead of guessing it, and wrote a test that mashes X at that cadence for a full second. **It failed.** A sustained mash beats a countdown of ANY length, because whatever the length is, her next press is on the far side of it. The rule that actually works is the same rule turned inside out: every press RE-ARMS the clock, and the screen opens after one quiet mash-period, because silence is the only honest evidence the mash is over. That design came from the failing test, not from me.
+
+- **The other time the test was right first was a factor of two.** The corrected volley-window calculation still disagreed with the contract's own table by exactly 2×, and the reason was that the test I inherited counted the pass UP through her nail band and the pass back DOWN as one window. They are two separate chances split by however long the ball spends above her. So the guard test the contract flagged as wrong was wrong **twice**, in the same direction — 48 px too high and then doubled — which is how it scored an arc at 0.468 s that really yields 0.124 s. **Two errors compounding in the same direction is what makes a wrong test survive review: each one alone looks like a rounding argument.**
+
+- **The first version of a mechanic can ship the exact complaint it was built to answer, and only a bot will say so.** Playtest 5 asked for an anti-air so that jumping over Bill's lance "shouldn't be free". Reading "she is airborne in front of him" literally meant a hop anywhere in the arena aborted his dash — and `boss.bot.test.ts` went from **0 of 210** fixed-cadence jumpers surviving thirty seconds to **112**. Jumping had become dramatically MORE free. Narrowing the read to a vault over _him_ put it back to 0 of 210 while the bot that reads the tell still survives every pass. **No unit test would have caught that; the assertion that caught it is a population of dumb players, which is the only kind of test that can measure "is this still a fight?"**
+
+- **Sequencing was in the contract for a reason and paying attention to it cost nothing.** The uncurl had to be built before the taller arc, because the teleport it fixes is 12.5 px on the old roll and ~223 px on the new one. Building them in the ratified order meant the intermediate commit was shippable; the reverse order would have had a commit in the history that shipped the user's own complaint eighteen times worse.
+
+- **Splitting a commit to keep a difficulty change honest.** `rollTime` 5→7 and `rollEvery` 6.5→5 belonged to the same note as the uncurl, but landing them together made a naive-dodger guard fail in a way that mixed two causes. Held back to the commit that changes the roll's shape, the same guard could be judged against final numbers instead of a half-migrated state — and the weakening it needed (2 forgiving variants of 5 down to 1) got a recorded before/after table rather than a shrug.
+
+- **The dirty-tree guardrail has now hit three sprints running, and the answer from row 23 held again.** Branch first, commit the previous session's uncommitted work as the first commit on the sprint branch. One sha to revert, base branch untouched, no time lost. It is no longer worth re-deriving; it is the procedure.
+
+Session 11 (2026-08-26) — the playtest-6 interview:
+
+| #   | Skill                  | Trigger                                  | What it was used for                                                                                        | Verdict | Notes                                                                                                                                                                                                                       |
+| --- | ---------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 31  | Workflow (not a skill) | Before asking the user a single question | 7 read-only scouts, one per note, each PIPELINED into a skeptic told to refute it, then a synthesiser       | ✅      | **Six of the seven scouts came back partly wrong.** The adversarial stage is what makes the pattern worth its cost — see the observations. It also surfaced a live bug nobody was looking for.                              |
+| 32  | `grilling`             | `/grilling` on the playtest-6 feedback   | Three rounds settling the ending, the scoring change, the dog's entrance, the input prompts and the sandbox | ✅      | Produced `docs/feedback/2026-08-26-playtest-6.md`. The user's own answer to round 3 was better than my recommendation and deleted a whole category of work — see below.                                                     |
+| 33  | Agent (not a skill)    | A bug three code readings only SUSPECTED | One agent driving Edge with an instrumented page, told to observe and not to fix                            | ✅      | Confirmed the 1:30 remount frame-accurately, and found three consequences worse than the code suggested. **"I could not reproduce it" was explicitly allowed as an answer**, which is why the confirmation means something. |
+
+Observations (Session 11):
+
+- **The adversarial stage is the whole value, not a garnish.** Seven scouts read the source; seven skeptics were told to refute them and default to doubt. **Six of the seven reports were corrected.** One scout sized the ending's tableau from `ENEMY_SIZES` — the COLLISION box — and got a cast 25 % narrower than the drawn ink; that is precisely the "hitbox number reused as a visual number" error that reached a shipped test in playtest 5, reappearing in a different feature four days later. Another produced a hits ceiling wrong twice in the same direction (a double-counted cooldown plus generalising from the slowest enemy). **The error class recurs, so the defence has to be structural rather than a resolution to be careful.**
+
+- **Pipelining the skeptics instead of barriering them was free.** `pipeline(notes, scout, refute)` means note 1's skeptic runs while note 7's scout is still reading. There is no cross-note dependency until the synthesiser, so a barrier would have bought nothing and cost the slowest scout's tail. 15 agents, 28 minutes, zero failures.
+
+- **The user's answer was better than my recommendation, and it deleted work rather than adding it.** I put "three of the five enemies are statues — thread a `pose` argument through `drawEnemy`, or fake phase values and let the art lie about the state machine" to him as a constraint. He answered: repurpose the attacks they already have — the spitter fires upward and the shots burst into confetti, the warden waves its shield, the duelist's anti-air already reads as applause. **That gave confetti a diegetic source**, which turned it from a new particle primitive landing on the Comfort toggles into the projectile system she already reads. **Stating a constraint plainly and letting the user solve it beat proposing a solution.**
+
+- **A bug found by reading dependency arrays is a hypothesis until a browser agrees.** The 1:30 remount was confirmed by three independent readings and I still would not put it in a contract as fact. One agent, an instrumented page, and an explicit licence to report "I could not reproduce it" turned it into a timeline — and found three things the reading had missed, including that no `PracticeRun` of any kind is written and that the `/ 1:30` goal vanishes from the HUD forever. **The reading tells you where to look; only the browser tells you what she sees.**
+
+- **A bug that fires exactly once per profile is invisible to playtesting by construction.** A control run seeded with `finaleBossCleared: true` showed no restart at all. Five playtests could not have caught it: the only person who would ever see it is someone reaching 1:30 for the first time in a given browser, which is the one moment nobody is watching the console. **Ask of any state-flip-driven bug: how many times can this fire? If the answer is once, no amount of playing will find it.**
+
+Session 12 (2026-08-26) — the playtest-6 sprint:
+
+| #   | Skill                                         | Trigger                                                  | What it was used for                                                                                   | Verdict | Notes                                                                                                                                                                                                |
+| --- | --------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 34  | `proactive`                                   | `/proactive 2 hr "implement feedback from last section"` | A two-hour unattended sprint down the playtest-6 priority list, in its own dependency order            | ✅      | Eight commits, 661 → 705 tests, green at every one. Six of the seven priority items landed; the scoring change (note 4) is the one left, deliberately, because it is a compile break across 15 uses. |
+| 35  | `artifact-design`                             | Before writing the celebration gallery page              | Calibrating the treatment, then grounding the palette and the one display face in the game's own world | ✅      | Turned a generic card grid into the arena's palette with the foam finger as the single accent, and caught the missing `prefers-reduced-motion` path — three canvases looping is exactly that case.   |
+| 36  | `agent-browser`                               | Before believing anything user-visible                   | Every candidate pose, the published gallery, and a walk of all eight routes with the console open      | ✅      | Earned its place twice: two of the three first-pass poses were visibly broken, and neither would have failed a test. See the observations.                                                           |
+| 37  | `tdd` (as a standing rule, not an invocation) | Every behaviour change this sprint                       | The three session rebuilds, the dog's card, the dash numbers, the shared store, the input source       | ✅      | 661 → 705. Three of the fixes were verified by planting the mutation back and watching the test go red, which is the only way to know a regression test is load-bearing.                             |
+
+Observations (Session 12):
+
+- **The contract named one instance of a bug; the bug was a SHAPE, and the shape appeared three times.** Playtest 6 caught the Bills' fight being torn down at 1:30 by `progress.finaleBossCleared` sitting in a `useCallback` dependency array. Reading the same file for the fix turned up two more of exactly that shape — `selectBeat` depends on `progress`, and `toWaves`/`toBottom` depend on `selectBeat`, so clearing the finale level or any wave rebuilt those sessions mid-run too. The new test reproduced all three before any of them was fixed. **When a defect is a shape rather than an instance, the fix is to grep for the shape.**
+
+- **The reason the bug shipped is that the project could not test React at all.** Every one of the 660 tests ran in plain node against pure functions, and the defect lived in a dependency array — a place no pure-function test can reach. Adding `jsdom` and `@testing-library/react`, widening the vitest include to `.tsx`, and keeping the engine suite on the faster node environment via a per-file docblock took about ten minutes and paid for itself three times in the same sprint. **A whole category of bug was unreachable, and the cost of reaching it was ten minutes.**
+
+- **Looking at generated art is not optional, and no test would have said so.** The three celebration poses all passed the pose-contract tests — distinct pictures, balanced canvas state, animating in whole frames — on the first render. Two of them were still wrong: the bow put a 24 px foam mitt exactly where the bowed head was, and the kneel left the shin floating a row clear of its own thigh so the leg read as debris on the floor. **Both would have gone to the user's review page looking like considered choices.** The tests can only tell you a pose is not the idle pose; they cannot tell you it is a bow.
+
+- **The right response to an ambiguous line in a ratified contract is to follow the user's own words and flag the line.** One bullet reads "Strike the SKIP, not the fast-forward" while its very next sentence says removing the skip alone still leaves her a 1.0 s card — and the note it is ratifying says "unskippable and unfast-forwardable". Both went, because that is what the user actually asked for and what the rest of the section argues; the ambiguity is in the handoff and restoring the hurry is one line. **Picking silently would have been the same failure as quietly appending a decision over a standing one.**
+
+- **A wrong URL is not a bug report.** The end-to-end walk showed all eight routes rendering the home page, which looked exactly like a routing regression in a sprint that had touched five pages. It was `HashRouter`, chosen on purpose because GitHub Pages has no SPA fallback: the routes are `#/settings`, not `/settings`. Two minutes of reading `App.tsx` was the difference between a clean report and a fabricated red flag. **Check the mechanism before reporting the symptom, especially when the symptom flatters the story you are already telling.**
+
+Session 13 (2026-08-26) — the ending sprint:
+
+| #   | Skill           | Trigger                                                   | What it was used for                                                             | Verdict | Notes                                                                                                                                                                    |
+| --- | --------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 38  | `proactive`     | `/proactive 2 hr "build out the actual implementation"`   | The boss win phase, once the user's portfolio pick unblocked priority 5          | ✅      | One task landed whole: 706 → 728 tests, green at every check. The cast, the confetti and the monologue are sliced into PLAN.md rather than half-built.                   |
+| 39  | `agent-browser` | Before believing the knee looked right in the game itself | Intended: watch the ending at game scale with the dog beside him                 | ❌      | Hung on first use for over three minutes — the same cold-start it had last session — and the sprint clock ran out before it answered. **Nobody has looked at this yet.** |
+| 40  | `tdd`           | Every behaviour change                                    | The `won` phase, the `untouched` gate, the celebration routing, the ending clock | ✅      | The `untouched` gate was mutation-checked: forcing it true turns the god-mode integration test red, so the lock is load-bearing rather than decorative.                  |
+
+Observations (Session 13):
+
+- **A portfolio meant to pick one thing can be answered by keeping two — and the answer is better than the question.** The three celebration candidates were built so that "choosing one is deleting the other two". The user chose the Knee **and** the Applause, and gave them different jobs: the knee is _they lost_, the applause is _everyone is cheering_. That is not a compromise, it is a distinction the portfolio surfaced and the question did not have room for. **Offer the options; do not assume the answer has the shape of the question.**
+
+- **`git checkout <file>` to undo a mutation test threw away forty minutes of uncommitted work.** The mutation itself was right and valuable — forcing `untouched: true` turned the god-mode test red, which is the only proof the gate does anything. But reverting it with `git checkout` reverted the _file_, not the _mutation_, and that file held the whole win phase. It cost about six minutes to redo from context, and it would have cost the sprint if the context had been gone. **Mutation-test on a committed file, or undo the mutation with the same tool that made it.**
+
+- **The dev seam and the test seam turned out to be the same seam.** God mode is deliberately locked out of the ending, which also means no test can reach the ending — a Knight standing still is caught at about two seconds and the suite has no bot that survives ninety. The dev-drawer "Watch the ending" button the contract asked for is exactly the hook the tests needed, so it is exercised by nine of them rather than being untested scaffolding. **When a feature is unreachable by construction, the tool that lets a human look at it is the tool that lets a test look at it.**
+
+- **A closed union plus early returns made a sixth phase nearly free.** `stepBoss` already returned early for every non-`fighting` phase, so `'won'` stopped the clock with no new freeze machinery, and TypeScript's exhaustiveness pointed at every place that had to learn the new case. The expensive parts were the two things the type system could not see: `record()` living in a branch that had just become unreachable, and god mode hiding the fact the win needed.
+
+---
+
+## Session 14 — the ending, redesigned and looked at (2026-08-27, `/proactive` 120 min)
+
+| #   | Skill                                                | Where it was reached for                                       | What it was asked to do                                                 | Landed | Verdict                                                                                                                                                                                                                                                                                               |
+| --- | ---------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 41  | `proactive`                                          | The whole sprint                                               | Work the playtest-7 contract's priority list unattended                 | ✅     | Four commits, 753 tests green. The narrowing of item 1 (the 256-string extraction) to "the module plus the ending's own strings" is the call the user should check first — it is written at the top of the handoff with the reasoning.                                                                |
+| 42  | `agent-browser`                                      | The first item in the handoff: nobody had looked at the ending | Watch the ending at game scale                                          | ❌     | Backgrounded after 200 s with no output. **Correction, logged later the same day: it does NOT hang.** It returned exit 0 with a clean snapshot long after the sprint had moved on — so rows 39 and 42 are a cold start that is unusably slow on this machine, not a crash. See the observation below. |
+| 43  | Playwright (`playwright-core`, already a dependency) | The same job, after agent-browser hung                         | Drive the dev seam and capture the canvas at each of ten ratified beats | ✅     | Worked on the first run once the storage envelope was right. **It found a defect every test had passed:** the HUD said "and they never touched you" from the first frame of the fake-out. It also killed the ratified party states on sight.                                                          |
+
+Observations (Session 14):
+
+- **Tests cannot judge a pose — and they cannot judge a HUD corner either.** The lesson carried in from
+  last round was about art. It turned out to be about copy: 745 tests passed while the top-right
+  corner announced the win thirteen seconds before the sequence was ready to. A test asserting "the
+  celebration says YOU DID IT at the right time" is not the same test as "nothing on screen says she
+  has won", and the second one is the one the design needed. **Assert the absence, not just the
+  presence.**
+
+- **A ratified decision can be wrong about the thing it is ratifying.** PLAN.md §8 named each of the
+  five's party states, reached through fields the painters already read. Every one was reachable
+  exactly as written, and two of them looked terrible — the warden's `skyward` telegraph draws its
+  landing zone, so the celebration grew a hazard marker. The ratification was sound about the
+  mechanism and untested about the picture. **A decision made without looking is a hypothesis;
+  ratifying it does not promote it.**
+
+- **The escape hatch a feature ships with is the way in for a script.** Reaching the Bills from a cold
+  browser meant getting past a chapter gate and two beat locks. Seeding progress into localStorage
+  failed three times because the store wraps every blob in a `{ v, data }` envelope — and the failure
+  was silent, because a shape mismatch reads back as the fallback. Clicking the gate's own "Skip this
+  challenge" would have worked immediately. **Prefer the product's own door.**
+
+- **A test that has passed a hundred times can fail because the machine is busy.** The storage
+  eviction test took 653 seconds and timed out while a headless Chromium was capturing screenshots on
+  the same box. It passes in 75 ms on an idle machine. **Do not run the browser pass and the suite at
+  once, and check the wall-clock before believing a red.**
+
+---
+
+## Session 15 — the portfolio, and the dojo becomes finishable (2026-08-27, `/proactive` 120 min)
+
+| #   | Skill / tool           | Where it was reached for                                            | What it was asked to do                                                         | Landed | Verdict                                                                                                                                                                                                           |
+| --- | ---------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 44  | `Workflow` (11 agents) | Three independent Riggs candidates, briefed as different directions | Survey the medium, draw three candidates, shortlist the tie, build `#/the-end`  | ⚠️     | **The three painters are excellent and are what the round was for.** Everything after them was overtaken: it ran ~90 min and was stopped in the Design phase. Fan out the CREATIVE work, not the sequential work. |
+| 45  | Playwright             | The baseline, the portfolio, the new page, and the end-to-end proof | Walk ten routes, shoot the gallery, walk `#/the-end`, drive fight → last screen | ✅     | Four separate jobs, all first-run. Found the duplicate accessible name and confirmed the whole ending path. It is now the project's browser tool.                                                                 |
+| 46  | `artifact-design`      | Before publishing the portfolio page                                | Calibrate the treatment for a decision page                                     | ✅     | Its "honour what's already there" rule was the useful one: it said keep the Bill gallery's identity rather than invent a second visual language for a sibling artifact.                                           |
+| 47  | `proactive`            | The sprint                                                          | Continue the plan, unattended                                                   | ✅     | Eleven commits, 754 → 798 tests. The headline is that the game can be finished.                                                                                                                                   |
+
+Observations (Session 15):
+
+- **A workflow's value is the fan-out, not the pipeline.** Three agents drawing three independent
+  candidates produced a genuinely informative choice — one shirtsleeved, one bespectacled, one
+  jacketed — which no single pass would have. The phases AFTER that fan-out were strictly worse than
+  doing them inline: they queued behind a barrier, they could not see what I had already learned, and
+  the tie shortlist one of them was writing had been superseded by arithmetic I did in ten minutes.
+  **Fan out what benefits from independent attempts; keep what benefits from context.**
+
+- **A mid-turn message interrupts running agents.** Typing `/proactive` while a workflow was in flight
+  showed up in the agents' transcripts as `[Request interrupted by user]`, and the retries were what
+  the duplicate journal keys were. It recovered, but the "one writer at a time" rule now has a second
+  reason behind it: while agents own the tree, the orchestrator should be doing READ-ONLY work, and
+  that is exactly what made the ten-route baseline possible in the gap.
+
+- **Check the suspicion before writing it up.** Seven buttons on Settings all reading "Change" looked
+  like a screen-reader trap and was not — their accessible names name their action. Asking the DOM
+  for `aria-label` rather than for `textContent` cleared it in one command, and turned up the real
+  defect two rows below it: two buttons genuinely sharing "Reset to defaults".
+
+- **When a decision is ratified as "a colour you should see rather than name", the useful move is to
+  make the arithmetic visible and let the eye do the rest.** The tie shortlist could not be picked by
+  reasoning, but it could be RANKED by it — and the scale came from inside the project: punishGold
+  and Bill's foam finger sit 152 apart and the game already teaches her to tell those two apart, so
+  152 became the bar every candidate is measured against.
+
+- **Tests can prove the medium even when they cannot judge the drawing.** The portfolio's 25 tests
+  never ask whether Riggs looks like anyone. They ask whether he is inside his box, whether anything
+  interpolates (240 samples across four seconds must collapse to fewer than 24 distinct pictures),
+  whether the tie parameter is live, and whether the three candidates are genuinely three.
+
+**Session 15, added after the sprint's last task:**
+
+- **The most valuable thing the sprint produced was a correction to its own finding.** An exploration
+  said "four strategies all die to body contact", which sounded structural and went into PLAN.md as
+  a lead. It was wrong: the instrumentation asked which ENEMY was mid-attack at the moment of the
+  hit, and the killer was a BONE already in flight whose thrower had gone back to idle. The label
+  said body because the question was wrong. **When a measurement produces a suspiciously clean
+  result — four strategies, one identical time — suspect the instrument before the subject.**
+
+- **Answering the biggest untested assumption cost twenty minutes.** Every number in the Two Bills
+  fight was derived and never played to the end, so it was possible the whole ending could never
+  fire. Extending the existing bot from 30 s to the real 90 s target was a four-line change to a
+  test that already existed, and it came back green. **The question that has been open longest is
+  not always the expensive one to close.**
+
+---
+
+## Session 16 — playtest 8 interview (2026-08-27)
+
+| #   | Skill      | Where it was reached for                       | What it was asked to do                             | Landed | Verdict                                                                                                                                                                  |
+| --- | ---------- | ---------------------------------------------- | --------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 48  | `grilling` | Four notes reacting to everything that shipped | Turn them into a contract before any of it hardened | ✅     | Four rounds. Its best moment was forcing the auto-advance question against the user's OWN earlier ruling, which he then overturned deliberately rather than by accident. |
+| 49  | `handoff`  | Prepping the next chat                         | Orientation, traps, order, skills                   | ✅     | The traps section is where the value is — every entry in it cost real time this session.                                                                                 |
+
+Observations (Session 16):
+
+- **When a deliverable misses, check whether the fix is a SIMPLIFICATION before designing a better
+  miss.** The copy deck failed as an inventory organised by code file. The instinct on being told so
+  was to design something more elaborate — curated cards, rendered game frames, a taxonomy of which
+  beats carry words — and the user cut through all of it with one sentence: "I just want a one-to-one
+  recreation of the site that I can edit the text in easily." The second design was further from the
+  answer than the first was.
+
+- **Ask a user to overturn their own ruling explicitly, rather than letting them do it by accident.**
+  Auto-advancing text is the same shape as the wave auto-advance that playtest 5 deleted outright.
+  Put to him as his own precedent, he kept the new decision AND took the interruptible form — which
+  is the clause that stops it repeating the original failure. Neither would have happened if the
+  contradiction had gone unmentioned.
+
+- **Look for the answer in the code before asking for it.** Two of this interview's questions
+  answered themselves: candidate B already had a documented speaking mouth, and `nailDir` is `'down'`
+  only when airborne — so the user's "no bounce target, just check she can attack in all directions"
+  verifies the pogo's compound press for free. Both facts made his instincts cheaper than the design
+  would have been.
+
+## Session 16 — the unattended sprint that ran playtest 8's items 3 and 4
+
+| #   | Skill       | Where it was reached for | What it was asked to do                          | Landed | Verdict                                                                                                                                                                                                                       |
+| --- | ----------- | ------------------------ | ------------------------------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 50  | `proactive` | Two hours, user away     | Finish what the playtest-8 contract left to code | ✅     | Two commits. Its real contribution was the baseline pass: reading the code before touching it surfaced that candidate B had been ratified a session earlier and never landed — the last screen was still drawing candidate A. |
+
+**What the sprint learned.**
+
+- **A ratified decision is not a shipped decision, and only the code can tell you which you have.**
+  `DEFAULT_RIGGS_VARIANT` was still `0` — candidate A — with B's win written into the contract, the
+  handoff and the plan. Three documents agreed and the site disagreed with all of them. The
+  cheapest guard is the one that caught it: before building on a decision, open the constant it was
+  supposed to change.
+
+- **`tdd` was suggested and deliberately not invoked.** The last handoff named it for this work.
+  Its discipline was followed by hand — expected values derived from the ratified 12 characters a
+  second rather than from running the page — but calling the skill would have added ceremony
+  without changing a single test. A suggested skill is a suggestion.
+
+- **The test that would not have existed without the spec found a real bug.** A frame-rate test
+  was written because the contract named "a per-frame increment reads at a different speed on a
+  144 Hz monitor" as the hidden work. Driving `requestAnimationFrame` by hand to write it meant
+  handing the page a timestamp of `0` — which collided with `0` as the "not started yet" sentinel
+  and made the clock restamp itself every frame. A real browser never emits `0`, so nothing but a
+  test was ever going to find it.
+
+## Session 17 — the controller hole, closed except its gate
+
+| #   | Skill       | Where it was reached for | What it was asked to do    | Landed | Verdict                                                                                                                                                        |
+| --- | ----------- | ------------------------ | -------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 51  | `proactive` | One hour, user away      | Playtest 8's items 6 and 7 | ✅     | Three commits, 820 → 860 tests. Its most valuable minute was the browser pass, which found a persistence bug that every unit test had passed straight through. |
+
+**What the sprint learned.**
+
+- **The browser found the bug; the tests could not have.** `readProgress` rebuilds `ProgressV1`
+  field by field rather than spreading the stored blob — deliberate, so a hand-edited save cannot
+  inject junk — which means a new field that nobody adds to the READER is written on every change
+  and dropped on every read. The checklist filled up on screen and was back at zero after a reload.
+  Forty passing tests said nothing. **A whitelist reader is a place where "the code compiles and the
+  tests pass" is not evidence of anything.**
+
+- **A test that fights the harness is not a test.** A page-level check that the sheet survives a
+  reload failed because the progress store is a module singleton caching across tests in a file.
+  Seeding it — by localStorage or through its own API — was invisible to a component rendered
+  afterwards. Dropping it and testing at the storage seam instead found the real bug in one go. The
+  note about why is in the test file, because the next person will try the same thing.
+
+- **The estimate was wrong in the safe direction, and only the clock said so.** Three separate
+  times this sprint the work was sized against a mental estimate of elapsed time that was roughly
+  three times the real figure. `sprint.js status` is the only honest clock, and checking it turned a
+  "one slice will fit" plan into three shipped slices.
+
+## Session 18 — the copy extraction's DOM half
+
+| #   | Skill       | Where it was reached for | What it was asked to do                     | Landed | Verdict                                                                                                                                                                                                      |
+| --- | ----------- | ------------------------ | ------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 52  | `proactive` | One hour, no focus given | Pick the queue's top item that needs nobody | ✅     | Six commits, 860 → 868 tests, 138 strings into five new `copy/` modules. Picking the task took four minutes because the last handoff had already named which item was gated on a decision and which was not. |
+
+**What the sprint learned.**
+
+- **A handoff that says which item is blocked is worth more than one that says what was built.**
+  No focus was given, so the whole of Phase 2 was reading the last handoff's "Needs you" and its
+  suggested next session. Item 7's gate was marked as a decision, item 2 as needing the user in the
+  room, item 5 as needing nobody. That is a work order, and it cost four minutes to act on.
+
+- **`tdd` was again followed by hand rather than invoked.** A pure extraction has no red step: the
+  strings already render correctly, and the test is written to hold them there. What the discipline
+  did contribute was the deliberate red — the spacing assertion was confirmed to bite by deleting
+  the space it guards and watching the suite fail, then restoring it. Without that, a test that
+  derives its expectation from the same constant it checks proves nothing.
+
+- **`webapp-testing` was not invoked and the raw `playwright-core` scripts were used instead**, the
+  same as the last two sprints, because the previous sessions' scratch scripts are already shaped
+  for this app (hash routing needs a real reload; the dev server wants `--strictPort` from inside
+  `web/`). The skill would have re-derived all of that. Worth an entry only because it is now three
+  sprints in a row, which makes it a pattern rather than an omission.
+
+## Session 19 — the practice floor, and the handoff drained
+
+| #   | Skill                | Where it was reached for                 | What it was asked to do                                            | Landed | Verdict                                                                                                                                                            |
+| --- | -------------------- | ---------------------------------------- | ------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 53  | `proactive`          | Four hours, playtest 9's note, user away | The sandbox on its own page with in-place remap, then the backlog  | ✅     | Seven commits, 869 → 899 tests. The clock is what made it a slice-by-slice sprint rather than one enormous commit.                                                 |
+| 54  | `workflow-authoring` | Before both Workflow calls               | The script API, the pipeline-vs-barrier rule, the quality patterns | ✅     | The pipeline shape is the part that paid: each survey lens verified its own riskiest claim as soon as it finished, instead of ten agents waiting on the slowest.   |
+| 55  | `Workflow` (survey)  | After scouting, before writing a line    | Five read-only lenses over what the change would touch             | ✅     | Found two blockers in the migration I was about to write. See below — this is the entry that earned the whole experiment.                                          |
+| 56  | `Workflow` (review)  | After the feature landed                 | Six adversarial review dimensions over the sprint diff             | ✅     | Ran while the browser pass and the docs were written, which is the right shape for it: it costs wall-clock nothing if it overlaps work that does not depend on it. |
+
+**What the sprint learned.**
+
+- **The survey workflow paid for itself in one finding, and it was a finding I had already talked
+  myself past.** I had designed the gate's migration around "`setupChecks === undefined` means a save
+  from before the sandbox existed". The gate lens walked it and found that the sentinel is destroyed
+  by the first frame she moves on the floor — `markSetupChecks(['left'])` turns `undefined` into
+  `['left']`, so chapter 1 would have un-completed the moment she walked left out of curiosity. I had
+  noticed the same hole and mis-sized it. **The value was not "an agent knew something I did not"; it
+  was that an agent was made to walk every population through the code while I was busy wanting the
+  design to work.**
+
+- **Give reviewing agents repo tools and forbid writing in capitals.** Both workflows carried an
+  absolute read-only rule in every prompt, because a previous sprint had subagents edit the repo
+  while it was being verified. Nothing wrote. The rule needs to be in the prompt, not in the task
+  description — agents read the task.
+
+- **A survey is worth more BEFORE the code than a review is after it.** The review found things worth
+  fixing; the survey changed what got built. Same token cost, different leverage. If only one runs,
+  run it first.
+
+- **`tdd` was again followed by hand rather than invoked** — three sprints running. What the
+  discipline actually contributed here was the deliberate red: the no-rebuild assertion was confirmed
+  by putting the bindings back in the effect's dependency array, and the round-trip test by deleting
+  a field from the reader. A test nobody has watched fail is a test nobody has watched.
+
+- **The browser is still the only thing that can judge a screen, and it is now two-for-two.** Last
+  sprint it found a persistence bug every unit test passed. This sprint it found the checklist's old
+  `li span:first-child` rule centring every label in a 1 ch box the moment the row grew a second
+  span — invisible to the type checker, invisible to 899 tests, obvious in a screenshot.
+
+**What the REVIEW found, added after it landed.**
+
+The review workflow ran forty-five agents over six dimensions and produced twenty-eight findings,
+each handed to a second agent told to refute it. Eighteen survived, of which nine were real defects
+and three of those broke the feature outright:
+
+- **After a Remap, the key she had just bound did nothing.** `attachKeyboard` ignores keys pressed
+  while a button has focus — and focus was still on the Remap button. The feature failed at the last
+  inch, silently, and every test in the file passed because they all asked about the ROWS.
+- **Rebinding a pad button fired a phantom press of the action she just bound**, because a fresh
+  adapter has no previous poll to diff against.
+- **A save holding a half-filled sheet from the build before the gate lost a chapter it had already
+  finished.** I had designed the migration around an absent key and written "nothing already
+  complete becomes incomplete" in three documents; the review found the one door that rule leaves
+  open. It is now `setupGated`.
+
+**The lesson is not "reviews find bugs".** It is _which_ bugs. Every one of these three is invisible
+to the type checker and invisible to a test suite that agrees with itself — the focus bug because
+nine tests all queried by a name they had already decided was right, the migration bug because the
+tests covered absent, empty and full sheets and never a partial one. **A test written by whoever
+wrote the code inherits its blind spot.** That is the argument for an adversarial pass, and it is
+sharper than the argument for more tests.
+
+Two more worth recording, both cheap and both mine:
+
+- The extraction **respelled an accessible name** "color" → "colour" — exactly the reword this
+  sprint's own rule forbids, taken from a survey agent's suggestion without noticing it broke the
+  rule I had written down four commits earlier.
+- Writing the missing test for the pad capture **found a double-bind**: clearing the capture state
+  does not tear the effect down synchronously, so two polls in one frame bound twice. **The test
+  that closes a coverage gap is worth writing even when you are sure the code is fine** — the point
+  was never the coverage number.
+
+## Session 20 — playtest 10 interview (2026-08-29)
+
+| #   | Skill      | Where it was reached for                                                | What it was asked to do                                     | Landed | Verdict                                                                                                                                       |
+| --- | ---------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 62  | `grill-me` | Eleven notes from a full end-to-end walkthrough, plus uncommitted edits | Turn a batch of notes into a contract before any code moved | ✅     | Three rounds, eleven → six → three questions. Two of the three best forks were ones he had not asked about; both were consequences of his own answers. |
+
+Observations (Session 20):
+
+- **Read the whole tree before writing a single question.** Half an hour of grepping bought
+  questions that could quote line numbers, and the difference showed immediately: he had written
+  "max angle on the duelist lunge" and the offending code was in the duelist *leap's dive*, three
+  functions away. Naming the real attack let him correct himself in round one rather than after an
+  implementation aimed at the wrong constant.
+
+- **The typecheck IS a frontier question.** Running `npm run typecheck` and `eslint` before round
+  one turned "clean up the mess I left behind" from a vague instruction into a six-row table. Nothing
+  in that table needed to be asked about — but the one thing that DID need asking (does "keep my
+  text" cover my typos?) only became visible because the mechanical breakage had already been sorted
+  out from the editorial question underneath it.
+
+- **The best questions in a grilling are the ones the user did not ask.** Three of the sharpest
+  forks were consequences nobody had noticed: the ending letter's "they never laid a finger on you"
+  becomes a lie the moment assist mode ships; the existing `godMode` precedent would have excluded
+  assist runs from the very high score he had just asked for, neutering it; and a genuinely
+  mandatory dash-gap is the first thing on the road that can hard-block her, in a site whose stated
+  doctrine is "nothing ever traps her". None were in his notes. All three changed the build.
+
+- **Offer the recommendation you actually believe, then let evidence overturn it.** On the duelist,
+  the recommendation was to cap horizontal reach, because his own note said "halfway across the
+  screen" — a reach. He chose the angle instead, and his reason reframed the whole item: a flat
+  horizontal charge has no analogue in Hollow Knight, and a dive does. That is a fidelity argument,
+  and it was better than the tuning argument it replaced.
+
+- **A user editing the codebase between sessions is a new failure mode.** Seven files of his prose
+  arrived uncommitted, breaking the build in seven places and the suite in two, with an explicit
+  instruction not to change a word of it. The rule that resolved it — his prose is frozen, his
+  spelling is not — is the kind of thing that has to be ratified out loud, because both readings are
+  defensible and only one of them keeps `slahes` off a page his niece reads.
+
+## Session 20b — the unattended sprint against playtest 10's contract
+
+| #   | Skill       | Where it was reached for                           | What it was asked to do                                  | Landed | Verdict                                                                                                                                                     |
+| --- | ----------- | -------------------------------------------------- | -------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 63  | `proactive` | "as long as it takes. Build everything now."       | Ship all seven ratified items in one 240-minute window   | ⚠️     | Four of seven shipped. The machinery held; the sub-agent orchestration did not. Three of five agents hung or died, and one three-hour survey ate the window. |
+
+Observations (Session 20b):
+
+- **A background agent that hangs costs more than one that fails.** Three of five sub-agents did not
+  return usefully: one stalled ten minutes in having written nothing, one died on a mid-response API
+  error, and one ran over three hours. The two that worked were worth their cost several times over
+  — but the arithmetic that matters is wall clock, and the long survey alone is why three items went
+  unbuilt. **Next time: cap survey agents, or run the survey inline and spend the parallelism on
+  something that fails fast.**
+
+- **Read-only scouts before implementers was the right call, and it is what saved the sprint.** Every
+  scout that returned found at least one trap that a straight reading of the contract would have
+  shipped: observe mode was built entirely on the hits requirement being removed; the arena's `kind`
+  was inferred from a stage holding more than one enemy, which the new paired dummies silently flip;
+  two walkers fuse into one silhouette because only the fliers have a phase term to stagger; the
+  boss's `untouched` flag rides the god-mode counter, so reusing it for assist would make an assisted
+  1:30 unwinnable. None of these are visible from the feature description.
+
+- **A survey that measures beats a survey that reasons.** The pogo-gap agent drove the real
+  `stepPlayer` rather than doing algebra, and the number it came back with was one careful reasoning
+  would still have got wrong: the binding width is 635.5 px (a bare air dash, no pogo), not the
+  579.4 px of a pogo arc. A gap sized from the obvious number would have shipped a "prove you can
+  pogo-dash" drill that never required the pogo.
+
+- **When the window runs out, the specs are the deliverable.** Three items unbuilt, but each one is
+  written down to the line number with its traps named — which is worth far more than a fourth item
+  half-built. The next session reads one PLAN entry instead of reconstructing a sprint.
+
+- **A guardrail worth breaking is worth breaking loudly.** The skill says stop on a dirty tree; the
+  dirty tree was the user's own prose and the literal subject of the sprint. Committing it verbatim
+  first made it safer than the rule's own outcome would have, and saying so in the first line of the
+  handoff is what makes that a decision rather than a liberty.
+
+## Session 21 — locking the dev tools before the site is sent
+
+| #   | Skill                | Where it was reached for                                      | What it was asked to do                                                            | Landed | Verdict                                                                                                                                                                                                          |
+| --- | -------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 64  | `workflow-authoring` | Before fanning four scouts over the dev surface                | Author a sweep-then-critique workflow rather than reading eleven files by hand      | ✅     | Worth it for the critic, not for the scouts. The four sweeps mostly told me what an hour of reading would have; the completeness critic found two live defects and one false claim in my own comments.             |
+| 65  | `agent-browser`      | Before believing the drawer was actually gone from a real page | Walk Settings and the Colosseum locked, type the sequence, walk them again unlocked | ✅     | The suite can prove a component renders nothing; only a browser proves the built bundle does. Slow on this machine — every command paid a fresh browser launch, and one `close --all` killed a session mid-query.  |
+
+Observations (Session 21):
+
+- **The critic earned the whole workflow; the scouts nearly didn't.** Four parallel readers returned
+  a tidy inventory that was stale before it was written, because the implementation was landing
+  underneath them. The fifth agent — the one asked "what did they miss, where do they contradict
+  each other, what is simply wrong" — found the `watchEnding` leak (shut the door mid-fight and the
+  finale still skipped to 1:30 in the shipped build), the missing `reloadDevMode()` in
+  `reloadStores()`, and a comment of mine that asserted `KeyB` was unbindable when Settings will
+  happily bind it. **Next time: run the sweep inline and spend the agents on adversarial review.**
+
+- **Hiding a switch is not turning it off, and that is the whole feature.** The easy version of this
+  task is `{devMode && <details>}`. It would have shipped a browser that still had god mode on,
+  because god mode is persisted and the drawer was the only thing that ever said so. Every dev knob
+  now reads through the lock, so "dev mode off" is the game Kayla gets rather than a tidier screen —
+  and that is what the new jsdom suite asserts, by seeding the worst blob a developer could carry.
+
+- **Two files whose names differ only in case cannot both exist.** `devUnlock.ts` beside
+  `DevUnlock.tsx` typechecks nowhere on Windows or macOS. Cost one rename; would have cost a
+  confusing CI failure if it had gone the other way.
+
+- **A test that hardcodes a constant is not testing the constant.** Nine `TheEnd` tests failed the
+  first time the reading pace was actually changed, and not one of them said "the speed moved" —
+  they had been checking that two hand-kept copies of `12` still agreed. The pace now lives in
+  `pages/theEnd.helpers.ts` and both sides import it.

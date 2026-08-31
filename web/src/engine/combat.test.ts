@@ -239,7 +239,12 @@ describe('pogo', () => {
       pogoables: [{ x: 40, y: FLOOR_Y - 150, width: 120, height: 30 }],
     };
     const player = createPlayer(-80, FLOOR_Y - 140); // airborne, orb ahead
-    stepPlayer(player, frame({ dashPressed: true, attackPressed: true, down: true }), world, FIXED_DT);
+    stepPlayer(
+      player,
+      frame({ dashPressed: true, attackPressed: true, down: true }),
+      world,
+      FIXED_DT,
+    );
     const dashSteps = Math.round(PHYSICS.dashDuration / FIXED_DT);
     for (let i = 0; i < dashSteps + 3; i++) {
       stepPlayer(player, frame({ down: true }), world, FIXED_DT);

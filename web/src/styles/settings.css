@@ -1,0 +1,180 @@
+/*
+ * Settings page — the bench. Rows of key chips, not paragraphs. Reuses the
+ * site's custom properties and .chip / .button / .btn-row from styles.css.
+ */
+
+.settings-section {
+  margin: 0 0 1.5rem;
+  max-width: 40rem;
+}
+
+.settings-section h2 {
+  margin-top: 1.5rem;
+}
+
+.binding-list {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+}
+
+.binding-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.binding-action {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.binding-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.9rem;
+}
+
+/* .key-chip moved to styles.css — two pages draw keycaps now (the bench and
+   the practice floor), which makes it a base primitive like .chip. */
+
+/* "press a key…" while a row is listening, and "no key" for an empty row. */
+.binding-prompt {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+.binding-row.is-capturing {
+  border-bottom-color: var(--gold);
+}
+
+.binding-row.is-capturing .binding-prompt {
+  color: var(--gold);
+}
+
+.binding-row.is-capturing .chip {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.settings-note {
+  margin: 0.9rem 0 0;
+}
+
+/* .button was drawn for links; as a real <button> it needs these two. */
+.settings button.button {
+  border: 0;
+  cursor: pointer;
+}
+
+.settings-confirm {
+  margin: 0.25rem 0 0;
+  padding: 0.9rem 1.1rem 1rem;
+  border: 1px solid var(--gold);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--gold) 8%, var(--bg-raised));
+  max-width: 28rem;
+}
+
+.settings-confirm p {
+  margin: 0 0 0.75rem;
+}
+
+/* Stays in the tree while empty (a role=status node that appears together
+   with its text is announced unreliably); an empty <p> is zero height. */
+.settings-done {
+  color: var(--accent);
+  margin: 0;
+}
+
+.settings-done:not(:empty) {
+  margin-top: 0.75rem;
+}
+
+.settings-confirm:focus-visible,
+.settings-done:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+@media (max-width: 520px) {
+  .binding-row {
+    grid-template-columns: 1fr auto;
+    grid-auto-flow: row dense; /* Change button backfills beside the label */
+  }
+
+  .binding-keys {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The Controller section's list of pads the browser can currently see. */
+.pad-list {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+}
+
+.pad-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.35rem 0;
+}
+
+/* A pad's id is a long vendor string; it wraps rather than pushing the page. */
+.pad-name {
+  color: var(--accent-strong);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* What the browser reports the pad has. Small print beside its name: it is a
+   diagnostic she reads out once, not something she needs on every visit. */
+.pad-buttons {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+/*
+ * Assist mode's four choices. Modelled on .observe-toggle rather than on the
+ * dev drawer's .roll-variants, whose dashed border is deliberate scaffolding
+ * for a picker that comes out in the final build.
+ */
+.difficulty-choices {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.difficulty-choices legend {
+  padding: 0;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 0.98rem;
+}
+
+.difficulty-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.difficulty-choice input {
+  accent-color: var(--accent);
+}

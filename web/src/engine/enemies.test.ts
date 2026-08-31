@@ -7,10 +7,27 @@
  * take one nail hit per swing, die at 0 hp.
  */
 import { describe, expect, it } from 'vitest';
-import { ENEMIES, FIXED_DT } from './constants';
-import { applyNailHit, createEnemy, enemyBox, stepEnemy } from './enemies';
-import { createPlayer } from './player';
-import type { World } from './types';
+import type { EnemyId } from '@dojo/shared';
+import { CANVAS, ENEMIES, FIXED_DT, KNIGHT, PHYSICS } from './constants';
+import { enemyHurtsBox } from './arena';
+import { arenaWorld, bossWorld, spawnX } from './dodgeArenaSession';
+import {
+  ATTACKS,
+  DEFAULT_ROLL_VARIANT,
+  ROLL_VARIANTS,
+  applyNailHit,
+  createEnemy,
+  enemyAttackHitbox,
+  enemyBox,
+  rollVariant,
+  stepEnemy,
+  stepProjectile,
+  type Enemy,
+  type Projectile,
+  type Target,
+} from './enemies';
+import { createPlayer, playerHurtbox } from './player';
+import type { AABB, World } from './types';
 
 const FLOOR_Y = 600;
 
@@ -110,5 +127,599 @@ describe('enemyBox', () => {
     const box = enemyBox(walker);
     expect(box.y + box.height).toBe(FLOOR_Y);
     expect(box.x + box.width / 2).toBe(200);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 2 — "every enemy hunts her": no corner of the arena is safe.
+// ---------------------------------------------------------------------------
+
+function overlaps(a: AABB, b: AABB): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/** The arena she actually plays in — the session's own geometry, not a mirror. */
+function flatArena(): World {
+  return arenaWorld();
+}
+
+/**
+ * The Colosseum's old two-ledge geometry, kept by hand.
+ *
+ * Playtest 3 note 7 deleted these ledges from the game, but the behaviour
+ * they provoke — the walker's edge turn, the flier's sidestep around a
+ * platform — is still in the enemies and still has to work the day someone
+ * builds a stage with a platform in it. Same coordinates as the shipped
+ * ledges were, so the tests below read as they always did: solids[3] is the
+ * left ledge, solids[4] the right.
+ */
+function platformArena(): World {
+  const w = arenaWorld();
+  w.solids.push(
+    { x: 190, y: FLOOR_Y - 130, width: 140, height: 18 },
+    { x: 838, y: FLOOR_Y - 130, width: 140, height: 18 },
+  );
+  return w;
+}
+
+const ROSTER: EnemyId[] = ['walker', 'flier', 'duelist', 'spitter', 'warden'];
+const AIRBORNE = new Set<EnemyId>(['flier', 'spitter']);
+/** Hugging the left wall, dead centre, hugging the right wall (the hurtbox is 18 px wide). */
+const GROUND_SPOTS: Array<[number, number]> = [
+  [30, FLOOR_Y],
+  [CANVAS.width / 2, FLOOR_Y],
+  [CANVAS.width - 30, FLOOR_Y],
+];
+/** Spawn where the session would: the far side of the arena at the enemy's normal height. */
+function spawnFarFrom(id: EnemyId, playerX: number): Enemy {
+  return createEnemy(id, spawnX(0, playerX), AIRBORNE.has(id) ? 430 : FLOOR_Y);
+}
+
+interface Hunt {
+  /** Steps until something of the enemy's touched the Knight, or -1. */
+  hitAt: number;
+  /** Closest horizontal approach over the run. */
+  minAdx: number;
+  /** Steps on which the enemy's body sat inside world geometry. */
+  stuckSteps: number;
+}
+
+/** Ten simulated seconds of one enemy hunting a Knight who never moves. */
+function hunt(id: EnemyId, spot: [number, number], world: World, seconds = 10): Hunt {
+  const player = createPlayer(spot[0], spot[1]);
+  player.grounded = true;
+  const target: Target = { position: player.position, grounded: true };
+  const hurt = playerHurtbox(player);
+  const e = spawnFarFrom(id, spot[0]);
+  let shots: Projectile[] = [];
+  let hitAt = -1;
+  let minAdx = Number.POSITIVE_INFINITY;
+  let stuckSteps = 0;
+  const steps = Math.round(seconds / FIXED_DT);
+  for (let i = 0; i < steps; i++) {
+    const spawned = stepEnemy(e, world, FIXED_DT, target);
+    if (spawned) shots.push(...spawned);
+    for (const s of shots) stepProjectile(s, world, FIXED_DT);
+    const body = enemyBox(e);
+    if (world.solids.some((s) => overlaps(body, s))) stuckSteps++;
+    minAdx = Math.min(minAdx, Math.abs(e.position.x - player.position.x));
+    const attack = enemyAttackHitbox(e);
+    const shotHit = shots.some(
+      (s) =>
+        !s.dead &&
+        overlaps(hurt, {
+          x: s.position.x - s.radius,
+          y: s.position.y - s.radius,
+          width: s.radius * 2,
+          height: s.radius * 2,
+        }),
+    );
+    if (hitAt < 0 && (overlaps(body, hurt) || (attack && overlaps(attack, hurt)) || shotHit)) {
+      hitAt = i;
+    }
+    shots = shots.filter((s) => !s.dead);
+  }
+  return { hitAt, minAdx, stuckSteps };
+}
+
+describe('hunting — no safe corner (playtest 2)', () => {
+  // One arena now, so one pass: the Colosseum and the finale play on the
+  // same flat floor (playtest 3, note 7).
+  describe.each(ROSTER)('%s', (id) => {
+    it.each(GROUND_SPOTS)('reaches a Knight standing still at (%i, %i) within 10 s', (x, y) => {
+      const h = hunt(id, [x, y], flatArena());
+      expect(h.stuckSteps).toBe(0);
+      expect(h.hitAt).toBeGreaterThanOrEqual(0);
+    });
+
+    // And on a platform stage, should one ever exist: the fliers reach her;
+    // the ground enemies can't climb, so they pace directly beneath her.
+    it.each(GROUND_SPOTS)('hunts from a platform world at (%i, %i) too', (x, y) => {
+      const h = hunt(id, [x, y], platformArena());
+      expect(h.stuckSteps).toBe(0);
+      expect(h.hitAt).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
+
+describe('the arena floor (playtest 3, note 7)', () => {
+  it('is flat: a floor and two walls, and nothing to stand on', () => {
+    // Stated as a property, not as a deletion, so the ledges cannot come back
+    // by accident.
+    expect(arenaWorld().solids).toHaveLength(3);
+  });
+});
+
+describe('walker hunting', () => {
+  it('turns toward the Knight and walks at her', () => {
+    const world = ledgeWorld();
+    const walker = createEnemy('walker', 100, FLOOR_Y);
+    walker.facing = -1; // looking away
+    const t: Target = { position: { x: 350, y: FLOOR_Y }, grounded: true };
+    const x0 = walker.position.x;
+    for (let i = 0; i < 60; i++) stepEnemy(walker, world, FIXED_DT, t);
+    expect(walker.facing).toBe(1);
+    expect(walker.position.x - x0).toBeCloseTo(ATTACKS.walker.chaseSpeed, 0);
+  });
+
+  it('will not walk off a ledge edge chasing a Knight beyond it', () => {
+    const world = ledgeWorld(); // slab ends at x = 400
+    const walker = createEnemy('walker', 300, FLOOR_Y);
+    const t: Target = { position: { x: 700, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 300; i++) {
+      stepEnemy(walker, world, FIXED_DT, t);
+      expect(walker.position.x).toBeLessThan(400);
+      expect(walker.position.x).toBeGreaterThan(0);
+    }
+  });
+
+  it('paces beneath a Knight standing on a platform above it', () => {
+    const world = platformArena();
+    const walker = createEnemy('walker', 700, FLOOR_Y);
+    const t: Target = { position: { x: 260, y: FLOOR_Y - 130 }, grounded: true };
+    for (let i = 0; i < 600; i++) stepEnemy(walker, world, FIXED_DT, t);
+    expect(Math.abs(walker.position.x - 260)).toBeLessThan(40);
+    expect(walker.position.y).toBe(FLOOR_Y); // never climbed, never sank
+  });
+});
+
+describe('flier hunting', () => {
+  it('drifts its home toward the Knight at the hunt speed, still bobbing deterministically', () => {
+    const world = flatArena();
+    const a = createEnemy('flier', 900, 430);
+    const b = createEnemy('flier', 900, 430);
+    const t: Target = { position: { x: 100, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 60; i++) {
+      stepEnemy(a, world, FIXED_DT, t);
+      stepEnemy(b, world, FIXED_DT, t);
+    }
+    expect(Math.hypot(a.home.x - 900, a.home.y - 430)).toBeCloseTo(ATTACKS.flier.huntSpeed, 0);
+    expect(a.home.x).toBeLessThan(900);
+    expect(a.position).toEqual(b.position); // no RNG
+  });
+
+  it('never sinks into the floor while diving at a grounded Knight', () => {
+    const world = flatArena();
+    const flier = createEnemy('flier', 300, 430);
+    const t: Target = { position: { x: 320, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 900; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      expect(flier.position.y).toBeLessThanOrEqual(FLOOR_Y);
+    }
+  });
+
+  it('a bob grazing the floor makes it wait, not wander off sideways', () => {
+    // The sidestep is for ledges: the floor's edges are out of reach.
+    const world = flatArena();
+    const flier = createEnemy('flier', 640, 430);
+    const t: Target = { position: { x: 640, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < 1200; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      expect(Math.abs(flier.position.x - 640)).toBeLessThanOrEqual(ATTACKS.flier.bobX + 1);
+    }
+  });
+
+  it('is blocked by a ledge, not pinned: from above it, it still reaches a Knight beneath', () => {
+    const world = platformArena();
+    const flier = createEnemy('flier', 908, 430); // over the right ledge
+    const player = createPlayer(908, FLOOR_Y); // standing right under it
+    const t: Target = { position: player.position, grounded: true };
+    let hit = false;
+    for (let i = 0; i < 600 && !hit; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      expect(overlaps(enemyBox(flier), world.solids[4]!)).toBe(false);
+      hit = overlaps(enemyBox(flier), playerHurtbox(player));
+    }
+    expect(hit).toBe(true);
+  });
+
+  it('goes around a ledge instead of waiting underneath a Knight standing on it', () => {
+    const world = platformArena();
+    const flier = createEnemy('flier', 260, FLOOR_Y - 10); // directly beneath the left ledge
+    const player = createPlayer(260, FLOOR_Y - 130);
+    const t: Target = { position: player.position, grounded: true };
+    let hit = false;
+    for (let i = 0; i < 600 && !hit; i++) {
+      stepEnemy(flier, world, FIXED_DT, t);
+      hit = overlaps(enemyBox(flier), playerHurtbox(player));
+    }
+    expect(hit).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4, note 1 — the dog THROWS his bones.
+//
+// "I thought that he would actually shoot the bones, and they would sort of
+// spin around and go around the map and actually bounce them."
+//
+// This deliberately breaks "nothing new is taught at the end of the road",
+// ratified with the reasoning: bouncing is the one thing this entire dojo
+// has taught her, so a bone that arcs and rebounds is MORE the dojo's
+// language, not less.
+// ---------------------------------------------------------------------------
+describe('thrown bones', () => {
+  const flat = () => arenaWorld();
+
+  function bone(vx: number, vy: number, x = 600, y = 400): Projectile {
+    return {
+      position: { x, y },
+      velocity: { x: vx, y: vy },
+      radius: 7,
+      dead: false,
+      bounces: ATTACKS.dog.boneBounces,
+      spin: ATTACKS.dog.boneSpin,
+      angle: 0,
+    };
+  }
+
+  /** Fly it until it dies or the clock runs out; report what happened. */
+  function fly(p: Projectile, world: World, seconds = 12) {
+    let turns = 0;
+    let lastVx = p.velocity.x;
+    let lastVy = p.velocity.y;
+    const steps = Math.round(seconds / FIXED_DT);
+    for (let i = 0; i < steps && !p.dead; i++) {
+      stepProjectile(p, world, FIXED_DT);
+      if (
+        Math.sign(p.velocity.x) !== Math.sign(lastVx) ||
+        Math.sign(p.velocity.y) !== Math.sign(lastVy)
+      ) {
+        turns += 1;
+      }
+      lastVx = p.velocity.x;
+      lastVy = p.velocity.y;
+    }
+    return { turns, dead: p.dead };
+  }
+
+  it('rebounds off a wall instead of dying on it', () => {
+    const b = bone(ATTACKS.dog.projSpeed, 0);
+    stepProjectile(b, flat(), FIXED_DT);
+    expect(b.dead).toBe(false);
+    const before = b.bounces;
+    for (let i = 0; i < Math.round(4 / FIXED_DT) && b.velocity.x > 0; i++) {
+      stepProjectile(b, flat(), FIXED_DT);
+    }
+    expect(b.velocity.x).toBeLessThan(0);
+    expect(b.bounces).toBe(before! - 1);
+    expect(b.dead).toBe(false);
+  });
+
+  it('spends its budget on ANY surface, then the next one stops it', () => {
+    // Ping-ponging between the boss's floor and its lid — the world bones
+    // actually live in. Floor, ceiling, floor, dead: three turns, and the
+    // fourth surface is the one that stops it. The budget is the readable
+    // limit on how long the arena stays full of them.
+    const b = bone(0, 400, 600, 400);
+    const { turns, dead } = fly(b, bossWorld());
+    expect(turns).toBe(ATTACKS.dog.boneBounces);
+    expect(dead).toBe(true);
+  });
+
+  it('bounces off a boss-only ceiling that the shared arena does not have', () => {
+    const b = bone(0, -400, 600, 300);
+    // In the shared world it leaves the top of the screen and is gone.
+    const escaped = { ...b, position: { ...b.position }, velocity: { ...b.velocity } };
+    fly(escaped, arenaWorld(), 6);
+    expect(escaped.position.y).toBeLessThan(0);
+
+    // Under the boss's lid it comes back down.
+    const lidded = { ...b, position: { ...b.position }, velocity: { ...b.velocity } };
+    for (let i = 0; i < Math.round(6 / FIXED_DT) && lidded.velocity.y < 0; i++) {
+      stepProjectile(lidded, bossWorld(), FIXED_DT);
+    }
+    expect(lidded.velocity.y).toBeGreaterThan(0);
+  });
+
+  it('leaves the shared arena at exactly three solids — the spitter is untouched', () => {
+    // enemies.test.ts has pinned this since the ledges came out. The boss's
+    // ceiling would also have changed the spitter, whose shots die off the
+    // top of the screen today.
+    expect(arenaWorld().solids).toHaveLength(3);
+    expect(bossWorld().solids).toHaveLength(4);
+  });
+
+  it('leaves a spitter shot flying straight and dying on the first solid', () => {
+    const shot: Projectile = {
+      position: { x: 600, y: 400 },
+      velocity: { x: 0, y: 400 },
+      radius: 7,
+      dead: false,
+    };
+    const { turns, dead } = fly(shot, flat());
+    expect(turns).toBe(0);
+    expect(dead).toBe(true);
+  });
+
+  it('tumbles, and reverses its tumble when it turns', () => {
+    const b = bone(ATTACKS.dog.projSpeed, 0);
+    stepProjectile(b, flat(), FIXED_DT);
+    expect(b.angle).toBeCloseTo(ATTACKS.dog.boneSpin * FIXED_DT, 10);
+    const spinBefore = b.spin;
+    for (let i = 0; i < Math.round(4 / FIXED_DT) && b.velocity.x > 0; i++) {
+      stepProjectile(b, flat(), FIXED_DT);
+    }
+    expect(b.spin).toBe(-spinBefore!);
+  });
+
+  it('throws three of them, still pokeable, spinning both ways', () => {
+    const dog = createEnemy('dog', 600, FLOOR_Y);
+    const target: Target = { position: { x: 300, y: FLOOR_Y }, grounded: true };
+    let thrown: Projectile[] = [];
+    for (let i = 0; i < Math.round(12 / FIXED_DT) && thrown.length === 0; i++) {
+      const shots = stepEnemy(dog, flat(), FIXED_DT, target);
+      // The roll fires nothing; only the bones return projectiles.
+      if (shots) thrown = shots;
+    }
+    expect(thrown).toHaveLength(ATTACKS.dog.shots);
+    for (const b of thrown) {
+      expect(b.bounces).toBe(ATTACKS.dog.boneBounces);
+      // Same radius as the spitter's: the nail kills it exactly as before,
+      // which is the link that makes a projectile fair.
+      expect(b.radius).toBe(7);
+    }
+    expect(new Set(thrown.map((b) => Math.sign(b.spin!))).size).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 4, note 2 — five roll behaviours for the user to choose between.
+//
+// "I just need to try out five different examples and then go off that."
+//
+// The choice is a taste call. What is NOT a taste call is that every one of
+// them must leave both answers alive: a phase she can run under, and a
+// volley window her nail can actually hit. These tests are the guard rails
+// the picking happens inside, so a variant that gets tuned into a corner
+// fails here rather than in her hands.
+// ---------------------------------------------------------------------------
+describe('the roll behaviours', () => {
+  const A = ATTACKS.dog;
+  const apexOf = (launch: number) => (launch * launch) / (2 * A.rollGravity);
+
+  /**
+   * THE VOLLEY STRIP, corrected. `activeNailHitbox`'s up case builds its box
+   * at `y − KNIGHT.spriteHeight − PHYSICS.nailReachUp`, and `y` is her FEET —
+   * so standing on the floor that box spans 48–128 px above the FLOOR, which
+   * is 0–80 px above her 48 px head and not 48–128 above it.
+   *
+   * The test this replaces built the band 48 px too high. It scored Loper's
+   * tall arc at 0.468 s where the real figure is 0.124 s, and PLAN.md quoted
+   * it as making it impossible to "quietly delete the mechanic" — it would
+   * have passed the exact change playtest 5 asked for.
+   */
+  const STRIP_LOW = KNIGHT.hurtboxHeight; // 47: below this it has already got her
+  const STRIP_HIGH = KNIGHT.spriteHeight + PHYSICS.nailReachUp; // 128: top of the nail box
+
+  /**
+   * How long a ball falling from `apex` spends inside that strip.
+   *
+   * ONE crossing, not two. The test this replaces doubled it — a second error
+   * on top of the 48 px one, and in the same direction: it counted the pass up
+   * through the strip and the pass back down as one window, when they are two
+   * separate chances split by however long the ball spends above her nail.
+   * Against the contract's own figures the single crossing is what checks out:
+   * a 147 px apex gives 0.205 s and a 188.9 px apex gives exactly the 0.15 s
+   * that kills the mechanic.
+   */
+  const volleyWindow = (apex: number) => {
+    if (apex < STRIP_LOW) return 0; // never reaches her nail at all
+    const speedAt = (h: number) => Math.sqrt(Math.max(0, 2 * A.rollGravity * (apex - h)));
+    return (speedAt(STRIP_LOW) - speedAt(Math.min(apex, STRIP_HIGH))) / A.rollGravity;
+  };
+
+  it('is the five from playtest 4 plus the one playtest 5 ratified', () => {
+    expect(ROLL_VARIANTS).toHaveLength(6);
+    expect(new Set(ROLL_VARIANTS.map((v) => v.name)).size).toBe(6);
+    for (const v of ROLL_VARIANTS) expect(v.feel.length).toBeGreaterThan(20);
+  });
+
+  it('plays the ratified one by default, and it is LAST so no index moves', () => {
+    // Inserting it at the front would have re-pointed every stored index at a
+    // different behaviour — on a picker whose whole job is comparison, that is
+    // the one thing it must not do.
+    expect(rollVariant(DEFAULT_ROLL_VARIANT).name).toBe('Lopes');
+    expect(rollVariant(3).name).toBe('Loper'); // Loper-as-it-was, still at 3
+  });
+
+  it('rolls at one height now, and 180 px is not a round number', () => {
+    // Playtest 5, note 1: "all the bounces can just be the same height, and I
+    // want that height to be higher, about the max jump height".
+    const lopes = rollVariant(DEFAULT_ROLL_VARIANT);
+    expect(lopes.launches).toHaveLength(1);
+    // Jumping over the ball dies at apex 175.3; the volley dies at 188.9. The
+    // two are 13.6 px apart, so this sits in the only band that serves both.
+    const apex = apexOf(lopes.launches[0]!);
+    expect(apex).toBeGreaterThan(175.3);
+    expect(apex).toBeLessThan(A.rollVolleyApexMax);
+  });
+
+  it('rolls fast enough that she cannot simply outrun it', () => {
+    // At Loper's 205 her 332 px/s run walks away from it, and outrunning it
+    // was the whole counter once the low bounce went.
+    expect(rollVariant(DEFAULT_ROLL_VARIANT).speedX).toBe(300);
+    expect(rollVariant(DEFAULT_ROLL_VARIANT).speedXHot).toBeGreaterThan(300);
+  });
+
+  it('never towers past the point the floor-standing volley dies', () => {
+    // This replaces playtest 4's rollApexMax of 150, which playtest 5 strikes.
+    // The ceiling is the derived one now: above rollVolleyApexMax the ball
+    // crosses the strip in under one nail window and the mechanic is gone.
+    for (const v of ROLL_VARIANTS) {
+      for (const launch of v.launches) {
+        expect(apexOf(launch)).toBeLessThanOrEqual(A.rollVolleyApexMax);
+      }
+    }
+  });
+
+  it('keeps at least one phase the volley can live on, strip measured right', () => {
+    // NOT every phase: a low skitter only grazes the bottom of the strip and
+    // is gone in a fraction of a nail window, which is right — you do not
+    // volley a skitter, you jump it. What every variant must keep is ONE
+    // phase she can rally on, or the volley is locked out of a behaviour.
+    for (const v of ROLL_VARIANTS) {
+      const best = Math.max(...v.launches.map((l) => volleyWindow(apexOf(l))));
+      expect(best, `${v.name}: ${best.toFixed(3)} s`).toBeGreaterThanOrEqual(
+        PHYSICS.nailActiveTime,
+      );
+    }
+  });
+
+  it("spends nearly all of the volley's comfort to do it, knowingly", () => {
+    // The number the interview turned on, kept where a future tuning pass has
+    // to look at it: at 180 px the window is about ONE nail, where Loper's
+    // tall arc gave a third more. That was the accepted price of killing the
+    // jump-over, not an oversight.
+    const window = volleyWindow(apexOf(rollVariant(DEFAULT_ROLL_VARIANT).launches[0]!));
+    expect(window / PHYSICS.nailActiveTime).toBeGreaterThanOrEqual(1);
+    expect(window / PHYSICS.nailActiveTime).toBeLessThan(1.15);
+  });
+
+  it('holds the cycle near 12 s: a longer roll bought with a shorter gap', () => {
+    expect(A.rollTime).toBe(7.0);
+    expect(A.rollEvery).toBe(5.0);
+    expect(A.rollTime + A.rollEvery).toBeLessThanOrEqual(12.0);
+  });
+
+  it('actually cycles its pattern, one launch per floor bounce', () => {
+    for (const [index, v] of ROLL_VARIANTS.entries()) {
+      const dog = createEnemy('dog', 600, FLOOR_Y);
+      dog.rollVariantIndex = index;
+      dog.attackKind = 'roll';
+      dog.phase = 'telegraph';
+      dog.phaseTimer = 0;
+      dog.lockedDir = -1;
+      dog.leapGroundY = FLOOR_Y;
+      const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target); // telegraph → the launch
+      const seen: number[] = [-dog.velocity.y];
+      let bounces = dog.rollBounces;
+      for (let i = 0; i < Math.round(A.rollTime / FIXED_DT) && dog.roll; i++) {
+        stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+        if (dog.rollBounces !== bounces) {
+          bounces = dog.rollBounces;
+          seen.push(-dog.velocity.y);
+        }
+      }
+      // It got through at least one full cycle and used every launch in it.
+      expect(seen.length).toBeGreaterThan(v.launches.length);
+      expect(new Set(seen.map(Math.round))).toEqual(new Set(v.launches.map(Math.round)));
+    }
+  });
+
+  it('falls back to the ratified variant for an index that does not exist', () => {
+    expect(rollVariant(99)).toBe(ROLL_VARIANTS[DEFAULT_ROLL_VARIANT]);
+    expect(rollVariant(-1)).toBe(ROLL_VARIANTS[DEFAULT_ROLL_VARIANT]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Playtest 5, note 2 — the dog stops teleporting out of the ball.
+//
+// "Bill the dog needs an animation whenever he comes out of the bouncing ball
+// phase. Right now, one of the times he just sort of teleports to the ground."
+//
+// The mechanism is one change, and its ORDER matters: the drop is 12.5 px on
+// Loper today and would be ~223 px once every bounce is a full-height arc, so
+// the landing rule has to exist before the arc gets taller.
+// ---------------------------------------------------------------------------
+describe('the uncurl', () => {
+  const A = ATTACKS.dog;
+
+  /** A dog mid-roll, one step past its telegraph, on flat ground. */
+  function rollingDog(variantIndex = 0) {
+    const dog = createEnemy('dog', 600, FLOOR_Y);
+    dog.rollVariantIndex = variantIndex;
+    dog.attackKind = 'roll';
+    dog.phase = 'telegraph';
+    dog.phaseTimer = 0;
+    dog.lockedDir = -1;
+    dog.leapGroundY = FLOOR_Y;
+    const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+    stepEnemy(dog, arenaWorld(), FIXED_DT, target); // telegraph → the launch
+    return { dog, target };
+  }
+
+  /** Steps until the ball stops being a ball, keeping the last airborne frame. */
+  function rollUntilUncurl(variantIndex = 0) {
+    const { dog, target } = rollingDog(variantIndex);
+    let yBefore = dog.position.y;
+    let vyBefore = dog.velocity.y;
+    let airborneAfterTheTimer = false;
+    for (let i = 0; i < 3000 && dog.roll; i++) {
+      if (dog.phaseTimer <= 0 && dog.position.y < FLOOR_Y - 1) airborneAfterTheTimer = true;
+      yBefore = dog.position.y;
+      vyBefore = dog.velocity.y;
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    }
+    return { dog, yBefore, vyBefore, airborneAfterTheTimer };
+  }
+
+  it('keeps bouncing after rollTime elapses instead of stopping in mid-air', () => {
+    const { airborneAfterTheTimer } = rollUntilUncurl();
+    expect(airborneAfterTheTimer).toBe(true);
+  });
+
+  it('never drops him to the floor — he uncurls on the floor he touched', () => {
+    for (const [index] of ROLL_VARIANTS.entries()) {
+      const { dog, yBefore, vyBefore } = rollUntilUncurl(index);
+      expect(dog.roll).toBe(false);
+      expect(dog.position.y).toBe(FLOOR_Y);
+      // The exact statement of "he landed": replay the one step that ended the
+      // roll and check it genuinely crossed the floor. Anything else means the
+      // clock stopped him where he happened to be and the floor came to him.
+      const reached = yBefore + (vyBefore + A.rollGravity * FIXED_DT) * FIXED_DT;
+      expect(reached).toBeGreaterThanOrEqual(FLOOR_Y);
+    }
+  });
+
+  it('holds the landing pose for uncurlTime, then goes back to idle', () => {
+    const { dog } = rollUntilUncurl();
+    const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+    expect(dog.attackKind).toBe('uncurl');
+
+    const steps = Math.round(A.uncurlTime / FIXED_DT);
+    for (let i = 0; i < steps - 1; i++) {
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+      expect(dog.attackKind).toBe('uncurl');
+    }
+    stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    expect(dog.attackKind).toBeNull();
+    expect(dog.phase).toBe('idle');
+  });
+
+  it('is lethal for every frame of it — there is no punish window', () => {
+    // Ratified against a proposed harmless window: "make his hitbox active so
+    // that she can't just walk into the dog. He should be lethal at this
+    // point." A regression here would be an exception carved into the hurt box.
+    const { dog } = rollUntilUncurl();
+    const target: Target = { position: { x: 200, y: FLOOR_Y }, grounded: true };
+    for (let i = 0; i < Math.round(A.uncurlTime / FIXED_DT); i++) {
+      expect(enemyHurtsBox(dog)).toEqual(enemyBox(dog));
+      stepEnemy(dog, arenaWorld(), FIXED_DT, target);
+    }
   });
 });

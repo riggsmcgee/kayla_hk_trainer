@@ -27,8 +27,13 @@ export interface Player extends PlayerState {
    * rather than applying a one-shot impulse — this is what "pinned" means.
    */
   jumpPinElapsed: number;
-  /** The button was released during the pin (cutoff applies once min hold passes). */
-  jumpReleased: boolean;
+  /**
+   * The pin has ended but this jump's ascent continues ballistically; a
+   * release while still rising cuts vy to 0. HK's JumpReleased() runs every
+   * frame the button is up (after JUMP_STEPS_MIN), not only during the pin —
+   * this is what makes heights continuous from a tap to a full jump.
+   */
+  jumpCutArmed: boolean;
   /** Seconds of post-ledge grace remaining in which a jump is still allowed. */
   coyoteTimer: number;
   /** Seconds remaining in which a recent jump press still counts on landing. */
@@ -70,7 +75,7 @@ export function createPlayer(x: number, y: number): Player {
     facing: 1,
     grounded: false,
     jumpPinElapsed: -1,
-    jumpReleased: false,
+    jumpCutArmed: false,
     coyoteTimer: 0,
     jumpBufferTimer: 0,
     dashTimer: 0,
@@ -137,7 +142,7 @@ export function respawnPlayer(p: Player, feet: { x: number; y: number }): void {
   p.velocity.y = 0;
   p.grounded = false;
   p.jumpPinElapsed = -1;
-  p.jumpReleased = false;
+  p.jumpCutArmed = false;
   p.coyoteTimer = 0;
   p.jumpBufferTimer = 0;
   p.dashTimer = 0;
@@ -159,12 +164,46 @@ export function playerHurtbox(p: Player): AABB {
 }
 
 function overlaps(a: AABB, b: AABB): boolean {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/**
+ * The pogo bounce itself, for any surface the downslash has just connected
+ * with — a course orb in stepPlayer, or an enemy in the arena on the very
+ * contact that deals the damage (playtest 2: a killing blow bounces too).
+ * Returns false and touches nothing when a bounce must not happen: already
+ * bounced this swing, mid-dash (the dash owns the vertical axis; HK's dash
+ * and bounce are mutually exclusive), grounded, or not a downslash.
+ */
+export function applyPogoBounce(p: Player): boolean {
+  if (p.pogoedThisSwing || p.dashTimer > TIME_EPS || p.grounded || p.nailDir !== 'down') {
+    return false;
+  }
+  p.pogoedThisSwing = true;
+  p.pogoPinElapsed = 0;
+  p.velocity.y = -PHYSICS.pogoVelocity;
+  p.jumpPinElapsed = -1;
+  p.jumpCutArmed = false; // a bounce is not a jump: release can't cut it
+  p.airDashAvailable = true; // every pogo refreshes the dash, like HK
+  p.totalPogos += 1;
+  return true;
+}
+
+/**
+ * Which way a nail swing goes, given what she is holding and whether she is on
+ * the ground.
+ *
+ * Exported because the Setup sandbox's checklist has to agree with it exactly.
+ * A checklist that kept its own copy of this rule could tick "slash down" for
+ * a swing the Knight threw sideways, which would be the site lying to her
+ * about her own controller on the one screen built to prove it works.
+ *
+ * DOWN IS AIRBORNE-ONLY, and that single fact is what lets the sandbox verify
+ * the pogo without anything to bounce off: a down swing cannot happen unless
+ * she performed the compound mid-air press the pogo is built on.
+ */
+export function nailDirection(input: InputFrame, grounded: boolean): 'side' | 'up' | 'down' {
+  return input.down && !grounded ? 'down' : input.up ? 'up' : 'side';
 }
 
 /**
@@ -184,18 +223,14 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
   // --- dash start (press or fresh buffer; ground dash, or the one air dash) ---
   if (input.dashPressed) p.dashBufferTimer = PHYSICS.dashBuffer;
   const wantsDash = input.dashPressed || p.dashBufferTimer > 0;
-  if (
-    wantsDash &&
-    !wasDashing &&
-    p.dashCooldownTimer <= 0 &&
-    (p.grounded || p.airDashAvailable)
-  ) {
+  if (wantsDash && !wasDashing && p.dashCooldownTimer <= 0 && (p.grounded || p.airDashAvailable)) {
     p.dashTimer = PHYSICS.dashDuration;
     p.dashCooldownTimer = PHYSICS.dashCooldown;
     p.dashBufferTimer = 0;
     p.dashDir = p.facing;
     if (!p.grounded) p.airDashAvailable = false;
     p.jumpPinElapsed = -1; // dashing cancels the jump pin, like HK
+    p.jumpCutArmed = false;
     p.pogoPinElapsed = -1; // ...and interrupts a pogo bounce early
   }
   const dashing = p.dashTimer > TIME_EPS;
@@ -207,7 +242,7 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
     p.nailCooldownTimer = PHYSICS.nailCadence;
     p.attackBufferTimer = 0;
     p.nailFacing = p.facing;
-    p.nailDir = input.down && !p.grounded ? 'down' : input.up ? 'up' : 'side';
+    p.nailDir = nailDirection(input, p.grounded);
     p.pogoedThisSwing = false;
     p.swingId += 1;
   }
@@ -218,7 +253,6 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
   const canJump = p.grounded || p.coyoteTimer > 0;
   if (wantsJump && canJump && p.jumpPinElapsed < 0 && !dashing) {
     p.jumpPinElapsed = 0;
-    p.jumpReleased = false;
     p.jumpBufferTimer = 0;
     p.coyoteTimer = 0;
   }
@@ -227,7 +261,13 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
   if (dashing) {
     p.velocity.x = p.dashDir * PHYSICS.dashSpeed;
     p.velocity.y = 0;
-    p.dashTimer = Math.max(0, p.dashTimer - dt);
+    // Snap at the epsilon, not at zero. 15 steps of 1/60 taken off 0.25 leave
+    // 4.9e-17, which is NOT > TIME_EPS — so without the snap this branch never
+    // runs again, the value is pinned there until the next dash, and
+    // drawKnight's `dashTimer > 0` streak follows her forever (playtest 3,
+    // note 5). Every other timer is decremented unconditionally further down.
+    const left = p.dashTimer - dt;
+    p.dashTimer = left <= TIME_EPS ? 0 : left;
   } else if (p.pogoPinElapsed >= 0) {
     // Pinned pogo rise: not hold-dependent — always the full 0.25 s unless
     // a dash or head bump interrupts it. The epsilon keeps the 15-step pin
@@ -242,21 +282,32 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
   } else {
     let pinnedThisStep = false;
     if (p.jumpPinElapsed >= 0) {
-      if (!input.jumpHeld) p.jumpReleased = true;
+      // Live check, not a latch: HK calls JumpReleased() every frame the
+      // button is simply up, so a release-and-repress before the minimum
+      // hold does not cut (decompiled HeroController, verified Session 5).
       const pastMin = p.jumpPinElapsed >= PHYSICS.jumpHoldMin;
       const pastMax = p.jumpPinElapsed >= PHYSICS.jumpHoldMax;
-      if (p.jumpReleased && pastMin) {
+      if (!input.jumpHeld && pastMin) {
         // Crisp cutoff: vy → 0 the moment release is honored.
         p.velocity.y = 0;
         p.jumpPinElapsed = -1;
         pinnedThisStep = true; // gravity waits one step, like HK's JumpReleased
       } else if (pastMax) {
         p.jumpPinElapsed = -1; // ballistic from here; gravity acts below
+        p.jumpCutArmed = true; // ...but a release still cuts the rise
       } else {
         p.velocity.y = -PHYSICS.jumpVelocity;
         p.jumpPinElapsed += dt;
         pinnedThisStep = true;
       }
+    }
+    if (p.jumpCutArmed && !input.jumpHeld && p.velocity.y < 0) {
+      // Post-pin release: the same crisp cutoff, any time during the rise.
+      p.velocity.y = 0;
+      p.jumpCutArmed = false;
+      pinnedThisStep = true;
+    } else if (p.jumpCutArmed && p.velocity.y >= 0) {
+      p.jumpCutArmed = false; // apex passed: nothing left to cut
     }
     if (!pinnedThisStep) {
       p.velocity.y = Math.min(p.velocity.y + PHYSICS.gravity * dt, PHYSICS.maxFallSpeed);
@@ -275,14 +326,7 @@ export function stepPlayer(p: Player, input: InputFrame, world: World, dt: numbe
     const nail = activeNailHitbox(p);
     if (nail) {
       for (const target of world.pogoables) {
-        if (!overlaps(nail, target)) continue;
-        p.pogoedThisSwing = true;
-        p.pogoPinElapsed = 0;
-        p.velocity.y = -PHYSICS.pogoVelocity;
-        p.jumpPinElapsed = -1;
-        p.airDashAvailable = true; // every pogo refreshes the dash, like HK
-        p.totalPogos += 1;
-        break;
+        if (overlaps(nail, target) && applyPogoBounce(p)) break;
       }
     }
   }
@@ -337,16 +381,19 @@ function moveY(p: Player, world: World, dy: number): void {
   for (const solid of world.solids) {
     if (!overlaps(box, solid)) continue;
     if (dy > 0) {
-      // Landed: snap feet to the surface.
+      // Landed: snap feet to the surface. Landing is a hard reset of the
+      // post-pin cut, like a head bump — never trust the apex clear alone.
       p.position.y = solid.y;
       p.velocity.y = 0;
       p.grounded = true;
+      p.jumpCutArmed = false;
     } else if (dy < 0) {
       // Head bump: snap below the ceiling and cancel the jump pin so gravity
       // takes over immediately — no hovering pressed against the ceiling.
       p.position.y = solid.y + solid.height + KNIGHT.hurtboxHeight;
       p.velocity.y = 0;
       p.jumpPinElapsed = -1;
+      p.jumpCutArmed = false;
       p.pogoPinElapsed = -1;
     }
   }

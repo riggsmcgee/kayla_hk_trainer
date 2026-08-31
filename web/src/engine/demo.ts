@@ -55,7 +55,7 @@ export interface DemoActors {
   enemy?: Enemy;
   player?: Player;
   /** A drawn-only knight standing in for "you" in enemy-anatomy demos. */
-  ghost?: { feet: Vec2; facing: 1 | -1; slashing: boolean };
+  ghost?: { feet: Vec2; facing: 1 | -1; slashing: boolean; hurt?: number };
   /** Bounce orbs to draw (already in world.pogoables for the physics). */
   orbs?: AABB[];
   projectiles: Projectile[];
@@ -91,22 +91,58 @@ const IDLE_INPUT: InputFrame = {
 function attackTimeline(e: Enemy): { telegraph: number; active: number; recovery: number } | null {
   switch (e.attackKind) {
     case 'lunge':
-      return { telegraph: 0.35, active: ATTACKS.duelist.lungeTime, recovery: ATTACKS.duelist.lungeRecovery };
+      return {
+        telegraph: 0.35,
+        active: ATTACKS.duelist.lungeTime,
+        recovery: ATTACKS.duelist.lungeRecovery,
+      };
     case 'antiair':
-      return { telegraph: 0.35, active: ATTACKS.duelist.antiAirActive, recovery: ATTACKS.duelist.antiAirRecovery };
+      return {
+        telegraph: 0.35,
+        active: ATTACKS.duelist.antiAirActive,
+        recovery: ATTACKS.duelist.antiAirRecovery,
+      };
     case 'volley':
-      return { telegraph: 0.5, active: ATTACKS.spitter.activeTime, recovery: ATTACKS.spitter.recovery };
+      return {
+        telegraph: 0.5,
+        active: ATTACKS.spitter.activeTime,
+        recovery: ATTACKS.spitter.recovery,
+      };
     case 'riposte':
-      return { telegraph: 0.4, active: ATTACKS.warden.riposteActive, recovery: ATTACKS.warden.riposteRecovery };
+      return {
+        telegraph: 0.4,
+        active: ATTACKS.warden.riposteActive,
+        recovery: ATTACKS.warden.riposteRecovery,
+      };
+    case 'bash':
+      return {
+        telegraph: 0.4,
+        active: ATTACKS.warden.bashActive,
+        recovery: ATTACKS.warden.bashRecovery,
+      };
+    case 'leap':
+      return {
+        telegraph: 0.35,
+        // The active phase is rise + hang + the dive, and the dive's length
+        // depends on how far he has to fall — this is the nominal shape.
+        active: ATTACKS.duelist.leapRise + ATTACKS.duelist.leapHang,
+        recovery: ATTACKS.duelist.leapRecovery,
+      };
+    case 'skyward':
+      return {
+        telegraph: ATTACKS.warden.skywardTell,
+        active: ATTACKS.warden.skywardActive,
+        recovery: ATTACKS.warden.skywardRecovery,
+      };
     default:
       return null;
   }
 }
 
-function drawGhost(ctx: CanvasRenderingContext2D, feet: Vec2, facing: 1 | -1): void {
+function drawGhost(ctx: CanvasRenderingContext2D, feet: Vec2, facing: 1 | -1, hurt = 0): void {
   ctx.save();
-  ctx.globalAlpha = 0.45;
-  ctx.fillStyle = COLORS.knightBody;
+  ctx.globalAlpha = hurt > 0 ? 0.8 : 0.45;
+  ctx.fillStyle = hurt > 0 ? DEMO_COLORS.threatRedEdge : COLORS.knightBody;
   const w = 24;
   const h = 48;
   const r = w / 2;
@@ -213,7 +249,10 @@ export function createDemoSession(script: DemoScript): GameSession {
           const target: Target | undefined = actors.player
             ? { position: actors.player.position, grounded: actors.player.grounded }
             : actors.ghost
-              ? { position: actors.ghost.feet, grounded: actors.ghost.feet.y >= script.view.floorY - 1 }
+              ? {
+                  position: actors.ghost.feet,
+                  grounded: actors.ghost.feet.y >= script.view.floorY - 1,
+                }
               : undefined;
           const shots = stepEnemy(actors.enemy, actors.world, FIXED_DT, target);
           if (shots) actors.projectiles.push(...shots);
@@ -246,7 +285,9 @@ export function createDemoSession(script: DemoScript): GameSession {
       }
 
       if (actors.enemy) {
-        const feet = prevEnemyPos ? lerpVec(prevEnemyPos, actors.enemy.position, alpha) : actors.enemy.position;
+        const feet = prevEnemyPos
+          ? lerpVec(prevEnemyPos, actors.enemy.position, alpha)
+          : actors.enemy.position;
         drawEnemy(ctx, feet, actors.enemy, t);
         // Red overlay on the live attack hitbox.
         const attack = enemyAttackHitbox(actors.enemy);
@@ -265,7 +306,9 @@ export function createDemoSession(script: DemoScript): GameSession {
       }
 
       if (actors.player) {
-        const feet = prevPlayerPos ? lerpVec(prevPlayerPos, actors.player.position, alpha) : actors.player.position;
+        const feet = prevPlayerPos
+          ? lerpVec(prevPlayerPos, actors.player.position, alpha)
+          : actors.player.position;
         // Green fill on the live downslash — the pogo's whole story.
         const nail = activeNailHitbox(actors.player);
         if (nail && actors.player.nailDir === 'down') {
@@ -276,7 +319,7 @@ export function createDemoSession(script: DemoScript): GameSession {
       }
 
       if (actors.ghost) {
-        drawGhost(ctx, actors.ghost.feet, actors.ghost.facing);
+        drawGhost(ctx, actors.ghost.feet, actors.ghost.facing, actors.ghost.hurt ?? 0);
         if (actors.ghost.slashing) {
           // A simple forward slash arc so the provocation reads.
           ctx.save();
@@ -286,7 +329,13 @@ export function createDemoSession(script: DemoScript): GameSession {
           ctx.lineCap = 'round';
           const mid = actors.ghost.facing === 1 ? 0 : Math.PI;
           ctx.beginPath();
-          ctx.arc(actors.ghost.feet.x, actors.ghost.feet.y - 24, 46, mid - Math.PI / 3, mid + Math.PI / 3);
+          ctx.arc(
+            actors.ghost.feet.x,
+            actors.ghost.feet.y - 24,
+            46,
+            mid - Math.PI / 3,
+            mid + Math.PI / 3,
+          );
           ctx.stroke();
           ctx.restore();
         }
@@ -321,7 +370,14 @@ function demoWorld(): World {
 }
 
 /** Ghost walks from a to b over [t0, t1], then stands still. */
-function walk(ghost: { feet: Vec2 }, a: number, b: number, t0: number, t1: number, t: number): void {
+function walk(
+  ghost: { feet: Vec2 },
+  a: number,
+  b: number,
+  t0: number,
+  t1: number,
+  t: number,
+): void {
   const k = Math.min(Math.max((t - t0) / (t1 - t0), 0), 1);
   ghost.feet.x = a + (b - a) * k;
 }
@@ -355,44 +411,75 @@ export const duelistLungeDemo: DemoScript = {
   },
 };
 
-/** Duelist anti-air anatomy: jump in and it answers upward. */
-export const duelistAntiAirDemo: DemoScript = {
-  view: DEMO_VIEW,
-  timeScale: 0.45,
-  cycle: 4.5,
-  setup: () => ({
-    world: demoWorld(),
-    enemy: createEnemy('duelist', 440, DEMO_VIEW.floorY),
-    ghost: { feet: { x: 200, y: DEMO_VIEW.floorY }, facing: 1, slashing: false },
-    projectiles: [],
-  }),
-  drive: (actors, t) => {
-    const g = actors.ghost;
-    if (!g) return null;
-    // A jump arc toward the duelist between t = 0.8 and 1.8.
-    if (t >= 0.8 && t < 1.8) {
-      const k = (t - 0.8) / 1.0;
-      g.feet.x = 200 + 160 * k;
-      g.feet.y = DEMO_VIEW.floorY - 140 * Math.sin(Math.PI * k);
-    } else if (t >= 1.8) {
-      g.feet.x = 360;
-      g.feet.y = DEMO_VIEW.floorY;
-    }
-    return null;
-  },
-  caption: (actors) => {
-    switch (actors.enemy?.phase) {
-      case 'telegraph':
-        return 'It saw you jump in — the arms rise.';
-      case 'active':
-        return 'The rising swipe: jumping at it is what provoked this.';
-      case 'recovery':
-        return 'Gold again — punish, but from the ground this time.';
-      default:
-        return 'Same enemy, different approach: this time, jump in.';
-    }
-  },
-};
+/**
+ * Duelist anti-air anatomy: jump in and it answers upward — and the jumper
+ * pays for it. The ghost's arc is timed so the real swipe hitbox clips it
+ * (playtest 1: the counter has to visibly be a counter). The cycle ends
+ * before the duelist's cooldown could let a ground lunge wear these captions.
+ */
+export const duelistAntiAirDemo: DemoScript = (() => {
+  let hitAt = -1;
+  return {
+    view: DEMO_VIEW,
+    timeScale: 0.45,
+    cycle: 2.8,
+    setup: () => {
+      hitAt = -1;
+      return {
+        world: demoWorld(),
+        enemy: createEnemy('duelist', 440, DEMO_VIEW.floorY),
+        ghost: { feet: { x: 180, y: DEMO_VIEW.floorY }, facing: 1, slashing: false, hurt: 0 },
+        projectiles: [],
+      };
+    },
+    drive: (actors, t) => {
+      const g = actors.ghost;
+      const e = actors.enemy;
+      if (!g || !e) return null;
+      if (hitAt < 0) {
+        // A long jump straight at the duelist between t = 0.8 and 1.9.
+        if (t >= 0.8 && t < 1.9) {
+          const k = (t - 0.8) / 1.1;
+          g.feet.x = 180 + 260 * k;
+          g.feet.y = DEMO_VIEW.floorY - 130 * Math.sin(Math.PI * k);
+        }
+        // The live swipe hitbox catches the ghost mid-arc.
+        const box = enemyAttackHitbox(e);
+        if (box && e.attackKind === 'antiair') {
+          const gx = g.feet.x;
+          const gy = g.feet.y - 24;
+          if (gx > box.x && gx < box.x + box.width && gy > box.y && gy < box.y + box.height) {
+            hitAt = t;
+            g.hurt = 0.5;
+          }
+        }
+      } else {
+        // Knocked back and down, then limping off out of its reach.
+        const k = Math.min(1, (t - hitAt) / 0.35);
+        g.feet.x = Math.max(120, g.feet.x - (k < 1 ? 330 * (1 - k) : 220) * FIXED_DT);
+        g.feet.y = Math.min(DEMO_VIEW.floorY, g.feet.y + 420 * FIXED_DT);
+        g.hurt = Math.max(0, (g.hurt ?? 0) - FIXED_DT);
+        g.facing = -1;
+      }
+      return null;
+    },
+    caption: (actors, t) => {
+      const e = actors.enemy;
+      if (hitAt > 0 && t < hitAt + 0.3) return 'Clipped. Jumping in is what it was waiting for.';
+      if (e?.attackKind === 'antiair') {
+        switch (e.phase) {
+          case 'telegraph':
+            return 'It saw you jump in — it coils, eyes up.';
+          case 'active':
+            return 'The rising swipe: it LEAPS to meet you. Red is where it hurts.';
+          case 'recovery':
+            return 'Gold — this is the moment. Had you waited on the ground, it’s yours.';
+        }
+      }
+      return 'Same enemy, different approach: this time, jump in.';
+    },
+  };
+})();
 
 /** Spitter volley anatomy: wind-up, fan, and the closing window. */
 export const spitterVolleyDemo: DemoScript = {
@@ -420,16 +507,21 @@ export const spitterVolleyDemo: DemoScript = {
   },
 };
 
-/** Warden block + riposte anatomy: the full doctrine in one enemy. */
+/**
+ * Warden block + riposte anatomy: swing into the shield and it answers. The
+ * ghost is scripted relative to the LIVE warden position, because the warden
+ * drifts and lunges; the cycle resets before lingering could draw a bash.
+ */
 export const wardenRiposteDemo: DemoScript = (() => {
   // A scripted player exists only to provoke; it is never drawn.
   let scriptPlayer: Player | null = null;
   let provokedAt = -1;
   let punishedAt = -1;
+  const STAND_OFF = 60;
   return {
     view: DEMO_VIEW,
     timeScale: 0.45,
-    cycle: 6,
+    cycle: 4.6,
     setup: () => {
       scriptPlayer = createPlayer(320, DEMO_VIEW.floorY);
       provokedAt = -1;
@@ -445,25 +537,29 @@ export const wardenRiposteDemo: DemoScript = (() => {
       const g = actors.ghost;
       const e = actors.enemy;
       if (!g || !e || !scriptPlayer) return null;
-      walk(g, 140, 330, 0.4, 1.2, t);
+      const inFrontX = e.position.x - STAND_OFF;
+      if (provokedAt < 0) walk(g, 140, inFrontX, 0.4, 1.2, t);
       scriptPlayer.position.x = g.feet.x;
       scriptPlayer.position.y = g.feet.y;
       // First slash at t ≈ 1.5: blocked, provokes the riposte.
       if (t >= 1.5 && provokedAt < 0) {
         provokedAt = t;
         scriptPlayer.swingId += 1;
+        scriptPlayer.nailDir = 'side';
+        scriptPlayer.nailFacing = 1;
         resolveNailHit(scriptPlayer, e, false);
         g.slashing = true;
       }
       if (provokedAt > 0 && t > provokedAt + 0.3) g.slashing = false;
       // Hop back out of the riposte's way.
-      if (e.phase === 'telegraph' || e.phase === 'active') {
-        g.feet.x = Math.max(140, g.feet.x - 220 * FIXED_DT);
+      if (e.attackKind === 'riposte' && (e.phase === 'telegraph' || e.phase === 'active')) {
+        g.feet.x = Math.max(140, Math.min(g.feet.x, e.position.x - 150) - 220 * FIXED_DT);
       }
       // Second slash during recovery: run back in — this one lands.
-      if (e.phase === 'recovery' && punishedAt < 0) {
-        g.feet.x = Math.min(330, g.feet.x + 300 * FIXED_DT);
-        if (g.feet.x >= 329) {
+      if (e.attackKind === 'riposte' && e.phase === 'recovery' && punishedAt < 0) {
+        g.feet.x = Math.min(inFrontX, g.feet.x + 300 * FIXED_DT);
+        g.facing = 1;
+        if (g.feet.x >= inFrontX - 1) {
           punishedAt = t;
           scriptPlayer.swingId += 1;
           resolveNailHit(scriptPlayer, e, false);
@@ -471,17 +567,126 @@ export const wardenRiposteDemo: DemoScript = (() => {
         }
       }
       if (punishedAt > 0 && t > punishedAt + 0.3) g.slashing = false;
+      // Then step back out before it could take offence at the lingering.
+      if (punishedAt > 0 && t > punishedAt + 0.3) {
+        g.feet.x = Math.max(e.position.x - 200, g.feet.x - 160 * FIXED_DT);
+      }
       return null;
     },
     caption: (actors, t) => {
       const e = actors.enemy;
       if (!e) return '';
-      if (e.phase === 'telegraph') return 'Blocked! And now it answers — the shield rises.';
-      if (e.phase === 'active') return 'The riposte. Attacking at the wrong time is what caused this.';
-      if (e.phase === 'recovery')
-        return 'Gold: shield down, arms open. The ONLY time it can be hurt.';
-      if (t < 1.4) return 'Shield up. Hitting it now will bounce right off.';
-      return 'Patience beats armor. Provoke, dodge, then punish.';
+      if (e.attackKind === 'riposte') {
+        if (e.phase === 'telegraph') return 'Blocked! And now it answers — the shield rises.';
+        if (e.phase === 'active')
+          return 'The riposte. Attacking into the shield is what caused this.';
+        if (e.phase === 'recovery') return 'Gold: shield down, wide open from every side. Take it.';
+      }
+      if (t < 1.4) return 'Shield across the front. Hitting it there just rings your nail.';
+      return 'Patience beats armor. Provoke, dodge, punish — then step back.';
+    },
+  };
+})();
+
+/**
+ * Warden shield + bash anatomy (playtest 1): hang above it and the shield
+ * re-aims overhead — so the front is bare. Then stand there too long and it
+ * comes for you. Positions are relative to the LIVE warden, which drifts.
+ */
+export const wardenShieldDemo: DemoScript = (() => {
+  let scriptPlayer: Player | null = null;
+  let frontHitAt = -1;
+  let punishedAt = -1;
+  let hoverX = 430;
+  const STAND_OFF = 60;
+  return {
+    view: DEMO_VIEW,
+    timeScale: 0.45,
+    cycle: 6.6,
+    setup: () => {
+      scriptPlayer = createPlayer(300, DEMO_VIEW.floorY);
+      frontHitAt = -1;
+      punishedAt = -1;
+      hoverX = 430;
+      return {
+        world: demoWorld(),
+        enemy: createEnemy('warden', 430, DEMO_VIEW.floorY),
+        ghost: { feet: { x: 300, y: DEMO_VIEW.floorY }, facing: 1, slashing: false },
+        projectiles: [],
+      };
+    },
+    drive: (actors, t) => {
+      const g = actors.ghost;
+      const e = actors.enemy;
+      if (!g || !e || !scriptPlayer) return null;
+      const wx = e.position.x;
+      const inFrontX = wx - STAND_OFF;
+      // Jump up over its head (t 0.6–1.2), hang there (1.2–1.9), drop in front (1.9–2.3).
+      if (t >= 0.6 && t < 1.2) {
+        const k = (t - 0.6) / 0.6;
+        hoverX = wx;
+        g.feet.x = 300 + (wx - 300) * k;
+        g.feet.y = DEMO_VIEW.floorY - 120 * Math.sin((Math.PI / 2) * k);
+      } else if (t >= 1.2 && t < 1.9) {
+        g.feet.x = wx;
+        g.feet.y = DEMO_VIEW.floorY - 120 - 6 * Math.sin((t - 1.2) * 9);
+      } else if (t >= 1.9 && t < 2.3) {
+        const k = (t - 1.9) / 0.4;
+        g.feet.x = hoverX - STAND_OFF * k;
+        g.feet.y = DEMO_VIEW.floorY - 120 * (1 - k * k);
+      } else if (t >= 2.3 && frontHitAt < 0) {
+        g.feet.x = inFrontX;
+        g.feet.y = DEMO_VIEW.floorY;
+      }
+      g.facing = wx >= g.feet.x ? 1 : -1;
+      scriptPlayer.position.x = g.feet.x;
+      scriptPlayer.position.y = g.feet.y;
+      // The front slash the moment it lands: the shield is still overhead.
+      if (t >= 2.35 && frontHitAt < 0) {
+        frontHitAt = t;
+        scriptPlayer.swingId += 1;
+        scriptPlayer.nailDir = 'side';
+        scriptPlayer.nailFacing = g.facing;
+        resolveNailHit(scriptPlayer, e, false);
+        g.slashing = true;
+      }
+      if (frontHitAt > 0 && t > frontHitAt + 0.3) g.slashing = false;
+      // Then it lingers… and the bash comes. Hop back during the tell/attack.
+      if (e.attackKind === 'bash' && (e.phase === 'telegraph' || e.phase === 'active')) {
+        g.feet.x = Math.max(140, Math.min(g.feet.x, wx - 150) - 240 * FIXED_DT);
+      }
+      // Run back in during recovery and take the gold window.
+      if (e.attackKind === 'bash' && e.phase === 'recovery' && punishedAt < 0) {
+        g.feet.x = Math.min(inFrontX, g.feet.x + 320 * FIXED_DT);
+        if (g.feet.x >= inFrontX - 1) {
+          punishedAt = t;
+          scriptPlayer.swingId += 1;
+          scriptPlayer.nailDir = 'side';
+          scriptPlayer.nailFacing = g.facing;
+          resolveNailHit(scriptPlayer, e, false);
+          g.slashing = true;
+        }
+      }
+      if (punishedAt > 0 && t > punishedAt + 0.3) {
+        g.slashing = false;
+        g.feet.x = Math.max(wx - 200, g.feet.x - 160 * FIXED_DT);
+      }
+      return null;
+    },
+    caption: (actors, t) => {
+      const e = actors.enemy;
+      if (!e) return '';
+      if (e.attackKind === 'bash') {
+        if (e.phase === 'telegraph')
+          return 'Stood there too long — the hunch is the tell. Back off.';
+        if (e.phase === 'active') return 'The bash. Nobody gets to stand still in front of it.';
+        if (e.phase === 'recovery') return 'Gold: spent again. Take the hit it owes you.';
+      }
+      if (frontHitAt > 0 && t < frontHitAt + 0.7)
+        return 'Shield’s still up top — the front is bare. That one lands.';
+      if (e.shieldDir === 'up') return 'It raised the shield to meet you. Now watch the front.';
+      if (t < 0.6) return 'Shield across the front. So… go over it.';
+      return 'Hang above it and see where the shield goes.';
     },
   };
 })();
@@ -526,10 +731,10 @@ export const pogoRhythmDemo: DemoScript = (() => {
       const p = actors.player;
       if (!p) return '';
       if (t < 0.3) return 'One orb. Watch the rhythm, not the height.';
-      if (p.pogoPinElapsed >= 0) return 'The bounce: a quarter-second rise, then float. Dash comes back too.';
+      if (p.pogoPinElapsed >= 0)
+        return 'The bounce: a quarter-second rise, then float. Dash comes back too.';
       if (!p.grounded) return 'Hold DOWN in the air — the green arc is your down-slash. It’s WIDE.';
       return 'Jump, slash down, rise, repeat. About two bounces a second.';
     },
   };
 })();
-

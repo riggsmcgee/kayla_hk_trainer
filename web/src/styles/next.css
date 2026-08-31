@@ -1,0 +1,49 @@
+/*
+ * The forward button (playtest 3, notes 13 and 14): one gold pill per page,
+ * with the place small beneath it.
+ *
+ * These rules used to be .prove-it in gates.css. They live in their own sheet
+ * now because Home.tsx imports no stylesheet of its own — anything left in
+ * gates.css only loads through ChapterGate, so Home's forward button would
+ * have rendered blue while every other page's was gold.
+ */
+
+.next-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 2.25rem 0 0.5rem;
+}
+
+.next-button .button {
+  font-size: 1.05rem;
+  padding: 0.7rem 1.8rem;
+  background: var(--gold);
+}
+
+.next-button .button:hover {
+  background: #f3d98a;
+}
+
+/* .button was written for <a>; NextButton also renders a real <button>, which
+   brings its own border and cursor. Same reset as levels.css and settings.css. */
+.next-button button.button {
+  border: 0;
+  cursor: pointer;
+  line-height: 1.6;
+}
+
+.next-button-where {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+}
+
+/* The end of the road, where there is no next chapter to point at. */
+.next-button-end {
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  margin: 2.25rem 0 0.5rem;
+}

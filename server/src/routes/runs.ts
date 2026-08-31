@@ -3,9 +3,12 @@ import type Database from 'better-sqlite3';
 import type { EnemyId, PracticeMode, PracticeRun } from '@dojo/shared';
 
 // @dojo/shared is types-only, so the runtime value lists live here. The
-// `satisfies` clauses make TypeScript verify these arrays stay in lockstep
-// with the shared unions — add an enemy to the shared type and forget it here,
-// and the build fails. That is the point.
+// `satisfies` clauses make TypeScript verify every id listed is a real one.
+//
+// ENEMY_IDS is deliberately a SUBSET of EnemyId: it is the five arena enemies
+// a run can name. The boss pair ('bill', 'dog') are in the shared union
+// because the enemy sim can be them, but a boss run carries no enemyId at all,
+// so accepting one here would be accepting a shape the client never sends.
 const MODES = ['pogo', 'dodge'] as const satisfies readonly PracticeMode[];
 const ENEMY_IDS = [
   'walker',
@@ -113,7 +116,9 @@ export function validatePracticeRun(
   if (!MODES.includes(b.mode as PracticeMode)) {
     errors.push(`mode must be one of: ${MODES.join(', ')}`);
   }
-  if (b.enemyId !== undefined && !ENEMY_IDS.includes(b.enemyId as EnemyId)) {
+  // Compared as plain strings: ENEMY_IDS is a narrower tuple than EnemyId, so
+  // includes() would otherwise refuse to be handed the wider union.
+  if (b.enemyId !== undefined && !(ENEMY_IDS as readonly string[]).includes(b.enemyId as string)) {
     errors.push(`enemyId, when present, must be one of: ${ENEMY_IDS.join(', ')}`);
   }
   if (b.observeMode !== undefined && typeof b.observeMode !== 'boolean') {

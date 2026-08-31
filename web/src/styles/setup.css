@@ -1,0 +1,126 @@
+/*
+ * The Setup sandbox and its checklist (playtest 8, note 5).
+ *
+ * Its own sheet, imported by the page, which is how every other feature sheet
+ * here works: `styles.css` is the base and these override it at equal
+ * specificity, so they only win by loading later in the cascade.
+ */
+
+.setup-checklist {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+  /* Kept to a readable column rather than the full page: the row is a sentence
+     — this control, these buttons, change them — and a Remap sitting 600 px
+     away from the chips it changes is not the same sentence. */
+  max-width: 46rem;
+}
+
+.setup-checklist li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  color: var(--text-dim);
+}
+
+.setup-checklist li.is-done {
+  color: var(--text);
+}
+
+.setup-checklist li.is-done .check-mark {
+  color: var(--gold);
+}
+
+/*
+ * The practice floor's checklist rows (playtest 9).
+ *
+ * Each row is a mark, a label and one or more rebindable controls. Five of the
+ * seven need a single control and sit on one line; the two nail directions need
+ * two, and those get a line each underneath the label — the direction is almost
+ * always the one that is wrong, and burying it beside Attack on a wrapped line
+ * is how she would miss it.
+ */
+.setup-checklist .check-mark {
+  /* A fixed cell so the ticks line up as they arrive and the labels never
+     shift sideways under her while she is mid-input. */
+  width: 1ch;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.setup-checklist .check-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 1rem;
+  row-gap: 0.35rem;
+}
+
+.setup-checklist .check-label {
+  /* Shrinkable, so a long label gives way before the row can overflow. */
+  flex: 0 1 auto;
+  min-width: 10rem;
+  text-align: left;
+}
+
+.setup-checklist .control-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  /* Grows into the row on a wide screen, wraps whole on a narrow one. */
+  flex: 1 1 18rem;
+  min-width: 0;
+  /* A keycap's height, so swapping the chips for the capture prompt does not
+     move the rows under her while she is looking at one. */
+  min-height: 2.1rem;
+}
+
+/* A row with two controls stacks them under the label, indented to the mark. */
+.setup-checklist .check-body.is-compound .control-line {
+  flex-basis: 100%;
+  padding-left: 1.2rem;
+}
+
+.setup-checklist .control-name {
+  color: var(--text-dim);
+  font-size: 0.92rem;
+  min-width: 4.5rem;
+}
+
+.setup-checklist .control-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  /* Takes the slack so every Remap button lines up down the right edge of the
+     column — a ragged right would make the seven rows read as unrelated. */
+  flex: 1 1 auto;
+}
+
+.setup-checklist .control-chips.is-unbound {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+/* "Press the key or button you want for Jump." — in place of the chips, so the
+   row does not change height while she is looking at it. */
+.setup-checklist .control-prompt {
+  flex: 1 1 auto;
+  color: var(--gold);
+  font-style: italic;
+  font-size: 0.95rem;
+}
+
+.setup-checklist .control-line .chip {
+  flex: 0 0 auto;
+}
+
+/* The floor's handoff on the Setup lesson, where the sandbox used to be. */
+.setup-handoff {
+  margin: 2.5rem 0 0;
+}

@@ -1,57 +1,65 @@
 import { Link } from 'react-router';
+import { CHAPTERS, countWord } from '../chapters';
+import { DojoMap } from '../components/DojoMap';
+import { NextButton } from '../components/NextButton';
+import { homeCopy } from '../copy/home';
+import { mapProgress } from '../storage/progress';
+import { useProgress } from '../storage/useChapterProgress';
+import { bestLine } from './bestLine';
 
 export function Home() {
+  const { progress, visited, runs } = useProgress();
+  const { next } = mapProgress(progress, visited);
+  const finale = CHAPTERS[CHAPTERS.length - 1]!;
+  const best = bestLine(next ?? finale, runs);
+  const stops = countWord(CHAPTERS.length);
+
   return (
-    <>
-      <h1>Hey Kayla — welcome to your dojo.</h1>
-      <p className="lede">
-        Hollow Knight is the first genuinely hard game you&apos;ve taken on, and that&apos;s
-        exactly why it&apos;s worth it. This little site is our practice space: a place to
-        break the scary parts into small, learnable pieces and drill them until they feel
-        easy. No pressure, no spoilers, no rush — let&apos;s learn this together.
-      </p>
-      <p className="muted">
-        The whole plan fits in one sentence: hit them more than they hit you and you beat
-        the game. Everything here exists to make that sentence true.
-      </p>
+    <div className="home">
+      <div className="home-hero-block">
+        <h1 className="home-hero">{homeCopy.hero}</h1>
+        <p className="lede">{homeCopy.lede}</p>
+      </div>
+      <DojoMap />
+      <div className="home-side">
+        <aside className="next-sign" aria-label={homeCopy.signLabel}>
+          {next ? (
+            <>
+              <p className="eyebrow">{homeCopy.signEyebrow}</p>
+              <p className="next-place">{next.place}</p>
+              <p className="next-title">{next.title}</p>
+              <p className="next-line">{next.line}</p>
+              <div className="next-facts">
+                <p className="next-done">{homeCopy.signToFinish(next.done)}</p>
+                {best && <p className="next-best">{best}</p>}
+              </div>
+              <NextButton title={next.title} to={next.route} where={next.place} />
+            </>
+          ) : (
+            <>
+              <p className="eyebrow">{homeCopy.doneEyebrow}</p>
+              <p className="next-title">{homeCopy.doneTitle(stops)}</p>
+              <p className="next-line">{homeCopy.doneLine}</p>
+              {best && (
+                <div className="next-facts">
+                  <p className="next-best">{best}</p>
+                </div>
+              )}
+              <Link className="button" to={finale.route}>
+                {homeCopy.doneButton}
+              </Link>
+            </>
+          )}
+        </aside>
 
-      <h2>Lessons</h2>
-      <ul className="card-grid">
-        <li>
-          <Link className="card" to="/lessons/pogo">
-            <h3>Pogo</h3>
-            <p>Bouncing on enemies and spikes with the downslash — your biggest unlock.</p>
-          </Link>
-        </li>
-        <li>
-          <Link className="card" to="/lessons/reading-enemies">
-            <h3>Reading Enemies</h3>
-            <p>Don&apos;t fight a new enemy. Watch it, dodge it, then take it apart.</p>
-          </Link>
-        </li>
-        <li>
-          <Link className="card" to="/lessons/setup">
-            <h3>Your Setup</h3>
-            <p>One controller, every session — build muscle memory that sticks.</p>
-          </Link>
-        </li>
-      </ul>
-
-      <h2>Practice</h2>
-      <ul className="card-grid">
-        <li>
-          <Link className="card" to="/practice/pogo">
-            <h3>Pogo Course</h3>
-            <p>Chain downslash bounces across a spike course, checkpoint by checkpoint.</p>
-          </Link>
-        </li>
-        <li>
-          <Link className="card" to="/practice/dodge">
-            <h3>Dodge Arena</h3>
-            <p>One enemy at a time. Survive, learn its moves, land clean hits.</p>
-          </Link>
-        </li>
-      </ul>
-    </>
+        <ul className="map-legend" aria-label={homeCopy.legendLabel}>
+          <li className="legend-lesson">{homeCopy.legendLesson}</li>
+          <li className="legend-game">{homeCopy.legendMiniGame}</li>
+          <li className="legend-done">{homeCopy.legendDone}</li>
+          <li className="legend-skipped">{homeCopy.legendSkipped}</li>
+          <li className="legend-locked">{homeCopy.legendLocked}</li>
+        </ul>
+      </div>
+    </div>
   );
 }

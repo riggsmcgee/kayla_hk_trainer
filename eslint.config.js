@@ -19,6 +19,8 @@ export default tseslint.config(
       'docs/**',
       '.agents/**',
       '.claude/**',
+      // Sprint machinery and its scratch patch scripts (git-excluded).
+      '.proactive/**',
     ],
   },
 
@@ -58,11 +60,21 @@ export default tseslint.config(
     },
   },
 
-  // Node-context config files at workspace roots (vite.config.ts etc.).
+  // Node-context config files at workspace roots (vite.config.ts etc.), and
+  // the build scripts in scripts/ — those run under node, not in a browser.
   {
-    files: ['*.{js,cjs,mjs}', '*/*.config.{js,ts,cjs,mjs}'],
+    files: ['*.{js,cjs,mjs}', '*/*.config.{js,ts,cjs,mjs}', 'scripts/**/*.{js,mjs,ts}'],
     languageOptions: {
       globals: { ...globals.node },
+    },
+  },
+
+  // scripts/bill-gallery-entry.ts is compiled by esbuild and runs in the
+  // browser, so it needs the browser globals rather than node's.
+  {
+    files: ['scripts/*-entry.ts'],
+    languageOptions: {
+      globals: { ...globals.browser },
     },
   },
 

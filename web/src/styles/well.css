@@ -1,0 +1,215 @@
+/*
+ * The Bottom of the Well — the finale page (playtest 2 interview): the
+ * three beats as a short road above the canvas, the quiet panel at the
+ * bottom, and the "whole road walked" panel. The wave picker, the inline
+ * wave gate, the "Best:" line and the after-level panel reuse the Pogo
+ * Course's classes from levels.css (.level-chip, .level-gate, .level-best,
+ * .level-clear) so the two mini-game pages read as one site. Gold is the
+ * mini-game colour: the beat she's on and every check are gold.
+ */
+
+/* ------------------------------------------------------------------ */
+/* The beats: 1 — 2 — 3, a road in miniature                           */
+/* ------------------------------------------------------------------ */
+
+.well-beats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0;
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.well-beat {
+  display: flex;
+  align-items: center;
+}
+
+/* The leg of road between two beats. */
+.well-beat + .well-beat::before {
+  content: '';
+  width: 1.75rem;
+  height: 1px;
+  margin: 0 0.35rem;
+  background: var(--rule);
+}
+
+.well-beat-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.9rem 0.3rem 0.3rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.well-beat-button:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+
+.well-beat-disc {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.well-beat-name {
+  font-family: var(--font-display);
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+
+/* The beat she's on: gold. */
+.well-beat-active .well-beat-button {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, var(--bg-raised));
+}
+
+.well-beat-active .well-beat-disc {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--bg);
+}
+
+/* Done: the check is gold, the leg behind it lit. */
+.well-beat-done .well-beat-disc {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.well-beat-done .well-beat-button {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--rule));
+  color: var(--text);
+}
+
+.well-beat-done + .well-beat::before {
+  background: var(--gold);
+}
+
+/* Locked: the disc and the border fade, never the words (faded --text-dim
+   drops under 4.5:1 — playtest 2, note 7). Still pressable: pressing it
+   opens the gate below. */
+.well-beat-locked .well-beat-button {
+  border-color: color-mix(in srgb, var(--rule) 60%, var(--bg-raised));
+}
+
+.well-beat-locked .well-beat-disc {
+  opacity: 0.5;
+}
+
+.well-beat-locked .well-beat-button:hover .well-beat-disc {
+  opacity: 0.8;
+}
+
+.well-mark {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.well-beat-done .well-mark-check {
+  stroke: var(--gold);
+}
+
+/* Each beat's body sits under the strip with the same breathing room. */
+.well-beat-body {
+  margin-top: 0.25rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* The bottom: a quiet panel, no art                                    */
+/* ------------------------------------------------------------------ */
+
+.well-quiet {
+  max-width: 32rem;
+  margin: 1.5rem 0 0;
+  padding: 2.25rem 1.5rem;
+  background: var(--bg-deep);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.well-quiet p {
+  margin: 0 auto;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------------------ */
+/* The whole road walked                                                */
+/* ------------------------------------------------------------------ */
+
+.well-done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  max-width: 32rem;
+  margin: 1rem 0 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background: color-mix(in srgb, var(--gold) 8%, var(--bg-raised));
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--gold);
+  border-radius: 10px;
+}
+
+.well-done-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+
+.well-done .button {
+  margin: 0;
+  background: var(--gold);
+}
+
+.well-done .button:hover {
+  background: #f3d98a;
+}
+
+/* On a phone the beats stack; a leg of road at the start of a row reads wrong. */
+@media (max-width: 560px) {
+  .well-beats {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .well-beat + .well-beat::before {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .well-beat-button {
+    transition: none;
+  }
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CANVAS, ENEMIES, FIXED_DT, PHYSICS, SIM_HZ, UNIT_PX } from './constants';
+import { ROSTER } from './roster';
 
 describe('engine constants sanity', () => {
   it('uses a positive px-per-unit scale and a 60 Hz fixed step', () => {
@@ -27,17 +28,25 @@ describe('engine constants sanity', () => {
     // A pogo rise (velocity × pinned time) should be meaningfully smaller
     // than a full jump's pinned rise — it's ~half a jump in HK.
     expect(PHYSICS.pogoVelocity * PHYSICS.pogoTime).toBeLessThan(
-      PHYSICS.jumpVelocity * PHYSICS.jumpHoldMax + PHYSICS.jumpVelocity ** 2 / (2 * PHYSICS.gravity),
+      PHYSICS.jumpVelocity * PHYSICS.jumpHoldMax +
+        PHYSICS.jumpVelocity ** 2 / (2 * PHYSICS.gravity),
     );
   });
 
-  it('gives every rostered enemy positive hp and standard contact damage', () => {
+  it('gives every enemy positive hp and standard contact damage', () => {
     for (const tuning of Object.values(ENEMIES)) {
       expect(tuning.hp).toBeGreaterThan(0);
       expect(tuning.damage).toBe(1);
     }
+  });
+
+  it('tunes exactly the roster plus the boss pair, and only bosses are invulnerable', () => {
+    const killable = Object.entries(ENEMIES)
+      .filter(([, tuning]) => !tuning.invulnerable)
+      .map(([id]) => id);
+    expect(killable.sort()).toEqual(ROSTER.map((e) => e.id).sort());
     expect(Object.keys(ENEMIES).sort()).toEqual(
-      ['duelist', 'flier', 'spitter', 'walker', 'warden'].sort(),
+      ['bill', 'dog', 'duelist', 'flier', 'spitter', 'walker', 'warden'].sort(),
     );
   });
 });
